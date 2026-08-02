@@ -6,15 +6,22 @@
   appId: "com.dwm.desktop",
   productName: "DWM",
   copyright: "Copyright © DWM",
+
   // Fijado explícitamente: electron-builder no detecta automáticamente la
   // versión de Electron cuando el paquete está hoisted a la raíz del
-  // workspace npm en lugar de packages/desktop-app/node_modules (límite
-  // real de este monorepo, documentado en BUILD-REPORT-v1.0.0.md).
+  // workspace npm en lugar de packages/desktop-app/node_modules.
   electronVersion: "31.3.1",
+
+  // El monorepo ya instala y compila todas las dependencias antes del
+  // empaquetado. Evita que electron-builder reconstruya o reorganice
+  // node_modules y elimine el binario de 7zip-bin necesario para NSIS.
+  npmRebuild: false,
+
   directories: {
     output: "release",
     buildResources: "build",
   },
+
   files: [
     "dist-electron/**/*",
     "dist-renderer/**/*",
@@ -23,28 +30,49 @@
     "!**/*.test.*",
     "!node_modules/**/src/**",
     "!node_modules/**/tests/**",
+    "!node_modules/**/coverage/**",
     "!node_modules/**/*.ts",
     "!node_modules/**/tsconfig*.json",
     "!node_modules/**/vitest.config.*",
   ],
+
   asar: true,
   icon: "build/icon.png",
+
   win: {
-    target: [{ target: "nsis", arch: ["x64"] }],
+    target: [
+      {
+        target: "nsis",
+        arch: ["x64"],
+      },
+    ],
     icon: "build/icon.png",
   },
+
   mac: {
-    target: [{ target: "dmg", arch: ["x64", "arm64"] }],
+    target: [
+      {
+        target: "dmg",
+        arch: ["x64", "arm64"],
+      },
+    ],
     category: "public.app-category.developer-tools",
     icon: "build/icon.png",
     hardenedRuntime: true,
     gatekeeperAssess: false,
   },
+
   linux: {
-    target: [{ target: "AppImage", arch: ["x64"] }],
+    target: [
+      {
+        target: "AppImage",
+        arch: ["x64"],
+      },
+    ],
     icon: "build/icon.png",
     category: "Development",
   },
+
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
@@ -54,5 +82,6 @@
     uninstallDisplayName: "DWM (Dev Workspace Manager) ${version}",
     deleteAppDataOnUninstall: false,
   },
+
   publish: null,
 }
