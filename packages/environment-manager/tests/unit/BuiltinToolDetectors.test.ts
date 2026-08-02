@@ -34,15 +34,25 @@ describe("BUILTIN_TOOL_DETECTORS", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("cada detector tiene nombre, categoría válida y al menos un candidato con comando", () => {
+  it("cada detector tiene nombre, categoría válida, y candidatos o un detector personalizado", () => {
     for (const definition of BUILTIN_TOOL_DETECTORS) {
       expect(definition.name.length).toBeGreaterThan(0);
       expect(isToolCategory(definition.category)).toBe(true);
+      if (definition.detect) {
+        // vscode: detección propia (rutas de instalación + PATH), sin lista de candidatos.
+        expect(definition.candidates.length).toBe(0);
+        continue;
+      }
       expect(definition.candidates.length).toBeGreaterThan(0);
       for (const candidate of definition.candidates) {
         expect(candidate.command.length).toBeGreaterThan(0);
       }
     }
+  });
+
+  it("vscode usa su propio detector (VSCodeDetector), no la lista genérica de candidatos", () => {
+    const vscode = BUILTIN_TOOL_DETECTORS.find((d) => d.id === "vscode");
+    expect(typeof vscode?.detect).toBe("function");
   });
 
   it("docker-compose declara múltiples candidatos (docker compose y docker-compose standalone)", () => {

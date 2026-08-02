@@ -1,8 +1,34 @@
+import type { LucideIcon } from "lucide-react";
+import {
+  Activity,
+  Archive,
+  BookOpen,
+  Bot,
+  BrainCircuit,
+  CircleHelp,
+  FolderKanban,
+  Home,
+  IdCard,
+  Info,
+  Layers,
+  LayoutGrid,
+  ListChecks,
+  Package,
+  Plug,
+  ScrollText,
+  Settings,
+  Sparkles,
+  Users,
+  Wand2,
+  Wrench,
+} from "lucide-react";
 import type { DesktopNavigationSection } from "../../shared/types/DesktopConfig.js";
 
 export interface NavigationItem {
   readonly section: DesktopNavigationSection;
   readonly label: string;
+  /** Icono real (lucide-react) de la sección; nunca un emoji ni un icono rasterizado. */
+  readonly icon: LucideIcon;
 }
 
 /**
@@ -10,29 +36,32 @@ export interface NavigationItem {
  * 33B). Todas las secciones aquí son genuinamente navegables. Las 8
  * primeras vienen del Módulo 33A; las 13 siguientes se activan en el
  * Módulo 33B (antes reservadas, deshabilitadas).
+ *
+ * Identidad visual: cada sección lleva un icono coherente de lucide-react
+ * (biblioteca ligera de iconos SVG en React, sin rasterizar).
  */
 export const NAVIGATION_CATALOG: readonly NavigationItem[] = [
-  { section: "dashboard", label: "Inicio" },
-  { section: "workspace", label: "Centro de trabajo" },
-  { section: "projects", label: "Proyectos" },
-  { section: "agents", label: "Agentes" },
-  { section: "skills", label: "Skills" },
-  { section: "rules", label: "Reglas" },
-  { section: "knowledge", label: "Conocimiento" },
-  { section: "clients", label: "Clientes" },
-  { section: "profiles", label: "Perfiles" },
-  { section: "workspaces", label: "Workspaces" },
-  { section: "aiCreator", label: "AI Creator" },
-  { section: "ai", label: "IA" },
-  { section: "tools", label: "Herramientas" },
-  { section: "plugins", label: "Plugins" },
-  { section: "packages", label: "Paquetes" },
-  { section: "backups", label: "Backups" },
-  { section: "status", label: "Estado" },
-  { section: "logs", label: "Logs" },
-  { section: "settings", label: "Configuración" },
-  { section: "help", label: "Ayuda" },
-  { section: "about", label: "Acerca de DWM" },
+  { section: "dashboard", label: "Inicio", icon: Home },
+  { section: "workspace", label: "Centro de trabajo", icon: LayoutGrid },
+  { section: "projects", label: "Proyectos", icon: FolderKanban },
+  { section: "agents", label: "Agentes", icon: Bot },
+  { section: "skills", label: "Skills", icon: Sparkles },
+  { section: "rules", label: "Reglas", icon: ListChecks },
+  { section: "knowledge", label: "Conocimiento", icon: BookOpen },
+  { section: "clients", label: "Clientes", icon: Users },
+  { section: "profiles", label: "Perfiles", icon: IdCard },
+  { section: "workspaces", label: "Workspaces", icon: Layers },
+  { section: "aiCreator", label: "AI Creator", icon: Wand2 },
+  { section: "ai", label: "IA", icon: BrainCircuit },
+  { section: "tools", label: "Herramientas", icon: Wrench },
+  { section: "plugins", label: "Plugins", icon: Plug },
+  { section: "packages", label: "Paquetes", icon: Package },
+  { section: "backups", label: "Backups", icon: Archive },
+  { section: "status", label: "Estado", icon: Activity },
+  { section: "logs", label: "Logs", icon: ScrollText },
+  { section: "settings", label: "Configuración", icon: Settings },
+  { section: "help", label: "Ayuda", icon: CircleHelp },
+  { section: "about", label: "Acerca de DWM", icon: Info },
 ];
 
 /**

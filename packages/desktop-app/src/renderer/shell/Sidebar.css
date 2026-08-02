@@ -32,6 +32,9 @@
 }
 .dwm-sidebar__item {
   width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-xs);
   text-align: left;
   background: none;
   border: none;
@@ -40,6 +43,25 @@
   font-size: var(--dwm-font-size-body);
   color: var(--dwm-color-text-secondary);
   cursor: pointer;
+}
+.dwm-sidebar__item-icon {
+  flex-shrink: 0;
+}
+.dwm-sidebar__item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dwm-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .dwm-sidebar__item:hover {
   background: var(--dwm-color-background-primary);

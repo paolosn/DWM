@@ -1,5 +1,6 @@
 import type { ProcessRunner } from "./ProcessRunner.js";
 import type { SystemInfoProvider } from "./SystemInfoProvider.js";
+import type { FileSystemProbe } from "./FileSystemProbe.js";
 import { VersionParser } from "./VersionParser.js";
 import type { EnvironmentPlatform, ToolCategory, ToolResult } from "./EnvironmentTypes.js";
 
@@ -27,14 +28,30 @@ export interface ToolDetectorDefinition {
   readonly platforms?: readonly EnvironmentPlatform[];
   /** Estrategia de versión personalizada: función pura que recibe stdout/stderr ya capturados (nunca ejecuta nada) y devuelve el fragmento de versión, o `undefined` si no lo encuentra. Si se omite, se usa `VersionParser` sobre la salida combinada. */
   readonly parseVersion?: (stdout: string, stderr: string) => string | undefined;
+  /**
+   * Sustituye por completo la búsqueda genérica basada en `candidates`
+   * (solo `PATH`) por una lógica de detección propia — p. ej.
+   * comprobar además rutas de instalación estándar del sistema
+   * operativo. Recibe la ruta configurada manualmente para este `id`,
+   * si existe (`context.manualToolPaths`). Usado por `VSCodeDetector`;
+   * el resto de detectores integrados no lo definen y siguen usando el
+   * bucle de `candidates` sin cambios.
+   */
+  readonly detect?: (
+    context: ToolDetectionContext,
+    manualPath: string | undefined
+  ) => Promise<Omit<ToolResult, "id" | "name" | "category" | "durationMs">>;
 }
 
 export interface ToolDetectionContext {
   readonly processRunner: ProcessRunner;
   readonly systemInfo: SystemInfoProvider;
+  readonly fileSystem?: FileSystemProbe;
   readonly platform: EnvironmentPlatform;
   readonly defaultTimeoutMs: number;
   readonly defaultMaxOutputBytes: number;
+  /** Rutas configuradas manualmente por el usuario, indexadas por id de herramienta (p. ej. "vscode"). */
+  readonly manualToolPaths?: ReadonlyMap<string, string>;
   readonly signal?: AbortSignal;
 }
 
@@ -74,6 +91,12 @@ export class ToolDetector {
         reason: "unsupported-platform",
         durationMs: Date.now() - start,
       };
+    }
+
+    if (definition.detect) {
+      const manualPath = context.manualToolPaths?.get(definition.id);
+      const outcome = await definition.detect(context, manualPath);
+      return { ...base, ...outcome, durationMs: Date.now() - start };
     }
 
     let foundAnyExecutable = false;

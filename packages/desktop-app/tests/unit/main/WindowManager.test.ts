@@ -25,6 +25,30 @@ describe("WindowManager", () => {
     fakeShell.openExternal.mockClear();
   });
 
+  it("openMainWindow aplica el icono de la aplicación cuando se proporciona iconPath", async () => {
+    const createWindow = vi.fn(
+      (opts: Record<string, unknown>) => new FakeBrowserWindow(opts) as never
+    );
+    const manager = new WindowManager({
+      preloadPath: "/preload/index.js",
+      rendererEntry: { indexHtmlPath: "/dist/index.html" },
+      logger: createFakeLogger(),
+      iconPath: "/app/build/icon.png",
+      createWindow: createWindow as never,
+    });
+    await manager.openMainWindow({ bounds: { width: 1000, height: 700 }, maximized: false });
+
+    const options = createWindow.mock.calls[0]?.[0] as { icon?: string };
+    expect(options.icon).toBe("/app/build/icon.png");
+  });
+
+  it("openMainWindow no incluye la opción icon cuando no se proporciona iconPath", async () => {
+    const { manager, createWindow } = buildManager();
+    await manager.openMainWindow({ bounds: { width: 1000, height: 700 }, maximized: false });
+
+    const options = createWindow.mock.calls[0]?.[0] as { icon?: string };
+    expect(options.icon).toBeUndefined();
+  });
   it("no tiene ventana abierta inicialmente", () => {
     const { manager } = buildManager();
     expect(manager.hasOpenWindow()).toBe(false);

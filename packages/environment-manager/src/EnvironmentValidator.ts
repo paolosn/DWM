@@ -45,7 +45,7 @@ export class EnvironmentValidator {
       };
     }
 
-    if (tool.status !== "available") {
+    if (tool.status !== "available" && tool.status !== "available-without-cli") {
       return {
         toolId: requirement.toolId,
         satisfied: false,

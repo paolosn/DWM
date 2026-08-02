@@ -3,6 +3,9 @@
   // infraestructura del Módulo 32. `icon.png` es un PLACEHOLDER
   // (generado programáticamente, sin arte final de marca) — sustituir
   // por el icono definitivo de DWM antes de una distribución real.
+  // Identidad visual DWM: icono de cohete (fondo azul, cohete blanco).
+  // Fuente maestra: build/icon.svg. build/icon.png/.ico/.icns generados
+  // a partir de ella (ver build/icon.svg).
   appId: "com.dwm.desktop",
   productName: "DWM",
   copyright: "Copyright © DWM",
@@ -26,6 +29,7 @@
     "dist-electron/**/*",
     "dist-renderer/**/*",
     "package.json",
+    "build/icon.png",
     "!**/*.map",
     "!**/*.test.*",
     "!node_modules/**/src/**",
@@ -46,7 +50,7 @@
         arch: ["x64"],
       },
     ],
-    icon: "build/icon.png",
+    icon: "build/icon.ico",
   },
 
   mac: {
@@ -57,7 +61,7 @@
       },
     ],
     category: "public.app-category.developer-tools",
-    icon: "build/icon.png",
+    icon: "build/icon.icns",
     hardenedRuntime: true,
     gatekeeperAssess: false,
   },
@@ -81,6 +85,11 @@
     shortcutName: "DWM",
     uninstallDisplayName: "DWM (Dev Workspace Manager) ${version}",
     deleteAppDataOnUninstall: false,
+    // Icono del instalador/desinstalador NSIS y de los accesos directos
+    // (menú inicio / escritorio) creados durante la instalación.
+    installerIcon: "build/icon.ico",
+    uninstallerIcon: "build/icon.ico",
+    installerHeaderIcon: "build/icon.ico",
   },
 
   publish: null,

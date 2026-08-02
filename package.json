@@ -1,7 +1,7 @@
 {
   "name": "dwm",
-  "version": "1.0.2",
-  "description": "Dev Workspace Manager (DWM) — repositorio raíz del monorepo.",
+  "version": "1.0.3",
+  "description": "Dev Workspace Manager (DWM) \u2014 repositorio ra\u00edz del monorepo.",
   "private": true,
   "type": "module",
   "workspaces": [

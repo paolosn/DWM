@@ -40,6 +40,14 @@ describe("NAVIGATION_CATALOG", () => {
       ])
     );
   });
+
+  it("cada sección lleva un icono real (componente lucide-react), sin repetir el mismo icono dos veces", () => {
+    for (const item of NAVIGATION_CATALOG) {
+      expect(typeof item.icon).toBe("object");
+    }
+    const icons = NAVIGATION_CATALOG.map((item) => item.icon);
+    expect(new Set(icons).size).toBe(icons.length);
+  });
 });
 
 describe("RESERVED_NAVIGATION_ITEMS", () => {

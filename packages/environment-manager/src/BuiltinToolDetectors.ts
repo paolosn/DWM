@@ -1,4 +1,5 @@
 import type { ToolDetectorDefinition } from "./ToolDetector.js";
+import { detectVSCode } from "./VSCodeDetector.js";
 
 /**
  * Detectores integrados para el catálogo mínimo de herramientas que
@@ -31,7 +32,17 @@ export const BUILTIN_TOOL_DETECTORS: readonly ToolDetectorDefinition[] = [
     category: "package-manager",
     candidates: [{ command: "pip3" }, { command: "pip" }],
   },
-  { id: "vscode", name: "VS Code", category: "editor", candidates: [{ command: "code" }] },
+  {
+    id: "vscode",
+    name: "VS Code",
+    category: "editor",
+    // Sin `candidates`: la detección real vive en `detect` (VSCodeDetector),
+    // que comprueba rutas de instalación estándar de Windows/macOS además
+    // de PATH — el comando `code` en PATH nunca es, por sí solo, requisito
+    // para considerar VS Code instalado.
+    candidates: [],
+    detect: detectVSCode,
+  },
   { id: "docker", name: "Docker", category: "container", candidates: [{ command: "docker" }] },
   {
     id: "docker-compose",

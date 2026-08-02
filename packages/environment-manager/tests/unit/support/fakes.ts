@@ -1,4 +1,5 @@
 import type { SystemInfoProvider } from "../../../src/SystemInfoProvider.js";
+import type { FileSystemProbe } from "../../../src/FileSystemProbe.js";
 import type {
   ProcessRunner,
   ProcessRunOptions,
@@ -132,5 +133,20 @@ export class FakeProcessRunner implements ProcessRunner {
       truncated: script.truncated ?? false,
       durationMs: script.durationMs ?? 1,
     };
+  }
+}
+
+/** `FileSystemProbe` totalmente simulado: solo "existen" las rutas registradas explícitamente con `add`. */
+export class FakeFileSystemProbe implements FileSystemProbe {
+  private readonly existingPaths = new Set<string>();
+  public readonly existsCalls: string[] = [];
+
+  add(...paths: readonly string[]): void {
+    for (const path of paths) this.existingPaths.add(path);
+  }
+
+  async exists(path: string): Promise<boolean> {
+    this.existsCalls.push(path);
+    return this.existingPaths.has(path);
   }
 }

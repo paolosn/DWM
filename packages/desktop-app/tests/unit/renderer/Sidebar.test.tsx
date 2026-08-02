@@ -106,4 +106,22 @@ describe("Sidebar", () => {
     );
     unmount();
   });
+
+  it("cada sección renderiza un icono SVG real y decorativo (aria-hidden), sin emojis", () => {
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <Sidebar />
+      </NavigationProvider>
+    );
+    const navButtons = container.querySelectorAll(".dwm-sidebar__list button");
+    navButtons.forEach((button) => {
+      const icon = button.querySelector("svg");
+      expect(icon).not.toBeNull();
+      expect(icon?.getAttribute("aria-hidden")).toBe("true");
+    });
+     
+    const emojiPattern = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
+    expect(emojiPattern.test(container.textContent ?? "")).toBe(false);
+    unmount();
+  });
 });

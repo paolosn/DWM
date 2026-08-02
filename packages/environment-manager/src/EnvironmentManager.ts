@@ -11,6 +11,7 @@ import type { StatusProvider } from "@dwm/status";
 import { makeStatusReport } from "@dwm/status";
 import { NodeSystemInfoProvider, type SystemInfoProvider } from "./SystemInfoProvider.js";
 import { NodeProcessRunner, type ProcessRunner } from "./ProcessRunner.js";
+import { NodeFileSystemProbe, type FileSystemProbe } from "./FileSystemProbe.js";
 import { ToolRegistry } from "./ToolRegistry.js";
 import { EnvironmentDetector } from "./EnvironmentDetector.js";
 import { EnvironmentRegistry } from "./EnvironmentRegistry.js";
@@ -36,6 +37,7 @@ import { ToolDetector } from "./ToolDetector.js";
 export interface EnvironmentManagerOptions {
   readonly systemInfo?: SystemInfoProvider;
   readonly processRunner?: ProcessRunner;
+  readonly fileSystem?: FileSystemProbe;
   /** Detectores adicionales a los integrados. Un id duplicado con un detector integrado lanza al construir el manager. */
   readonly detectors?: readonly ToolDetectorDefinition[];
   /** Solo registra los detectores integrados cuyo id aparezca aquí; si se omite, se registran todos. Útil para tests deterministas. */
@@ -83,6 +85,8 @@ export class EnvironmentManager implements IModule {
 
   private readonly systemInfo: SystemInfoProvider;
   private readonly processRunner: ProcessRunner;
+  private readonly fileSystem: FileSystemProbe;
+  private readonly manualToolPaths = new Map<string, string>();
   private readonly toolRegistry = new ToolRegistry();
   private readonly environmentDetector = new EnvironmentDetector();
   private readonly toolDetector = new ToolDetector();
@@ -107,6 +111,7 @@ export class EnvironmentManager implements IModule {
   constructor(options: EnvironmentManagerOptions = {}) {
     this.systemInfo = options.systemInfo ?? new NodeSystemInfoProvider();
     this.processRunner = options.processRunner ?? new NodeProcessRunner(this.systemInfo);
+    this.fileSystem = options.fileSystem ?? new NodeFileSystemProbe();
     this.variables = new EnvironmentVariables(this.systemInfo);
     this.defaultTimeoutMs = options.defaultTimeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.defaultMaxOutputBytes = options.defaultMaxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;
@@ -168,6 +173,27 @@ export class EnvironmentManager implements IModule {
   unregisterDetector(id: string): void {
     this.toolRegistry.unregister(id);
     this.registry.invalidate();
+  }
+
+  /**
+   * Configura manualmente la ruta de instalación de una herramienta
+   * (p. ej. "vscode") cuando la detección automática no la localiza —
+   * usado por el detector de VS Code (README "rutas configuradas
+   * manualmente"). Invalida la caché para que la próxima inspección la
+   * tenga en cuenta.
+   */
+  setManualToolPath(toolId: string, path: string): void {
+    this.manualToolPaths.set(toolId, path);
+    this.registry.invalidate();
+  }
+
+  clearManualToolPath(toolId: string): void {
+    this.manualToolPaths.delete(toolId);
+    this.registry.invalidate();
+  }
+
+  getManualToolPath(toolId: string): string | undefined {
+    return this.manualToolPaths.get(toolId);
   }
 
   // ---------------------------------------------------------------------
@@ -262,7 +288,7 @@ export class EnvironmentManager implements IModule {
   ): Promise<boolean> {
     const tool = await this.getTool(toolId, options);
     return (
-      tool.status === "available" &&
+      (tool.status === "available" || tool.status === "available-without-cli") &&
       !!tool.version &&
       this.comparator.satisfiesMinimum(tool.version, minVersion)
     );
@@ -276,9 +302,11 @@ export class EnvironmentManager implements IModule {
     return {
       processRunner: this.processRunner,
       systemInfo: this.systemInfo,
+      fileSystem: this.fileSystem,
       platform: normalizePlatform(this.systemInfo.nodePlatform()),
       defaultTimeoutMs: this.defaultTimeoutMs,
       defaultMaxOutputBytes: this.defaultMaxOutputBytes,
+      manualToolPaths: this.manualToolPaths,
       ...(signal ? { signal } : {}),
     };
   }

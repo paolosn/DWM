@@ -13,6 +13,8 @@ export interface WindowManagerOptions {
   readonly preloadPath: string;
   readonly rendererEntry: RendererEntry;
   readonly logger?: Logger;
+  /** Ruta absoluta al icono de la aplicación (identidad visual DWM); opcional para pruebas. */
+  readonly iconPath?: string;
   /** Punto de inyección para pruebas: por defecto crea un `BrowserWindow` real. */
   readonly createWindow?: (options: Electron.BrowserWindowConstructorOptions) => BrowserWindow;
 }
@@ -33,6 +35,7 @@ export class WindowManager {
   private readonly preloadPath: string;
   private readonly rendererEntry: RendererEntry;
   private readonly logger?: Logger;
+  private readonly iconPath?: string;
   private readonly createWindow: (
     options: Electron.BrowserWindowConstructorOptions
   ) => BrowserWindow;
@@ -41,6 +44,7 @@ export class WindowManager {
     this.preloadPath = options.preloadPath;
     this.rendererEntry = options.rendererEntry;
     if (options.logger) this.logger = options.logger;
+    if (options.iconPath) this.iconPath = options.iconPath;
     this.createWindow = options.createWindow ?? ((opts) => new BrowserWindow(opts));
   }
 
@@ -73,6 +77,7 @@ export class WindowManager {
       width: initial.bounds.width,
       height: initial.bounds.height,
       show: false,
+      ...(this.iconPath ? { icon: this.iconPath } : {}),
       webPreferences: {
         preload: this.preloadPath,
         contextIsolation: true,

@@ -48,7 +48,9 @@ export function buildEnvironmentSummary(
   tools: readonly ToolResult[],
   durationMs: number
 ): EnvironmentSummary {
-  const availableCount = tools.filter((tool) => tool.status === "available").length;
+  const availableCount = tools.filter(
+    (tool) => tool.status === "available" || tool.status === "available-without-cli"
+  ).length;
   const missingCount = tools.filter((tool) => tool.status === "missing").length;
   const invalidCount = tools.filter((tool) => tool.status === "invalid").length;
   const unsupportedCount = tools.filter((tool) => tool.status === "unsupported").length;

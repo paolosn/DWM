@@ -33,6 +33,11 @@ export function isToolCategory(value: unknown): value is ToolCategory {
 /**
  * Catálogo cerrado de estados de una herramienta tras la detección:
  * - `available`: encontrada y ejecutable con éxito.
+ * - `available-without-cli`: la aplicación se localizó y se confirmó
+ *   como una instalación válida (p. ej. por ruta de instalación
+ *   estándar), pero el comando de su CLI no está disponible en `PATH`.
+ *   No se considera un fallo: solo informa que falta la conveniencia
+ *   de la línea de comandos (ver `VSCodeDetector`).
  * - `missing`: no encontrada en ningún candidato del `PATH`.
  * - `invalid`: encontrada pero no ejecutable con éxito (permiso
  *   denegado, salida no interpretable, error de proceso, timeout...).
@@ -40,8 +45,18 @@ export function isToolCategory(value: unknown): value is ToolCategory {
  * - `unsupported`: el detector declara que no aplica a la plataforma
  *   actual; no se intenta ejecutar nada.
  */
-export const TOOL_STATUSES = ["available", "missing", "invalid", "unsupported"] as const;
+export const TOOL_STATUSES = [
+  "available",
+  "available-without-cli",
+  "missing",
+  "invalid",
+  "unsupported",
+] as const;
 export type ToolStatus = (typeof TOOL_STATUSES)[number];
+
+export function isToolStatus(value: unknown): value is ToolStatus {
+  return typeof value === "string" && (TOOL_STATUSES as readonly string[]).includes(value);
+}
 
 /** Motivo concreto cuando el estado de una herramienta no es `available`. */
 export type ToolIssueReason =
@@ -52,7 +67,9 @@ export type ToolIssueReason =
   | "non-zero-exit"
   | "unparsable-version"
   | "unsupported-platform"
-  | "cancelled";
+  | "cancelled"
+  | "cli-not-in-path"
+  | "invalid-manual-path";
 
 /** Versión de una herramienta, normalizada a partir de su salida bruta. Nunca incluye la salida completa del comando: solo el fragmento que parece una versión. */
 export interface ToolVersion {

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Módulo: Identidad visual DWM. Icono maestro (cohete). Fuente única
+       de verdad para icon.png / icon.ico / icon.icns, generados a partir
+       de este archivo. Solo dos colores: fondo azul, cohete blanco. -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224" fill="#1C64F2" />
+
+  <!-- Cuerpo del cohete (morro + fuselaje) -->
+  <path
+    fill="#FFFFFF"
+    d="M512,176
+       C580,176 620,320 620,470
+       L620,660
+       Q620,700 580,700
+       L444,700
+       Q404,700 404,660
+       L404,470
+       C404,320 444,176 512,176
+       Z"
+  />
+
+  <!-- Aleta izquierda -->
+  <path fill="#FFFFFF" d="M404,540 L320,722 Q392,706 404,660 Z" />
+
+  <!-- Aleta derecha -->
+  <path fill="#FFFFFF" d="M620,540 L704,722 Q632,706 620,660 Z" />
+
+  <!-- Ojo de buey (recorte del color de fondo) -->
+  <circle cx="512" cy="380" r="62" fill="#1C64F2" />
+</svg>

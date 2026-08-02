@@ -210,7 +210,11 @@ export function OnboardingScreen(): JSX.Element {
                     <span>{tool.name}</span>
                     <StatusBadge
                       label={tool.status}
-                      tone={tool.status === "available" ? "success" : "warning"}
+                      tone={
+                        tool.status === "available" || tool.status === "available-without-cli"
+                          ? "success"
+                          : "warning"
+                      }
                     />
                   </li>
                 ))}

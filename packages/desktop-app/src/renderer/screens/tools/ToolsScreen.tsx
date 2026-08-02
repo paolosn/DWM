@@ -14,6 +14,7 @@ import "./ToolsScreen.css";
 
 const statusTone: Record<ToolResult["status"], StatusTone> = {
   available: "success",
+  "available-without-cli": "accent",
   missing: "danger",
   invalid: "warning",
   unsupported: "neutral",

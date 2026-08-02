@@ -20,7 +20,12 @@ export {
   TOOL_STATUSES,
   normalizePlatform,
   isToolCategory,
+  isToolStatus,
 } from "./EnvironmentTypes.js";
+
+export type { FileSystemProbe } from "./FileSystemProbe.js";
+export { NodeFileSystemProbe } from "./FileSystemProbe.js";
+export { detectVSCode } from "./VSCodeDetector.js";
 
 export type { SystemInfoProvider } from "./SystemInfoProvider.js";
 export { NodeSystemInfoProvider } from "./SystemInfoProvider.js";

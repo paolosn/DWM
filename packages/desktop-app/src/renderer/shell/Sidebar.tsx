@@ -33,6 +33,7 @@ export function Sidebar(): JSX.Element {
       </div>
       <ul className="dwm-sidebar__list">
         {NAVIGATION_CATALOG.map((item) => {
+          const Icon = item.icon;
           const button = (
             <button
               type="button"
@@ -41,7 +42,9 @@ export function Sidebar(): JSX.Element {
               className="dwm-sidebar__item"
               onClick={() => setActiveSection(item.section)}
             >
-              {item.label}
+              <Icon className="dwm-sidebar__item-icon" aria-hidden="true" size={18} />
+              {!collapsed && <span className="dwm-sidebar__item-label">{item.label}</span>}
+              {collapsed && <span className="dwm-visually-hidden">{item.label}</span>}
             </button>
           );
           return (

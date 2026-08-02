@@ -15,6 +15,8 @@ export interface DesktopAppPaths {
   readonly preload: string;
   /** Ruta absoluta al `index.html` del renderer construido. */
   readonly rendererIndexHtml: string;
+  /** Ruta absoluta al icono de la aplicación (identidad visual DWM); opcional para pruebas. */
+  readonly icon?: string;
   /** URL del servidor de desarrollo de Vite; ausente en producción. */
   readonly devServerUrl?: string;
 }
@@ -74,7 +76,20 @@ export async function bootstrapDesktopApp(
     preloadPath: options.paths.preload,
     rendererEntry,
     logger,
+    ...(options.paths.icon ? { iconPath: options.paths.icon } : {}),
   });
+
+  // Dock de macOS: el .app empaquetado ya incluye build/icon.icns, pero en
+  // desarrollo (sin empaquetar) Electron muestra su icono por defecto salvo
+  // que se fije explícitamente aquí.
+  if (process.platform === "darwin" && options.paths.icon && options.app.dock) {
+    try {
+      const { nativeImage } = await import("electron");
+      options.app.dock.setIcon(nativeImage.createFromPath(options.paths.icon));
+    } catch (error) {
+      void logger.warn("No se pudo aplicar el icono del Dock de macOS.", { error });
+    }
+  }
 
   const allowedOrigins = options.paths.devServerUrl
     ? [options.paths.devServerUrl, "file://"]

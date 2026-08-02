@@ -68,12 +68,12 @@ export class ToolRegistry {
     if (!definition || typeof definition.name !== "string" || definition.name.trim().length === 0) {
       issues.push("name debe ser una cadena no vacía.");
     }
-    if (
-      !definition ||
-      !Array.isArray(definition.candidates) ||
-      definition.candidates.length === 0
-    ) {
-      issues.push("candidates debe ser un array con al menos un comando candidato.");
+    if (!definition || !Array.isArray(definition.candidates)) {
+      issues.push("candidates debe ser un array.");
+    } else if (definition.candidates.length === 0 && typeof definition.detect !== "function") {
+      issues.push(
+        'candidates debe tener al menos un comando candidato cuando no se define "detect".'
+      );
     }
     if (issues.length > 0) {
       throw createEnvironmentError({

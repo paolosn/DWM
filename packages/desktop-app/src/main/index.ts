@@ -44,6 +44,7 @@ if (!gotSingleInstanceLock) {
         userData: app.getPath("userData"),
         preload: join(currentDir, "../preload/index.js"),
         rendererIndexHtml: join(currentDir, "../../dist-renderer/index.html"),
+        icon: join(currentDir, "../../build/icon.png"),
         ...(devServerUrl ? { devServerUrl } : {}),
       },
     }).then((result) => {

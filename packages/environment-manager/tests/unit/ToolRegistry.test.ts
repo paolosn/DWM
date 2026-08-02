@@ -80,5 +80,20 @@ describe("ToolRegistry", () => {
         expect.objectContaining({ code: EnvironmentErrorCode.ENVIRONMENT_INVALID_DETECTOR })
       );
     });
+
+    it("acepta candidates vacío cuando el detector define su propio 'detect' (p. ej. VSCodeDetector)", () => {
+      expect(() =>
+        registry.register(
+          makeDefinition({
+            id: "vscode",
+            candidates: [],
+            detect: async () => ({
+              status: "missing",
+              reason: "not-found",
+            }),
+          })
+        )
+      ).not.toThrow();
+    });
   });
 });
