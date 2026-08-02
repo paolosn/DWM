@@ -42,7 +42,8 @@
     "@dwm/plugin": "*",
     "@dwm/delivery-manager": "*",
     "@dwm/connections-manager": "*",
-    "@dwm/secrets": "*"
+    "@dwm/secrets": "*",
+    "@dwm/project-provisioning": "*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

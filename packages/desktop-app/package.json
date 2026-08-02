@@ -39,7 +39,8 @@
     "react-dom": "^18.3.1",
     "@dwm/secrets": "*",
     "@dwm/connections-manager": "*",
-    "lucide-react": "^1.28.0"
+    "lucide-react": "^1.28.0",
+    "@dwm/project-provisioning": "*"
   },
   "scripts": {
     "dev:renderer": "vite",

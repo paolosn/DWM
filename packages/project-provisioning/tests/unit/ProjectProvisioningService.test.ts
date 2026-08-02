@@ -288,6 +288,13 @@ describe("ProjectProvisioningService", () => {
     ).rejects.toThrow();
   });
 
+  it("marca el proyecto recién creado como activo (ProjectManager.openProject)", async () => {
+    const { service, workspaceRoot, projectManager } = await env();
+    const result = await service.provisionProject(workspaceRoot, baseRequest());
+
+    expect(projectManager.getActiveProject()?.id).toBe(result.projectId);
+  });
+
   it("asocia proyecto y cliente (referencia bidireccional vía ProjectConfiguration.clientId y ClientRelations)", async () => {
     const { service, workspaceRoot, clientManager, projectManager } = await env();
     const result = await service.provisionProject(workspaceRoot, baseRequest());

@@ -9,6 +9,7 @@ import { RulesScreen } from "../screens/rules/RulesScreen.js";
 import { KnowledgeScreen } from "../screens/knowledge/KnowledgeScreen.js";
 import { ClientsScreen } from "../screens/clients/ClientsScreen.js";
 import { DashboardScreen } from "../screens/dashboard/DashboardScreen.js";
+import { ProvisioningScreen } from "../screens/provisioning/ProvisioningScreen.js";
 import { WorkspaceScreen } from "../screens/workspace/WorkspaceScreen.js";
 import { ProjectsScreen } from "../screens/projects/ProjectsScreen.js";
 import { ProfilesScreen } from "../screens/profiles/ProfilesScreen.js";
@@ -34,6 +35,7 @@ import "./ContentArea.css";
  */
 const IMPLEMENTED_SCREENS: Partial<Record<DesktopNavigationSection, () => JSX.Element>> = {
   dashboard: DashboardScreen,
+  provisioning: ProvisioningScreen,
   workspace: WorkspaceScreen,
   projects: ProjectsScreen,
   agents: AgentsScreen,

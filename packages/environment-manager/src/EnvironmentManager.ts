@@ -224,6 +224,48 @@ export class EnvironmentManager implements IModule {
     return result;
   }
 
+  /**
+   * Abre VS Code sobre `projectPath` (encargo "client-workflow-v2",
+   * "ofrecer Abrir en VS Code"). Reutiliza tal cual el mismo
+   * `ProcessRunner` ya usado y probado por `VSCodeDetector` (resuelve
+   * el comando `code` en `PATH` con `which()`, exactamente igual que
+   * para `code --version`): no es un segundo mecanismo de lanzamiento,
+   * es la misma primitiva con otro argumento. Si `code` no está en
+   * `PATH`, no lanza: informa con claridad en vez de fallar o simular
+   * éxito (coherente con `VSCodeDetector`, que tampoco exige `code` en
+   * `PATH` para considerar VS Code instalado).
+   */
+  async openInVSCode(projectPath: string): Promise<{ opened: boolean; message: string }> {
+    const cliPath = await this.processRunner.which("code");
+    if (!cliPath) {
+      return {
+        opened: false,
+        message:
+          'El proyecto se creó correctamente, pero el comando "code" no está disponible en PATH: ábrelo manualmente desde VS Code.',
+      };
+    }
+    try {
+      const result = await this.processRunner.run(cliPath, [projectPath], {
+        timeoutMs: this.defaultTimeoutMs,
+        maxOutputBytes: this.defaultMaxOutputBytes,
+      });
+      if (result.exitCode !== 0) {
+        return {
+          opened: false,
+          message: `El proyecto se creó correctamente, pero no se pudo abrir VS Code automáticamente en "${projectPath}".`,
+        };
+      }
+      return { opened: true, message: `VS Code abierto en "${projectPath}".` };
+    } catch {
+      // El CLI de VS Code normalmente devuelve el control de inmediato; un
+      // fallo aquí no debe ocultar que el proyecto ya se creó con éxito.
+      return {
+        opened: false,
+        message: `El proyecto se creó correctamente, pero no se pudo abrir VS Code automáticamente en "${projectPath}".`,
+      };
+    }
+  }
+
   /** Ejecuta (o reutiliza de caché) una inspección completa de todas las herramientas registradas. */
   async inspect(options: InspectOptions = {}): Promise<EnvironmentSummary> {
     if (!options.force && this.registry.hasCache()) {

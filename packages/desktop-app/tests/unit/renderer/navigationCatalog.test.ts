@@ -7,7 +7,7 @@ import { isDesktopNavigationSection } from "../../../src/shared/types/DesktopCon
 
 describe("NAVIGATION_CATALOG", () => {
   it("declara las 21 secciones reales (Módulo 33A + 33B), todas válidas y sin duplicados", () => {
-    expect(NAVIGATION_CATALOG).toHaveLength(21);
+    expect(NAVIGATION_CATALOG).toHaveLength(22);
     const sections = NAVIGATION_CATALOG.map((item) => item.section);
     expect(new Set(sections).size).toBe(sections.length);
     for (const section of sections) {

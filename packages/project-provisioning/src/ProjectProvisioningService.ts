@@ -110,6 +110,12 @@ export class ProjectProvisioningService {
 
       await this.clientManager.addReference(clientId, "projects", project.id);
 
+      // "Marcar el proyecto como activo" (encargo, punto 3): reutiliza
+      // ProjectManager.openProject() tal cual — no es un fallo crítico si
+      // no puede activarse (p. ej. perfil no localizable todavía), el
+      // proyecto ya está creado y registrado correctamente.
+      await this.projectManager.openProject(project.id).catch(() => {});
+
       return {
         projectId: project.id,
         clientId,
