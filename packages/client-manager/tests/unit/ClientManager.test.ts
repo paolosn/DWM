@@ -147,6 +147,50 @@ describe("ClientManager", () => {
       expect((await manager.getClient("mci-finance")).name).toBe("MCI Finance");
     });
 
+    it("acepta defaultAi (IA predeterminada del cliente) y nunca exige un valor de secreto", async () => {
+      const root = tempDir();
+      await makeWorkspaceWithClients(root, {});
+      const psnAdapter = await makeScannedPSNAdapter(root);
+      const manager = new ClientManager({ psnAdapter });
+
+      const client = await manager.createClient({
+        id: "mci-finance",
+        name: "MCI Finance",
+        slug: "mci-finance",
+        defaultAi: {
+          provider: "openai",
+          model: "gpt-4o",
+          fallbackModel: "gpt-4o-mini",
+          secretReference: "connections.mci-finance.openai.apiKey.abc123",
+        },
+      });
+      expect(client.defaultAi).toEqual({
+        provider: "openai",
+        model: "gpt-4o",
+        fallbackModel: "gpt-4o-mini",
+        secretReference: "connections.mci-finance.openai.apiKey.abc123",
+      });
+
+      const reread = await manager.getClient("mci-finance");
+      expect(reread.defaultAi?.provider).toBe("openai");
+    });
+
+    it("rechaza defaultAi con forma inválida", async () => {
+      const root = tempDir();
+      await makeWorkspaceWithClients(root, {});
+      const psnAdapter = await makeScannedPSNAdapter(root);
+      const manager = new ClientManager({ psnAdapter });
+
+      await expect(
+        manager.createClient({
+          id: "mci-finance",
+          name: "MCI Finance",
+          slug: "mci-finance",
+          defaultAi: { provider: 123 } as never,
+        })
+      ).rejects.toMatchObject({ code: "CLIENT_INVALID_DEFAULT_AI" });
+    });
+
     it("acepta status y referencias iniciales explícitas", async () => {
       const root = tempDir();
       await makeWorkspaceWithClients(root, {});
@@ -225,6 +269,24 @@ describe("ClientManager", () => {
       const manager = new ClientManager({ psnAdapter });
       const updated = await manager.updateClient("cliente", { description: null });
       expect(updated.description).toBeUndefined();
+    });
+
+    it("asigna y luego limpia defaultAi con null, sin afectar al resto de campos", async () => {
+      const root = tempDir();
+      await makeWorkspaceWithClients(root, {
+        cliente: { slug: "cliente" },
+      });
+      const psnAdapter = await makeScannedPSNAdapter(root);
+      const manager = new ClientManager({ psnAdapter });
+
+      const withAi = await manager.updateClient("cliente", {
+        defaultAi: { provider: "anthropic", model: "claude" },
+      });
+      expect(withAi.defaultAi).toEqual({ provider: "anthropic", model: "claude" });
+
+      const cleared = await manager.updateClient("cliente", { defaultAi: null });
+      expect(cleared.defaultAi).toBeUndefined();
+      expect(cleared.name).toBe(withAi.name);
     });
 
     it("lanza CLIENT_SLUG_ALREADY_EXISTS si el nuevo slug colisiona con otro cliente", async () => {

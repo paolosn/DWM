@@ -60,6 +60,24 @@ describe("validateProjectConfiguration", () => {
       expect.objectContaining({ code: ProjectErrorCode.PROJECT_INVALID_CONFIGURATION })
     );
   });
+
+  it("acepta clientId cuando es una cadena no vacía (modelo cliente-proyecto)", () => {
+    expect(() => validateProjectConfiguration({ ...VALID, clientId: "mci-finance" })).not.toThrow();
+  });
+
+  it("rechaza clientId vacío o que no sea una cadena si se indica", () => {
+    expect(() => validateProjectConfiguration({ ...VALID, clientId: "" })).toThrow(
+      expect.objectContaining({ code: ProjectErrorCode.PROJECT_INVALID_CONFIGURATION })
+    );
+    expect(() => validateProjectConfiguration({ ...VALID, clientId: 1 as never })).toThrow(
+      expect.objectContaining({ code: ProjectErrorCode.PROJECT_INVALID_CONFIGURATION })
+    );
+  });
+
+  it("migración: una configuración antigua sin clientId sigue siendo válida — 'Sin cliente asignado'", () => {
+    expect(() => validateProjectConfiguration(VALID)).not.toThrow();
+    expect(VALID).not.toHaveProperty("clientId");
+  });
 });
 
 describe("ProjectMetadata", () => {

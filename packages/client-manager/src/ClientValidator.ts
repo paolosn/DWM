@@ -1,6 +1,7 @@
 import {
   isClientReferenceKind,
   isClientStatus,
+  isSafeClientDefaultAi,
   isSafeClientDescription,
   isSafeClientId,
   isSafeClientName,
@@ -125,13 +126,41 @@ export class ClientValidator {
     }
     return { valid: true, issues: [] };
   }
-
   assertValidDescription(description: unknown): void {
     const result = this.validateDescription(description);
     if (!result.valid) {
       throw createClientError({
         code: ClientErrorCode.CLIENT_INVALID_DESCRIPTION,
         message: `Descripción de cliente inválida: ${result.issues.map((i) => i.message).join("; ")}`,
+        origin: "validation",
+        recoverable: true,
+      });
+    }
+  }
+
+  validateDefaultAi(defaultAi: unknown): ClientValidationResult {
+    if (defaultAi === undefined || defaultAi === null) return { valid: true, issues: [] };
+    if (!isSafeClientDefaultAi(defaultAi)) {
+      return {
+        valid: false,
+        issues: [
+          {
+            field: "defaultAi",
+            message:
+              'defaultAi debe ser un objeto con "provider"/"model"/"fallbackModel"/"secretReference" de tipo texto (hasta 256 caracteres cada uno), todos opcionales.',
+          },
+        ],
+      };
+    }
+    return { valid: true, issues: [] };
+  }
+
+  assertValidDefaultAi(defaultAi: unknown): void {
+    const result = this.validateDefaultAi(defaultAi);
+    if (!result.valid) {
+      throw createClientError({
+        code: ClientErrorCode.CLIENT_INVALID_DEFAULT_AI,
+        message: `IA predeterminada de cliente inválida: ${result.issues.map((i) => i.message).join("; ")}`,
         origin: "validation",
         recoverable: true,
       });
