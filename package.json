@@ -1,7 +1,7 @@
 {
   "name": "dwm",
   "version": "1.0.2",
-  "description": "Dev Workspace Manager (DWM) \u2014 repositorio ra\u00edz del monorepo.",
+  "description": "Dev Workspace Manager (DWM) — repositorio raíz del monorepo.",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -24,10 +24,11 @@
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run test:coverage && npm run build"
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
-    "eslint": "^9.9.0",
-    "typescript-eslint": "^8.1.0",
     "@eslint/js": "^9.9.0",
-    "prettier": "^3.3.3"
+    "7zip-bin": "^5.2.0",
+    "eslint": "^9.9.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.1.0"
   }
 }
