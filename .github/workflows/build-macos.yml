@@ -1,0 +1,53 @@
+name: Build macOS installer (DWM Desktop)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Instalar dependencias del monorepo
+        run: npm install
+
+      - name: Compilar paquetes internos
+        run: npm run build:internal-deps
+
+      - name: Generar instalador macOS DMG
+        run: npm run package:electron:mac -w packages/desktop-app
+
+      - name: Calcular checksums SHA-256
+        run: |
+          release="packages/desktop-app/release"
+          checksumFile="$release/SHA256SUMS.txt"
+
+          rm -f "$checksumFile"
+
+          find "$release" -maxdepth 1 -type f ! -name "SHA256SUMS.txt" -print0 |
+            while IFS= read -r -d '' file; do
+              shasum -a 256 "$file" | awk -v dir="$release/" '{ sub(dir, "", $2); print $1"  "$2 }' >> "$checksumFile"
+            done
+
+      - name: Subir instalador macOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: DWM-macOS
+          path: |
+            packages/desktop-app/release/*.dmg
+            packages/desktop-app/release/*.blockmap
+            packages/desktop-app/release/*.yml
+            packages/desktop-app/release/SHA256SUMS.txt
+          if-no-files-found: error
