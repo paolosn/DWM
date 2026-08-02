@@ -11,6 +11,7 @@ import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ClientRelationsPanel } from "./ClientRelationsPanel.js";
+import { ClientConnectionsPanel } from "./ClientConnectionsPanel.js";
 import "./ClientFicha.css";
 
 export interface ClientFichaProps {
@@ -114,13 +115,23 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
 }
 
 function AccesosTab({ client }: { readonly client: Client }): JSX.Element {
-  return (
-    <InlineAlert tone="info" title="Conexiones gestionadas por proyecto">
-      Las conexiones (WordPress, hosting, FTP/SFTP, SSH, bases de datos, GitHub/GitLab, Cloudflare,
-      Google Drive…) se gestionan hoy desde la pestaña «Conexiones» de cada proyecto de{" "}
-      <strong>{client.name}</strong>. Ábrelas desde la pestaña «Proyectos» de esta ficha.
-    </InlineAlert>
-  );
+  const [projects, setProjects] = useState<readonly Project[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load(): Promise<void> {
+      const results = await Promise.all(
+        client.references.projects.map((id) => callOperation("projects.get", { id }))
+      );
+      if (!cancelled) setProjects(results.filter((p): p is Project => p !== undefined));
+    }
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id, client.references.projects]);
+
+  return <ClientConnectionsPanel clientId={client.id} projects={projects} />;
 }
 
 function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
@@ -143,8 +154,9 @@ function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
           <EmptyState title="Este cliente no tiene una IA predeterminada configurada todavía" />
         )}
       </section>
-      <InlineAlert tone="info" title="Servidores MCP gestionados por proyecto">
-        Los servidores MCP se gestionan hoy desde la pestaña «Conexiones» de cada proyecto.
+      <InlineAlert tone="info" title="Servidores MCP">
+        Los servidores MCP son conexiones de tipo «mcp-stdio»/«mcp-remote»: créalos y asígnalos a
+        proyectos desde la pestaña «Accesos y conexiones» de esta misma ficha.
       </InlineAlert>
     </div>
   );

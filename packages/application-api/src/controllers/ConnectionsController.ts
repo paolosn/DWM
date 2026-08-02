@@ -2,6 +2,7 @@ import type { ApplicationController } from "../ApplicationRegistry.js";
 import type { ApplicationOperationRegistry } from "../ApplicationOperationRegistry.js";
 import type { ApplicationPermissions } from "../ApplicationPermissions.js";
 import type { ApplicationContext } from "../ApplicationContext.js";
+import * as path from "node:path";
 import { requireDependency } from "../requireDependency.js";
 import {
   asRecord,
@@ -80,6 +81,45 @@ declare module "../ApplicationRequest.js" {
     "connections.revoke-capability": {
       payload: { projectId: string; id: string; granteeId: string; capability: string };
       result: { revoked: true };
+    };
+
+    // Conexiones compartidas de CLIENTE (client-workflow-v2, Commit 5).
+    // Mismo ConnectionsManager, mismo modelo de datos y mismo sistema de
+    // grants (denegación por defecto) que connections.* de proyecto — solo
+    // cambia la raíz de persistencia (por cliente en vez de por proyecto).
+    "connections.list-for-client": { payload: { clientId: string }; result: Connection[] };
+    "connections.create-for-client": {
+      payload: {
+        clientId: string;
+        name: string;
+        type: ConnectionType;
+        config?: SafeConnectionConfig;
+        capabilities?: readonly string[];
+        secrets?: Readonly<Record<string, string>>;
+        enabled?: boolean;
+      };
+      result: Connection;
+    };
+    "connections.test-for-client": {
+      payload: { clientId: string; id: string };
+      result: ConnectionTestResult;
+    };
+    "connections.delete-for-client": {
+      payload: { clientId: string; id: string };
+      result: { deleted: true };
+    };
+    /** Asignación explícita cliente↔proyecto (encargo: "nunca automática"): concede la capacidad fija `client-connection.use` al proyecto indicado. */
+    "connections.assign-to-project": {
+      payload: { clientId: string; connectionId: string; projectId: string };
+      result: { assigned: true };
+    };
+    "connections.revoke-from-project": {
+      payload: { clientId: string; connectionId: string; projectId: string };
+      result: { revoked: true };
+    };
+    "connections.projects-for-client-connection": {
+      payload: { clientId: string; connectionId: string };
+      result: readonly string[];
     };
 
     "connection-profiles.list": { payload: { projectId: string }; result: ConnectionProfile[] };
@@ -259,6 +299,33 @@ export class ConnectionsController implements ApplicationController {
     };
 
     const projectPathFor = (projectId: string): string => resolveProjectPath(projects(), projectId);
+
+    const CLIENT_CONNECTION_USE_CAPABILITY = "client-connection.use";
+
+    /**
+     * Raíz de persistencia de las conexiones COMPARTIDAS de un cliente:
+     * mismo ConnectionsManager que las de proyecto, solo cambia la
+     * carpeta. No requiere que el cliente exista todavía como fichero
+     * (`ConnectionsManager` no lo necesita: solo necesita una ruta de
+     * carpeta válida para leer/escribir sus propios `.kilo/connections`).
+     */
+    const clientConnectionsRootFor = (clientId: string): string => {
+      const active = requireDependency(
+        this.context.portableWorkspaceManager,
+        "portable-workspace-manager"
+      ).getActiveWorkspace();
+      if (!active) {
+        throw createApplicationError({
+          code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+          message: "No hay ningún Sistema de Trabajo activo.",
+          origin: "validation",
+          category: "not-found",
+          retryable: false,
+          recoverable: true,
+        });
+      }
+      return path.join(active.root, "CLIENTES", ".connections", clientId);
+    };
 
     // -----------------------------------------------------------------
     // connections.*
@@ -885,6 +952,174 @@ export class ConnectionsController implements ApplicationController {
       handler: async (payload) => {
         await manager().deleteMcpServer(projectPathFor(payload.projectId), payload.id);
         return { deleted: true as const };
+      },
+    });
+
+    // -----------------------------------------------------------------
+    // connections.*-for-client — conexiones compartidas de CLIENTE
+    // (client-workflow-v2, Commit 5). Mismo manager que arriba.
+    // -----------------------------------------------------------------
+
+    permissions.register("connections.list-for-client", ["read"]);
+    operations.register({
+      name: "connections.list-for-client",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return { clientId: requireString(record, "clientId") };
+      },
+      handler: async (payload) => manager().list(clientConnectionsRootFor(payload.clientId)),
+    });
+
+    permissions.register("connections.create-for-client", ["write"]);
+    operations.register({
+      name: "connections.create-for-client",
+      version: "1.0.0",
+      capabilities: ["write"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const clientId = requireString(record, "clientId");
+        const name = requireString(record, "name");
+        const type = record["type"];
+        if (!isConnectionType(type)) {
+          invalidPayload(`El campo "type" no es un tipo de conexión soportado: "${String(type)}".`);
+        }
+        return {
+          clientId,
+          name,
+          type: type as ConnectionType,
+          ...(optionalSafeConfig(record, "config") !== undefined
+            ? { config: optionalSafeConfig(record, "config")! }
+            : {}),
+          ...(optionalStringArray(record, "capabilities") !== undefined
+            ? { capabilities: optionalStringArray(record, "capabilities")! }
+            : {}),
+          ...(optionalSecretsRecord(record, "secrets") !== undefined
+            ? { secrets: optionalSecretsRecord(record, "secrets")! }
+            : {}),
+          ...(optionalBoolean(record, "enabled") !== undefined
+            ? { enabled: optionalBoolean(record, "enabled")! }
+            : {}),
+        };
+      },
+      handler: async (payload) => {
+        const root = clientConnectionsRootFor(payload.clientId);
+        // El manager solo usa "projectId" como espacio de nombres para los
+        // secretos (@dwm/secrets); aquí el espacio de nombres es el propio
+        // cliente — no representa un proyecto real.
+        return manager().create(root, { ...payload, projectId: payload.clientId });
+      },
+    });
+
+    permissions.register("connections.test-for-client", ["execute"]);
+    operations.register({
+      name: "connections.test-for-client",
+      version: "1.0.0",
+      capabilities: ["execute"],
+      long: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return {
+          clientId: requireString(record, "clientId"),
+          id: requireString(record, "id"),
+        };
+      },
+      handler: async (payload) =>
+        manager().test(clientConnectionsRootFor(payload.clientId), payload.id),
+    });
+
+    permissions.register("connections.delete-for-client", ["delete"], { destructive: true });
+    operations.register({
+      name: "connections.delete-for-client",
+      version: "1.0.0",
+      capabilities: ["delete"],
+      destructive: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return {
+          clientId: requireString(record, "clientId"),
+          id: requireString(record, "id"),
+        };
+      },
+      handler: async (payload) => {
+        await manager().delete(clientConnectionsRootFor(payload.clientId), payload.id);
+        return { deleted: true as const };
+      },
+    });
+
+    permissions.register("connections.assign-to-project", ["configure"]);
+    operations.register({
+      name: "connections.assign-to-project",
+      version: "1.0.0",
+      capabilities: ["configure"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return {
+          clientId: requireString(record, "clientId"),
+          connectionId: requireString(record, "connectionId"),
+          projectId: requireString(record, "projectId"),
+        };
+      },
+      handler: async (payload) => {
+        // La asignación cliente↔proyecto nunca es automática (encargo): se
+        // valida aquí que el proyecto exista de verdad antes de concederle
+        // capacidad alguna sobre la conexión del cliente.
+        projectPathFor(payload.projectId);
+        await manager().assignCapability(
+          clientConnectionsRootFor(payload.clientId),
+          payload.connectionId,
+          payload.projectId,
+          CLIENT_CONNECTION_USE_CAPABILITY
+        );
+        return { assigned: true as const };
+      },
+    });
+
+    permissions.register("connections.revoke-from-project", ["configure"]);
+    operations.register({
+      name: "connections.revoke-from-project",
+      version: "1.0.0",
+      capabilities: ["configure"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return {
+          clientId: requireString(record, "clientId"),
+          connectionId: requireString(record, "connectionId"),
+          projectId: requireString(record, "projectId"),
+        };
+      },
+      handler: async (payload) => {
+        await manager().revokeCapability(
+          clientConnectionsRootFor(payload.clientId),
+          payload.connectionId,
+          payload.projectId,
+          CLIENT_CONNECTION_USE_CAPABILITY
+        );
+        return { revoked: true as const };
+      },
+    });
+
+    permissions.register("connections.projects-for-client-connection", ["read"]);
+    operations.register({
+      name: "connections.projects-for-client-connection",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return {
+          clientId: requireString(record, "clientId"),
+          connectionId: requireString(record, "connectionId"),
+        };
+      },
+      handler: async (payload) => {
+        const grants = await manager().listGrants(
+          clientConnectionsRootFor(payload.clientId),
+          payload.connectionId
+        );
+        return grants
+          .filter((grant) => grant.capability === CLIENT_CONNECTION_USE_CAPABILITY)
+          .map((grant) => grant.granteeId);
       },
     });
   }

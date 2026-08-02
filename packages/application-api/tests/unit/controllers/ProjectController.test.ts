@@ -83,12 +83,10 @@ describe("ProjectController", () => {
         configuration: { projectPath: "/workspace/projects/portal-clientes" },
       }),
     } as unknown as ProjectManager;
-    const openInVSCode = vi
-      .fn()
-      .mockResolvedValue({
-        opened: true,
-        message: 'VS Code abierto en "/workspace/projects/portal-clientes".',
-      });
+    const openInVSCode = vi.fn().mockResolvedValue({
+      opened: true,
+      message: 'VS Code abierto en "/workspace/projects/portal-clientes".',
+    });
     const fakeEnvironmentManager = {
       openInVSCode,
     } as unknown as import("@dwm/environment-manager").EnvironmentManager;
