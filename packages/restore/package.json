@@ -1,0 +1,43 @@
+{
+  "name": "@dwm/restore",
+  "version": "0.1.0",
+  "description": "Sistema de restauración de Dev Workspace Manager (DWM): restaura backups completos, selectivos e incrementales creados por @dwm/backup, con validación previa, verificación de integridad antes/después, simulación (dry-run), cancelación cooperativa, rollback lógico ante fallo y protección frente a sobrescritura de recursos protegidos. Reutiliza la infraestructura de @dwm/backup en lugar de duplicarla. Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/config": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/scheduler": "*",
+    "@dwm/secrets": "*",
+    "@dwm/workspace": "*",
+    "@dwm/profile": "*",
+    "@dwm/project": "*",
+    "@dwm/plugin": "*",
+    "@dwm/backup": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

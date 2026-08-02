@@ -1,0 +1,59 @@
+{
+  "name": "@dwm/application-api",
+  "version": "0.1.0",
+  "description": "M\u00f3dulo 31 \u2014 Application API de Dev Workspace Manager (DWM): capa p\u00fablica de aplicaci\u00f3n, tipada y estable, que conecta el backend de DWM con futuras interfaces (Desktop App, CLI, otros consumidores autorizados) delegando exclusivamente en las APIs p\u00fablicas de los managers ya existentes. Oculta detalles internos, centraliza validaci\u00f3n de frontera, permisos y capacidades, normaliza respuestas y errores, y soporta operaciones s\u00edncronas y as\u00edncronas con progreso y cancelaci\u00f3n. No implementa servidor HTTP, IPC de Electron, WebSocket, autenticaci\u00f3n remota ni interfaz gr\u00e1fica: solo un adaptador local en proceso. Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/config": "*",
+    "@dwm/workspace": "*",
+    "@dwm/portable-workspace": "*",
+    "@dwm/import-manager": "*",
+    "@dwm/psn-adapter": "*",
+    "@dwm/agent-manager": "*",
+    "@dwm/skill-manager": "*",
+    "@dwm/rule-manager": "*",
+    "@dwm/knowledge-manager": "*",
+    "@dwm/client-manager": "*",
+    "@dwm/project": "*",
+    "@dwm/environment-manager": "*",
+    "@dwm/portable-package-manager": "*",
+    "@dwm/ai-creator-manager": "*",
+    "@dwm/backup": "*",
+    "@dwm/restore": "*",
+    "@dwm/migration": "*",
+    "@dwm/verification": "*",
+    "@dwm/status": "*",
+    "@dwm/profile": "*",
+    "@dwm/plugin": "*",
+    "@dwm/delivery-manager": "*",
+    "@dwm/connections-manager": "*",
+    "@dwm/secrets": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

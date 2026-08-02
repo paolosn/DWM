@@ -1,0 +1,264 @@
+// @vitest-environment jsdom
+import { act } from "react-dom/test-utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ProjectDetailScreen } from "../../../../../src/renderer/screens/projects/ProjectDetailScreen.js";
+import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
+import { click, mount } from "../../../support/renderHelpers.js";
+
+const originalDwm = window.dwm;
+
+const fullProject = {
+  id: "p1",
+  metadata: {
+    id: "p1",
+    name: "DWM",
+    description: "Escritorio DWM",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+  },
+  configuration: {
+    projectPath: "/x/dwm",
+    profileId: "default",
+    usedTools: ["git", "node"],
+    usedAdapters: [],
+    settings: { env: "dev" },
+  },
+  state: "open",
+};
+
+function setDwm(overrides: Record<string, unknown> = {}): ReturnType<typeof vi.fn> {
+  const invoke = vi.fn().mockImplementation((request: { operation: string }) => {
+    if (request.operation in overrides) return Promise.resolve(overrides[request.operation]);
+    return Promise.reject(new Error(`no mockeada: ${request.operation}`));
+  });
+  Object.defineProperty(window, "dwm", {
+    value: { invoke, getVersionInfo: vi.fn() },
+    configurable: true,
+  });
+  return invoke;
+}
+
+async function settle(times = 3): Promise<void> {
+  await act(async () => {
+    for (let i = 0; i < times; i += 1) {
+      await Promise.resolve();
+    }
+  });
+}
+
+describe("ProjectDetailScreen", () => {
+  afterEach(() => {
+    __resetQueryCacheForTests();
+    Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
+  });
+
+  it("muestra los datos reales del proyecto en Resumen y Herramientas", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle();
+
+    expect(container.querySelector("h1")?.textContent).toBe("DWM");
+    expect(container.textContent).toContain("Escritorio DWM");
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Herramientas"
+      ) ?? null
+    );
+    expect(container.textContent).toContain("git");
+    unmount();
+  });
+
+  it("las pestañas sin operación pública muestran el aviso honesto", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Sesiones"
+      ) ?? null
+    );
+    expect(container.textContent).toContain("Función no disponible en esta versión");
+    unmount();
+  });
+
+  it("muestra estado no encontrado cuando projects.get devuelve undefined", async () => {
+    setDwm({
+      "projects.get": { success: true, requestId: "x", operation: "projects.get", data: undefined },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle();
+    expect(container.textContent).toContain("Proyecto no encontrado");
+    unmount();
+  });
+
+  it("eliminar solo ofrece borrar el registro, exige el nombre y llama a onBack tras confirmar", async () => {
+    const onBack = vi.fn();
+    const invoke = setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+      "projects.delete": {
+        success: true,
+        requestId: "x",
+        operation: "projects.delete",
+        data: { deleted: true },
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={onBack} />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Eliminar registro" && !b.closest('[role="dialog"]')
+      ) ?? null
+    );
+    expect(container.textContent).toContain("Los archivos físicos en disco no se modifican");
+
+    const input = container.querySelector('[role="dialog"] input') as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    act(() => {
+      setter?.call(input, "DWM");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const confirmButton = Array.from(container.querySelectorAll('[role="dialog"] button')).find(
+      (b) => b.textContent === "Eliminar registro"
+    ) as HTMLButtonElement;
+    click(confirmButton);
+    await settle();
+
+    const deleteCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.delete"
+    );
+    expect((deleteCall?.[0] as { confirmation: unknown }).confirmation).toEqual({
+      confirmed: true,
+      token: "p1",
+    });
+    expect(onBack).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it("navega hasta la pestaña Entregas y muestra el panel real (no un aviso de no disponible)", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+      "deliveries.history": {
+        success: true,
+        requestId: "x",
+        operation: "deliveries.history",
+        data: [],
+      },
+      "deliveries.get-active": {
+        success: true,
+        requestId: "x",
+        operation: "deliveries.get-active",
+        data: undefined,
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Entregas"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("Abrir ubicación");
+    expect(container.textContent).toContain("Sin entrega activa todavía");
+    expect(container.textContent).toContain("Todavía no hay entregas para este proyecto");
+    unmount();
+  });
+
+  it("Módulo 36: la pestaña «Conexiones» existe y renderiza vía Application API", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+      "connections.list": {
+        success: true,
+        requestId: "x",
+        operation: "connections.list",
+        data: [],
+      },
+      "connection-profiles.list": {
+        success: true,
+        requestId: "x",
+        operation: "connection-profiles.list",
+        data: [],
+      },
+      "mcp.list": {
+        success: true,
+        requestId: "x",
+        operation: "mcp.list",
+        data: [],
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle();
+
+    const tab = Array.from(container.querySelectorAll('[role="tab"]')).find(
+      (t) => t.textContent === "Conexiones"
+    );
+    expect(tab).toBeDefined();
+
+    click(tab ?? null);
+    await settle();
+
+    expect(container.textContent).toContain("Sin perfil activo todavía.");
+    expect(container.textContent).toContain("Este proyecto todavía no tiene conexiones");
+    expect(container.textContent).toContain("Servidores MCP");
+    unmount();
+  });
+});

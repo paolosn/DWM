@@ -1,0 +1,39 @@
+.dwm-status-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-status-screen__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-sm);
+}
+.dwm-status-screen__generated {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-status-screen__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+}
+.dwm-status-screen__list li {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-xs);
+}
+.dwm-status-screen__provider {
+  font-weight: 600;
+}
+.dwm-status-screen__message {
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-meta);
+}
+.dwm-status-screen__ok-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+}

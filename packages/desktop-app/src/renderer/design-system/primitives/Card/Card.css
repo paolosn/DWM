@@ -1,0 +1,9 @@
+.dwm-card {
+  background: var(--dwm-color-surface);
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-card);
+  box-shadow: var(--dwm-shadow-resting);
+}
+.dwm-card--padded {
+  padding: var(--dwm-space-md);
+}

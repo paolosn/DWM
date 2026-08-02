@@ -1,0 +1,4 @@
+.dwm-tools-screen {
+  display: flex;
+  flex-direction: column;
+}

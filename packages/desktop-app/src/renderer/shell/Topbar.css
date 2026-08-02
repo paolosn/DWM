@@ -1,0 +1,18 @@
+.dwm-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dwm-space-md);
+  padding: var(--dwm-space-xs) var(--dwm-space-md);
+  border-bottom: 1px solid var(--dwm-color-border-subtle);
+  background: var(--dwm-color-surface);
+}
+.dwm-topbar__section {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-sm);
+}
+.dwm-topbar__profile {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}

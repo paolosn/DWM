@@ -1,0 +1,44 @@
+{
+  "name": "@dwm/portable-package-manager",
+  "version": "0.1.0",
+  "description": "Módulo 29 — Portable Package Manager de Dev Workspace Manager (DWM): crea, valida, inspecciona y extrae paquetes portables ZIP de un Workspace completo (manifiesto versionado, integridad por fichero, protección frente a path traversal/Zip Slip/bombas ZIP, políticas de conflicto y modo dry-run). Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/config": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/workspace": "*",
+    "@dwm/portable-workspace": "*",
+    "@dwm/psn-adapter": "*",
+    "@dwm/environment-manager": "*",
+    "@dwm/verification": "*",
+    "@dwm/status": "*",
+    "adm-zip": "^0.5.16"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10",
+    "@types/adm-zip": "^0.5.5"
+  }
+}

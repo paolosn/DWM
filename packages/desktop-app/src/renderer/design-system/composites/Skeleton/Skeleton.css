@@ -1,0 +1,33 @@
+.dwm-skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    var(--dwm-color-border-subtle) 25%,
+    var(--dwm-color-background-primary) 37%,
+    var(--dwm-color-border-subtle) 63%
+  );
+  background-size: 400% 100%;
+  animation: dwm-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+.dwm-skeleton--text {
+  border-radius: 4px;
+}
+.dwm-skeleton--block {
+  border-radius: var(--dwm-radius-control);
+}
+.dwm-skeleton--circle {
+  border-radius: 50%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dwm-skeleton {
+    animation: none;
+  }
+}
+@keyframes dwm-skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}

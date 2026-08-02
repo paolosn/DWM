@@ -1,0 +1,10 @@
+.dwm-pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-sm);
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-pagination__summary {
+  margin-right: auto;
+}

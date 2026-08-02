@@ -1,0 +1,18 @@
+.dwm-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+.dwm-tooltip__bubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--dwm-color-text-primary);
+  color: #ffffff;
+  font-size: var(--dwm-font-size-meta);
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 30;
+  transition: opacity var(--dwm-motion-hover) ease;
+}

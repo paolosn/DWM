@@ -1,0 +1,30 @@
+{
+  "name": "@dwm/core",
+  "version": "0.2.0",
+  "description": "Núcleo de Dev Workspace Manager (DWM). Orquesta configuración, perfil activo, registro de módulos, registro de adaptadores, eventos, errores y estado. No contiene lógica de sistema operativo ni de herramientas externas.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

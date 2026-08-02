@@ -1,0 +1,33 @@
+.dwm-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dwm-space-xs);
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-meta);
+}
+.dwm-spinner__circle {
+  border-radius: 50%;
+  border: 2px solid var(--dwm-color-border-subtle);
+  border-top-color: var(--dwm-color-accent);
+  animation: dwm-button-spin 700ms linear infinite;
+}
+.dwm-spinner--sm .dwm-spinner__circle {
+  width: 14px;
+  height: 14px;
+}
+.dwm-spinner--md .dwm-spinner__circle {
+  width: 20px;
+  height: 20px;
+}
+.dwm-spinner__label {
+  clip: rect(0 0 0 0);
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+@keyframes dwm-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,6 @@
+/** Catálogo cerrado de códigos de error propios de @dwm/logger, con prefijo `LOGGER_`. */
+export enum LoggerErrorCode {
+  LOGGER_INVALID_CONFIGURATION = "LOGGER_INVALID_CONFIGURATION",
+  LOGGER_TRANSPORT_WRITE_FAILED = "LOGGER_TRANSPORT_WRITE_FAILED",
+  LOGGER_TRANSPORT_DISPOSE_FAILED = "LOGGER_TRANSPORT_DISPOSE_FAILED",
+}

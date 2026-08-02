@@ -1,0 +1,5 @@
+.dwm-content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--dwm-space-lg);
+}

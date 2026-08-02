@@ -1,0 +1,38 @@
+.dwm-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-timeline__entry {
+  display: flex;
+  gap: var(--dwm-space-xs);
+}
+.dwm-timeline__marker {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--dwm-color-accent);
+  flex-shrink: 0;
+}
+.dwm-timeline__title {
+  margin: 0;
+  font-size: var(--dwm-font-size-body);
+  color: var(--dwm-color-text-primary);
+}
+.dwm-timeline__timestamp {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-timeline__description {
+  margin: 2px 0 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-timeline__empty {
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-meta);
+}

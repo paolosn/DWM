@@ -1,0 +1,29 @@
+.dwm-tabs__list {
+  display: flex;
+  gap: var(--dwm-space-md);
+  border-bottom: 1px solid var(--dwm-color-border-subtle);
+}
+.dwm-tabs__tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: var(--dwm-space-xs) 0;
+  font-size: var(--dwm-font-size-body);
+  font-weight: 600;
+  color: var(--dwm-color-text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--dwm-motion-hover) ease,
+    border-color var(--dwm-motion-hover) ease;
+}
+.dwm-tabs__tab[aria-selected="true"] {
+  color: var(--dwm-color-text-primary);
+  border-bottom-color: var(--dwm-color-accent);
+}
+.dwm-tabs__tab:disabled {
+  color: var(--dwm-color-text-disabled);
+  cursor: not-allowed;
+}
+.dwm-tabs__panel {
+  padding-top: var(--dwm-space-md);
+}

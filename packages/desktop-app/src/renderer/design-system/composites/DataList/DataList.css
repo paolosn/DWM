@@ -1,0 +1,11 @@
+.dwm-data-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--dwm-space-md);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.dwm-data-list__item {
+  min-width: 0;
+}

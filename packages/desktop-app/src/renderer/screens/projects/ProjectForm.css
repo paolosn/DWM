@@ -1,0 +1,10 @@
+.dwm-project-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-project-form__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dwm-space-xs);
+}

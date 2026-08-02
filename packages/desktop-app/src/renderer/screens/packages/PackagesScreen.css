@@ -1,0 +1,36 @@
+.dwm-packages-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-packages-screen__title {
+  margin: 0 0 var(--dwm-space-sm);
+  font-size: var(--dwm-font-size-section-title);
+  font-weight: 600;
+}
+.dwm-packages-screen__form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--dwm-space-sm);
+  flex-wrap: wrap;
+}
+.dwm-packages-screen__result {
+  margin-top: var(--dwm-space-md);
+}
+.dwm-packages-screen__result h3 {
+  margin: 0 0 4px;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-packages-screen__facts dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-packages-screen__facts dd {
+  margin: 0 0 var(--dwm-space-xs);
+}
+.dwm-packages-screen__contents {
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: var(--dwm-font-size-meta);
+}

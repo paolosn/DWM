@@ -1,0 +1,38 @@
+.dwm-mcp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-mcp-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
+}
+.dwm-mcp-panel__title {
+  font-size: var(--dwm-font-size-section-title);
+  margin: 0;
+}
+.dwm-mcp-panel__row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dwm-space-xs);
+}
+.dwm-mcp-panel__discovery {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-mcp-panel__discovery ul {
+  margin: 0;
+  padding-left: var(--dwm-space-md);
+}
+.dwm-mcp-panel__discovery-hint {
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-meta);
+}
+.dwm-mcp-register-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}

@@ -1,0 +1,35 @@
+.dwm-delivery-import {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+  align-items: stretch;
+}
+.dwm-delivery-import__intro {
+  color: var(--dwm-color-text-secondary);
+  margin: 0;
+}
+.dwm-delivery-import__row {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-sm);
+}
+.dwm-delivery-import__source {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin: 0;
+  word-break: break-all;
+}
+.dwm-delivery-import__preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+  width: 100%;
+}
+.dwm-delivery-import__preview dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-delivery-import__preview dd {
+  margin: 0;
+}

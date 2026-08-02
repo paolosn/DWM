@@ -1,0 +1,36 @@
+{
+  "name": "@dwm/workspace",
+  "version": "0.1.0",
+  "description": "Gestión de espacios de trabajo de Dev Workspace Manager (DWM). Registrable como IModule del Core; creación/apertura/cierre/carga/guardado de workspaces, escaneo recursivo con exclusión por patrones, detección de cambios y recarga automática, múltiples workspaces con workspace activo, e integración con @dwm/event-bus, @dwm/logger y @dwm/scheduler.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/scheduler": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

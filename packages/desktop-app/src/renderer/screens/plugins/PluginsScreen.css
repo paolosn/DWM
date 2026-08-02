@@ -1,0 +1,17 @@
+.dwm-plugins-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-plugins-screen__row-actions {
+  display: flex;
+  gap: var(--dwm-space-xs);
+}
+.dwm-plugins-screen__facts dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-plugins-screen__facts dd {
+  margin: 0;
+}

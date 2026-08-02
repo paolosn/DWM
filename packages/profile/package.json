@@ -1,0 +1,42 @@
+{
+  "name": "@dwm/profile",
+  "version": "0.1.0",
+  "description": "Gestor de perfiles de usuario de Dev Workspace Manager (DWM): cada perfil representa una configuración completa de entorno de trabajo (workspace asociado, herramientas y adaptadores habilitados, proveedor de IA por defecto, referencias a secretos y preferencias). Crear/eliminar/actualizar/clonar/exportar/importar/validar/activar/desactivar perfiles, búsqueda, persistencia con caché y recarga. Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/config": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/scheduler": "*",
+    "@dwm/secrets": "*",
+    "@dwm/ai-manager": "*",
+    "@dwm/adapters": "*",
+    "@dwm/workspace": "*",
+    "@dwm/tooling": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

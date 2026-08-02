@@ -1,0 +1,41 @@
+{
+  "name": "@dwm/tooling",
+  "version": "0.1.0",
+  "description": "Gestor central de herramientas de Dev Workspace Manager (DWM): descubre herramientas a través de @dwm/adapters, y gestiona su ciclo de vida completo (registro, inicialización, activación, desactivación, recarga, eliminación), estado, salud, capacidades, dependencias, prioridad, configuración por herramienta, herramienta activa por grupo exclusivo, resolución de conflictos y validación de compatibilidad. Registrable como IModule del Core. No contiene lógica específica de ninguna herramienta concreta: esa lógica pertenece únicamente a los adaptadores.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/config": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/scheduler": "*",
+    "@dwm/secrets": "*",
+    "@dwm/ai-manager": "*",
+    "@dwm/adapters": "*",
+    "@dwm/workspace": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

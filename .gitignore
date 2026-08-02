@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-electron/
+dist-renderer/
+release/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+.cache/
+*.tsbuildinfo

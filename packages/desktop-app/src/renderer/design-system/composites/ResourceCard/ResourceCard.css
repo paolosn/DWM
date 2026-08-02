@@ -1,0 +1,25 @@
+.dwm-resource-card[role="button"] {
+  cursor: pointer;
+}
+.dwm-resource-card[role="button"]:hover {
+  border-color: var(--dwm-color-accent);
+}
+.dwm-resource-card__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
+}
+.dwm-resource-card__title {
+  margin: 0;
+  font-size: var(--dwm-font-size-body);
+  font-weight: 600;
+}
+.dwm-resource-card__description {
+  margin: 4px 0 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-resource-card__meta {
+  margin-top: var(--dwm-space-xs);
+}

@@ -1,0 +1,30 @@
+.dwm-radio-group {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dwm-radio-group__label {
+  padding: 0;
+  font-size: var(--dwm-font-size-meta);
+  font-weight: 600;
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-radio-group__option {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-xs);
+  font-size: var(--dwm-font-size-body);
+  color: var(--dwm-color-text-primary);
+  padding: 4px 0;
+}
+.dwm-radio-group__option input {
+  accent-color: var(--dwm-color-accent);
+}
+.dwm-radio-group__error {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-danger);
+}

@@ -1,0 +1,31 @@
+.dwm-inline-alert {
+  border-radius: var(--dwm-radius-control);
+  padding: var(--dwm-space-sm);
+  border: 1px solid var(--dwm-color-border-subtle);
+  font-size: var(--dwm-font-size-body);
+}
+.dwm-inline-alert__title {
+  margin: 0;
+  font-weight: 600;
+}
+.dwm-inline-alert__body {
+  margin-top: 4px;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-inline-alert--info {
+  background: rgba(0, 122, 255, 0.06);
+  border-color: rgba(0, 122, 255, 0.2);
+}
+.dwm-inline-alert--success {
+  background: rgba(36, 138, 61, 0.06);
+  border-color: rgba(36, 138, 61, 0.2);
+}
+.dwm-inline-alert--warning {
+  background: rgba(178, 106, 0, 0.06);
+  border-color: rgba(178, 106, 0, 0.2);
+}
+.dwm-inline-alert--danger {
+  background: rgba(215, 0, 21, 0.06);
+  border-color: rgba(215, 0, 21, 0.2);
+}

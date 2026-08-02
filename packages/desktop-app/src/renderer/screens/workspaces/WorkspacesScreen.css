@@ -1,0 +1,30 @@
+.dwm-workspaces-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-workspaces-screen__title {
+  margin: 0 0 var(--dwm-space-sm);
+  font-size: var(--dwm-font-size-section-title);
+  font-weight: 600;
+}
+.dwm-workspaces-screen__facts dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-workspaces-screen__facts dd {
+  margin: 0;
+}
+.dwm-workspaces-screen__validate-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--dwm-space-sm);
+}
+.dwm-workspaces-screen__validation {
+  margin-top: var(--dwm-space-sm);
+}
+.dwm-workspaces-screen__no-issues {
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-meta);
+}

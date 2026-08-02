@@ -1,0 +1,36 @@
+.dwm-project-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dwm-space-xs);
+}
+.dwm-project-card__name {
+  margin: 0;
+  font-size: var(--dwm-font-size-section-title);
+  font-weight: 600;
+}
+.dwm-project-card__path {
+  margin: 4px 0 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  word-break: break-all;
+}
+.dwm-project-card__meta {
+  margin: 4px 0 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-project-card__footer {
+  margin-top: var(--dwm-space-sm);
+  display: flex;
+  gap: var(--dwm-space-xs);
+}
+.dwm-project-card__open {
+  background: none;
+  border: none;
+  color: var(--dwm-color-accent);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-size: var(--dwm-font-size-meta);
+}

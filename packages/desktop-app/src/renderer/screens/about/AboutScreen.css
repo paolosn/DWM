@@ -1,0 +1,16 @@
+.dwm-about-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-about-screen__facts {
+  margin: 0 0 var(--dwm-space-md);
+}
+.dwm-about-screen__facts dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-about-screen__facts dd {
+  margin: 0;
+}

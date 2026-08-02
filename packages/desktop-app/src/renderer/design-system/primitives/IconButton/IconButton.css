@@ -1,0 +1,35 @@
+.dwm-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--dwm-radius-control);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--dwm-color-text-secondary);
+  cursor: pointer;
+  transition:
+    background-color var(--dwm-motion-hover) ease,
+    color var(--dwm-motion-hover) ease;
+}
+.dwm-icon-button:hover:not(:disabled) {
+  background: var(--dwm-color-background-primary);
+  color: var(--dwm-color-text-primary);
+}
+.dwm-icon-button:focus-visible {
+  outline: 2px solid var(--dwm-color-accent);
+  outline-offset: 2px;
+}
+.dwm-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.dwm-icon-button__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: dwm-button-spin 700ms linear infinite;
+}

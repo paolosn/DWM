@@ -1,0 +1,15 @@
+.dwm-health-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--dwm-space-xs) 0;
+  font-size: var(--dwm-font-size-body);
+}
+.dwm-health-row__label {
+  display: flex;
+  flex-direction: column;
+}
+.dwm-health-row__detail {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}

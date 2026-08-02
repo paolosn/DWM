@@ -1,0 +1,55 @@
+.dwm-modal__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(29, 29, 31, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: dwm-modal-fade var(--dwm-motion-overlay) ease;
+}
+.dwm-modal {
+  background: var(--dwm-color-surface);
+  border-radius: var(--dwm-radius-card);
+  box-shadow: var(--dwm-shadow-raised);
+  width: min(560px, 90vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.dwm-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--dwm-space-md);
+  border-bottom: 1px solid var(--dwm-color-border-subtle);
+}
+.dwm-modal__title {
+  margin: 0;
+  font-size: var(--dwm-font-size-section-title);
+  font-weight: 600;
+}
+.dwm-modal__body {
+  padding: var(--dwm-space-md);
+  overflow-y: auto;
+}
+.dwm-modal__footer {
+  padding: var(--dwm-space-md);
+  border-top: 1px solid var(--dwm-color-border-subtle);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dwm-space-xs);
+}
+@keyframes dwm-modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dwm-modal__overlay {
+    animation: none;
+  }
+}

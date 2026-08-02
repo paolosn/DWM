@@ -1,0 +1,64 @@
+/*
+ * Módulo 33A — Design System. Variables CSS del sistema visual.
+ * Debe mantenerse sincronizado con `tokens.ts` (documento §5).
+ * Solo tema claro en este módulo; los nombres están preparados para un
+ * futuro tema oscuro (mismo set de variables, valores distintos en un
+ * selector `[data-theme="dark"]` que aún no existe).
+ */
+:root {
+  --dwm-color-background-primary: #f5f5f7;
+  --dwm-color-surface: #ffffff;
+  --dwm-color-border-subtle: #e5e5e7;
+  --dwm-color-text-primary: #1d1d1f;
+  --dwm-color-text-secondary: #6e6e73;
+  --dwm-color-text-disabled: #a1a1a6;
+  --dwm-color-accent: #007aff;
+  --dwm-color-success: #248a3d;
+  --dwm-color-warning: #b26a00;
+  --dwm-color-danger: #d70015;
+
+  --dwm-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --dwm-font-size-screen-title: 26px;
+  --dwm-font-size-section-title: 17px;
+  --dwm-font-size-body: 14px;
+  --dwm-font-size-meta: 12px;
+
+  --dwm-space-xs: 8px;
+  --dwm-space-sm: 12px;
+  --dwm-space-md: 16px;
+  --dwm-space-lg: 24px;
+  --dwm-space-xl: 32px;
+
+  --dwm-radius-card: 12px;
+  --dwm-radius-control: 8px;
+
+  --dwm-shadow-resting: 0 1px 2px rgba(29, 29, 31, 0.06), 0 1px 1px rgba(29, 29, 31, 0.04);
+  --dwm-shadow-raised: 0 4px 12px rgba(29, 29, 31, 0.1);
+
+  --dwm-control-min-height: 36px;
+  --dwm-control-primary-height: 40px;
+
+  --dwm-motion-hover: 140ms;
+  --dwm-motion-menu: 160ms;
+  --dwm-motion-overlay: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dwm-motion-hover: 0ms;
+    --dwm-motion-menu: 0ms;
+    --dwm-motion-overlay: 0ms;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--dwm-color-background-primary);
+  color: var(--dwm-color-text-primary);
+  font-family: var(--dwm-font-family);
+  font-size: var(--dwm-font-size-body);
+}

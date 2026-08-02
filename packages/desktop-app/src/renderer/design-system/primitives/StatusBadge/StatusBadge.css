@@ -1,0 +1,31 @@
+.dwm-status-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--dwm-space-xs);
+  border-radius: 999px;
+  font-size: var(--dwm-font-size-meta);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dwm-status-badge--neutral {
+  background: var(--dwm-color-background-primary);
+  color: var(--dwm-color-text-secondary);
+  border: 1px solid var(--dwm-color-border-subtle);
+}
+.dwm-status-badge--success {
+  background: rgba(36, 138, 61, 0.12);
+  color: var(--dwm-color-success);
+}
+.dwm-status-badge--warning {
+  background: rgba(178, 106, 0, 0.12);
+  color: var(--dwm-color-warning);
+}
+.dwm-status-badge--danger {
+  background: rgba(215, 0, 21, 0.1);
+  color: var(--dwm-color-danger);
+}
+.dwm-status-badge--accent {
+  background: rgba(0, 122, 255, 0.1);
+  color: var(--dwm-color-accent);
+}

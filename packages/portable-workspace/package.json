@@ -1,0 +1,42 @@
+{
+  "name": "@dwm/portable-workspace",
+  "version": "0.1.0",
+  "description": "Gestión del Workspace físico portable de Dev Workspace Manager (DWM): detecta automáticamente la raíz de DWM desde cualquier ubicación (SSD, USB, disco externo, Google Drive, Dropbox, OneDrive, carpeta sincronizada o equipo distinto), crea la estructura de carpetas necesaria sin eliminar nada existente, resuelve todas las rutas dinámicamente (nunca rutas absolutas persistentes) y valida estructura, permisos, metadata e integridad básica. No importa el antiguo SISTEMA-DE-TRABAJO: solo prepara el Workspace portable. Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/config": "*",
+    "@dwm/workspace": "*",
+    "@dwm/backup": "*",
+    "@dwm/restore": "*",
+    "@dwm/migration": "*",
+    "@dwm/verification": "*",
+    "@dwm/status": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

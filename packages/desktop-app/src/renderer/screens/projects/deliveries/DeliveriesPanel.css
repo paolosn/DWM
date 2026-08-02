@@ -1,0 +1,36 @@
+.dwm-deliveries-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-deliveries-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
+}
+.dwm-deliveries-panel__active {
+  margin: 0;
+}
+.dwm-deliveries-panel__active--none {
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-deliveries-panel__compare-bar {
+  display: flex;
+  justify-content: flex-end;
+}
+.dwm-deliveries-panel__row-actions {
+  display: flex;
+  gap: var(--dwm-space-xs);
+}
+.dwm-deliveries-panel__detail dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-deliveries-panel__detail dd {
+  margin: 0;
+}
+.dwm-deliveries-panel__origin {
+  word-break: break-all;
+}

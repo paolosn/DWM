@@ -1,0 +1,28 @@
+.dwm-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+  margin-bottom: var(--dwm-space-lg);
+}
+.dwm-page-header__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dwm-space-md);
+}
+.dwm-page-header__title {
+  margin: 0;
+  font-size: var(--dwm-font-size-screen-title);
+  font-weight: 600;
+  color: var(--dwm-color-text-primary);
+}
+.dwm-page-header__description {
+  margin: 4px 0 0;
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-body);
+}
+.dwm-page-header__actions {
+  display: flex;
+  gap: var(--dwm-space-xs);
+  flex-shrink: 0;
+}

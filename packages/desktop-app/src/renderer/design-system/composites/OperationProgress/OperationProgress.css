@@ -1,0 +1,39 @@
+.dwm-operation-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+  padding: var(--dwm-space-sm);
+  border-bottom: 1px solid var(--dwm-color-border-subtle);
+}
+.dwm-operation-progress__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
+}
+.dwm-operation-progress__title {
+  margin: 0;
+  font-size: var(--dwm-font-size-body);
+  font-weight: 600;
+}
+.dwm-operation-progress__meta {
+  margin: 2px 0 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-operation-progress__bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--dwm-color-background-primary);
+  overflow: hidden;
+}
+.dwm-operation-progress__bar-fill {
+  height: 100%;
+  background: var(--dwm-color-accent);
+  transition: width 200ms ease;
+}
+.dwm-operation-progress__error {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-danger);
+}

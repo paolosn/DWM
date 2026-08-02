@@ -1,0 +1,42 @@
+{
+  "name": "@dwm/agent-manager",
+  "version": "0.1.0",
+  "description": "Módulo 23 — Agent Manager de Dev Workspace Manager (DWM): primer gestor funcional de DWM. Lista, lee, crea, edita, duplica, elimina, archiva y restaura los agentes reales del Workspace ya detectados por @dwm/psn-adapter, validando su estructura y consultando sus metadatos, sin crear una base de datos ni duplicar información: el sistema de ficheros del Workspace es la única fuente de verdad. Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/config": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/workspace": "*",
+    "@dwm/portable-workspace": "*",
+    "@dwm/import-manager": "*",
+    "@dwm/psn-adapter": "*",
+    "@dwm/verification": "*",
+    "@dwm/status": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

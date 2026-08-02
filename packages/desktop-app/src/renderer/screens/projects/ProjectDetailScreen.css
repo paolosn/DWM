@@ -1,0 +1,17 @@
+.dwm-project-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-project-detail__facts {
+  margin: 0;
+  font-size: var(--dwm-font-size-body);
+}
+.dwm-project-detail__facts dt {
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-meta);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-project-detail__facts dd {
+  margin: 0;
+}

@@ -1,0 +1,35 @@
+.dwm-error-state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+  padding: var(--dwm-space-md);
+  border-radius: var(--dwm-radius-card);
+  background: rgba(215, 0, 21, 0.06);
+  border: 1px solid rgba(215, 0, 21, 0.2);
+}
+.dwm-error-state__title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--dwm-color-text-primary);
+}
+.dwm-error-state__impact {
+  margin: 0;
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-meta);
+}
+.dwm-error-state__toggle {
+  background: none;
+  border: none;
+  color: var(--dwm-color-accent);
+  cursor: pointer;
+  padding: 0;
+  font-size: var(--dwm-font-size-meta);
+}
+.dwm-error-state__detail pre {
+  white-space: pre-wrap;
+  font-size: var(--dwm-font-size-meta);
+  background: var(--dwm-color-surface);
+  padding: var(--dwm-space-xs);
+  border-radius: 6px;
+  border: 1px solid var(--dwm-color-border-subtle);
+}

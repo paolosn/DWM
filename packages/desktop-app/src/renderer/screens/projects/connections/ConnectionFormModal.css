@@ -1,0 +1,35 @@
+.dwm-connection-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-connection-form__type {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-connection-form__existing-secrets {
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-card);
+  padding: var(--dwm-space-sm);
+}
+.dwm-connection-form__existing-secrets-label {
+  margin: 0 0 var(--dwm-space-xs);
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-connection-form__existing-secrets ul {
+  margin: 0;
+  padding-left: var(--dwm-space-md);
+}
+.dwm-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

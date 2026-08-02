@@ -1,0 +1,44 @@
+{
+  "name": "@dwm/ai-creator-manager",
+  "version": "0.1.0",
+  "description": "Módulo 30 — AI Creator Manager de Dev Workspace Manager (DWM): orquesta la creación asistida de recursos del Workspace (agentes, skills, reglas, conocimiento, clientes, proyectos y plantillas) reutilizando exclusivamente las APIs públicas de los managers ya existentes. No implementa ninguna llamada real a un proveedor de IA: solo valida, resuelve plantillas, detecta conflictos, genera previsualizaciones y ejecuta la creación final cuando se aprueba explícitamente. Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/config": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/verification": "*",
+    "@dwm/status": "*",
+    "@dwm/agent-manager": "*",
+    "@dwm/skill-manager": "*",
+    "@dwm/rule-manager": "*",
+    "@dwm/knowledge-manager": "*",
+    "@dwm/client-manager": "*",
+    "@dwm/project": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

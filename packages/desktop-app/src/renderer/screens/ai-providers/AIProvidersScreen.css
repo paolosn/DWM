@@ -1,0 +1,30 @@
+.dwm-ai-providers-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-ai-providers-screen__load {
+  background: none;
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-control);
+  padding: var(--dwm-space-xs) var(--dwm-space-sm);
+  cursor: pointer;
+}
+.dwm-ai-providers-screen__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+}
+.dwm-ai-providers-screen__list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--dwm-space-xs) 0;
+  border-bottom: 1px solid var(--dwm-color-border-subtle);
+}
+.dwm-ai-providers-screen__profile {
+  font-weight: 600;
+}

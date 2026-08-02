@@ -1,0 +1,9 @@
+.dwm-backups-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-backups-screen__row-actions {
+  display: flex;
+  gap: var(--dwm-space-xs);
+}

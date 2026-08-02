@@ -1,0 +1,43 @@
+{
+  "name": "@dwm/migration",
+  "version": "0.1.0",
+  "description": "Sistema de migración de Dev Workspace Manager (DWM): exporta e importa proyectos, perfiles, configuraciones, plugins y demás recursos gestionados por DWM entre instalaciones, equipos o ubicaciones de almacenamiento, reutilizando íntegramente la infraestructura de @dwm/backup (exportación) y @dwm/restore (importación) en lugar de duplicarla. Añade comprobación de compatibilidad entre versiones de DWM, detección y resolución de conflictos, e historial propio de migraciones. Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/config": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/scheduler": "*",
+    "@dwm/workspace": "*",
+    "@dwm/profile": "*",
+    "@dwm/project": "*",
+    "@dwm/plugin": "*",
+    "@dwm/backup": "*",
+    "@dwm/restore": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}

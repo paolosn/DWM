@@ -1,0 +1,17 @@
+.dwm-entity-page {
+  display: flex;
+  flex-direction: column;
+}
+.dwm-entity-page__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-entity-page__retry {
+  background: none;
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-control);
+  padding: var(--dwm-space-xs) var(--dwm-space-sm);
+  cursor: pointer;
+  font-size: var(--dwm-font-size-meta);
+}

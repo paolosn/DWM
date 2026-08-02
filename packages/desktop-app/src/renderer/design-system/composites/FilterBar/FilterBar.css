@@ -1,0 +1,16 @@
+.dwm-filter-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--dwm-space-sm);
+  flex-wrap: wrap;
+  margin-bottom: var(--dwm-space-md);
+}
+.dwm-filter-bar__search {
+  min-width: 220px;
+}
+.dwm-filter-bar__filters {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--dwm-space-sm);
+  flex-wrap: wrap;
+}

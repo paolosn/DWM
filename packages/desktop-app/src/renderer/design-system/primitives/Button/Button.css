@@ -1,0 +1,74 @@
+.dwm-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dwm-space-xs);
+  min-height: var(--dwm-control-min-height);
+  padding: 0 var(--dwm-space-md);
+  border-radius: var(--dwm-radius-control);
+  border: 1px solid transparent;
+  font-family: var(--dwm-font-family);
+  font-size: var(--dwm-font-size-body);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--dwm-motion-hover) ease,
+    border-color var(--dwm-motion-hover) ease,
+    opacity var(--dwm-motion-hover) ease;
+}
+
+.dwm-button:focus-visible {
+  outline: 2px solid var(--dwm-color-accent);
+  outline-offset: 2px;
+}
+
+.dwm-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dwm-button--primary {
+  background: var(--dwm-color-accent);
+  color: #ffffff;
+}
+.dwm-button--primary:hover:not(:disabled) {
+  background: #0068d6;
+}
+
+.dwm-button--secondary {
+  background: var(--dwm-color-surface);
+  color: var(--dwm-color-text-primary);
+  border-color: var(--dwm-color-border-subtle);
+}
+.dwm-button--secondary:hover:not(:disabled) {
+  background: var(--dwm-color-background-primary);
+}
+
+.dwm-button--destructive {
+  background: var(--dwm-color-danger);
+  color: #ffffff;
+}
+.dwm-button--destructive:hover:not(:disabled) {
+  background: #b8000f;
+}
+
+.dwm-button__spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: dwm-button-spin 700ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dwm-button__spinner {
+    animation-duration: 1400ms;
+  }
+}
+
+@keyframes dwm-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

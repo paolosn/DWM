@@ -1,0 +1,5 @@
+.dwm-confirm-dialog__description {
+  margin: 0 0 var(--dwm-space-sm);
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-body);
+}

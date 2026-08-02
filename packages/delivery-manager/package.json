@@ -1,0 +1,38 @@
+{
+  "name": "@dwm/delivery-manager",
+  "version": "0.1.0",
+  "description": "Módulo 35 — Client Delivery Manager de Dev Workspace Manager (DWM): gestiona el histórico completo de entregas de cliente para un proyecto (carpetas, ZIP, backups, código fuente, recursos, documentación, bases de datos u otros ficheros) conservadas bajo `ENTREGAS/` en la raíz del proyecto, sin sobrescribir nunca una entrega ya recibida. Reutiliza el motor de @dwm/import-manager para la copia física. Registrable como IModule del Core.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/import-manager": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10",
+    "adm-zip": "^0.5.16",
+    "@types/adm-zip": "^0.5.5"
+  }
+}

@@ -1,0 +1,21 @@
+.dwm-client-relations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-client-relations__group ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: var(--dwm-font-size-body);
+}
+.dwm-client-relations__label {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-client-relations__empty {
+  margin: 4px 0 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-disabled);
+}

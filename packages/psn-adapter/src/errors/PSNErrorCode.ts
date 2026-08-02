@@ -1,0 +1,9 @@
+/** Catálogo cerrado de códigos de error propios de @dwm/psn-adapter, con prefijo `PSN_`. */
+export enum PSNErrorCode {
+  PSN_INVALID_REQUEST = "PSN_INVALID_REQUEST",
+  PSN_ROOT_NOT_FOUND = "PSN_ROOT_NOT_FOUND",
+  PSN_ROOT_UNRESOLVABLE = "PSN_ROOT_UNRESOLVABLE",
+  PSN_SCAN_FAILED = "PSN_SCAN_FAILED",
+  PSN_MODEL_NOT_FOUND = "PSN_MODEL_NOT_FOUND",
+  PSN_RESOURCE_NOT_FOUND = "PSN_RESOURCE_NOT_FOUND",
+}

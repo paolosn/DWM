@@ -1,0 +1,20 @@
+.dwm-profiles-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-profiles-screen__actions {
+  display: flex;
+  gap: var(--dwm-space-xs);
+}
+.dwm-profiles-screen__facts {
+  margin: 0;
+}
+.dwm-profiles-screen__facts dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-profiles-screen__facts dd {
+  margin: 0;
+}

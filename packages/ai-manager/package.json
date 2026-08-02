@@ -1,0 +1,38 @@
+{
+  "name": "@dwm/ai-manager",
+  "version": "0.1.0",
+  "description": "Gestión de proveedores de IA de Dev Workspace Manager (DWM). Registrable como IModule del Core; registro y selección de proveedor activo, conexiones, health check periódico, timeouts y reintentos con backoff, credenciales mediante @dwm/secrets, configuración mediante @dwm/config, registro mediante @dwm/logger, eventos mediante @dwm/event-bus y tareas periódicas mediante @dwm/scheduler.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@dwm/core": "*",
+    "@dwm/config": "*",
+    "@dwm/logger": "*",
+    "@dwm/event-bus": "*",
+    "@dwm/scheduler": "*",
+    "@dwm/secrets": "*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=html --coverage.reporter=json-summary"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5",
+    "@vitest/coverage-v8": "^2.0.5",
+    "@types/node": "^20.14.10"
+  }
+}
