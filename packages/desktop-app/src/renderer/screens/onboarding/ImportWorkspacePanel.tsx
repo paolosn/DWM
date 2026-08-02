@@ -53,6 +53,11 @@ function formatBytes(bytes: number): string {
   return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
 
+export interface ImportWorkspacePanelProps {
+  /** Se invoca justo después de registrar el Workspace importado como activo (p. ej. para refrescar la pantalla de arranque). */
+  readonly onImported?: () => void;
+}
+
 /**
  * Módulo 33B — panel real de importación (documento §4 del encargo
  * v1.0.1): selector nativo → `import.inspect`/`import.preview` → aprobación
@@ -67,7 +72,7 @@ function formatBytes(bytes: number): string {
  * `import.status` queda disponible aparte para consultar el histórico por
  * `importId` si hiciera falta.
  */
-export function ImportWorkspacePanel(): JSX.Element {
+export function ImportWorkspacePanel({ onImported }: ImportWorkspacePanelProps = {}): JSX.Element {
   const { showToast } = useToast();
 
   const [pendingSource, setPendingSource] = useState<PendingSource | undefined>(undefined);
@@ -174,6 +179,7 @@ export function ImportWorkspacePanel(): JSX.Element {
           // de "Crear Workspace vacío" de este mismo paso.
           await callOperation("workspace.initialize", { root: result.destinationPath });
           await callOperation("workspace.register", { root: result.destinationPath });
+          onImported?.();
         } finally {
           setRegistering(false);
         }
