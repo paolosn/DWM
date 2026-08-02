@@ -3,6 +3,8 @@ import type { ApplicationOperationRegistry } from "../ApplicationOperationRegist
 import type { ApplicationPermissions } from "../ApplicationPermissions.js";
 import type { ApplicationContext } from "../ApplicationContext.js";
 import { requireDependency } from "../requireDependency.js";
+import { createApplicationError } from "../errors/ApplicationError.js";
+import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
 import {
   asRecord,
   assertSafeOptionalPath,
@@ -30,6 +32,10 @@ declare module "../ApplicationRequest.js" {
       result: { updated: true };
     };
     "projects.delete": { payload: { id: string }; result: { deleted: true } };
+    "projects.open-in-vscode": {
+      payload: { id: string };
+      result: { opened: boolean; message: string };
+    };
   }
 }
 
@@ -127,6 +133,40 @@ export class ProjectController implements ApplicationController {
       handler: async (payload) => {
         await manager().deleteProject(payload.id);
         return { deleted: true as const };
+      },
+    });
+
+    // Reutiliza tal cual EnvironmentManager.openInVSCode() (Commit 3 de
+    // client-workflow-v2); ProjectController es el punto natural para
+    // "abrir en VS Code" un proyecto ya existente por id.
+    permissions.register("projects.open-in-vscode", ["read"]);
+    operations.register({
+      name: "projects.open-in-vscode",
+      version: "1.0.0",
+      capabilities: ["read"],
+      long: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const id = requireString(record, "id");
+        return { id };
+      },
+      handler: async (payload) => {
+        const project = manager().getProject(payload.id);
+        if (!project) {
+          throw createApplicationError({
+            code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+            message: `No existe ningún proyecto con id "${payload.id}".`,
+            origin: "validation",
+            category: "not-found",
+            retryable: false,
+            recoverable: true,
+          });
+        }
+        const environmentManager = requireDependency(
+          this.context.environmentManager,
+          "environment-manager"
+        );
+        return environmentManager.openInVSCode(project.configuration.projectPath);
       },
     });
   }

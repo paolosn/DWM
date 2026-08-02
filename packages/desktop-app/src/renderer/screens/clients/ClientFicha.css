@@ -1,0 +1,54 @@
+.dwm-client-ficha__resumen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-lg);
+}
+.dwm-client-ficha__resumen dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-client-ficha__resumen dd {
+  margin: 0;
+}
+.dwm-client-ficha__projects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-client-ficha__project-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
+  padding: var(--dwm-space-sm);
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-card);
+}
+.dwm-client-ficha__project-path {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  word-break: break-all;
+}
+.dwm-client-ficha__project-meta {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-client-ficha__mcp-ia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-lg);
+}
+.dwm-client-ficha__mcp-ia dt {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  margin-top: var(--dwm-space-xs);
+}
+.dwm-client-ficha__mcp-ia dd {
+  margin: 0;
+}

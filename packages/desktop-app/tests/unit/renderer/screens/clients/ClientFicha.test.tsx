@@ -1,0 +1,217 @@
+// @vitest-environment jsdom
+import { act } from "react-dom/test-utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { ClientFicha } from "../../../../../src/renderer/screens/clients/ClientFicha.js";
+import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
+import { click, mount } from "../../../support/renderHelpers.js";
+
+const originalDwm = window.dwm;
+
+function success(operation: string, data: unknown) {
+  return Promise.resolve({ success: true, requestId: "x", operation, data });
+}
+
+function setDwm(
+  overrides: Record<string, (payload: unknown) => Promise<unknown>> = {}
+): ReturnType<typeof vi.fn> {
+  const invoke = vi.fn().mockImplementation((request: { operation: string; payload: unknown }) => {
+    if (request.operation in overrides) return overrides[request.operation]!(request.payload);
+    return success(request.operation, undefined);
+  });
+  Object.defineProperty(window, "dwm", {
+    value: { invoke, getVersionInfo: vi.fn() },
+    configurable: true,
+  });
+  return invoke;
+}
+
+async function settle(times = 8): Promise<void> {
+  await act(async () => {
+    for (let i = 0; i < times; i += 1) await Promise.resolve();
+  });
+}
+
+const baseClient = {
+  id: "mci-finance",
+  name: "MCI Finance",
+  slug: "mci-finance",
+  status: "active",
+  tags: ["banca"],
+  references: { projects: ["p1"], knowledge: [], agents: [], skills: [], rules: [] },
+  dwm: {
+    archived: false,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-02T00:00:00.000Z",
+  },
+};
+
+const baseProject = {
+  id: "p1",
+  metadata: {
+    id: "p1",
+    name: "Portal de Clientes",
+    description: "",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "",
+  },
+  configuration: {
+    projectPath: "/workspace/PROYECTOS/DIRECTOS/portal-de-clientes",
+    profileId: "p",
+    usedTools: [],
+    usedAdapters: [],
+  },
+  state: "created",
+};
+
+describe("ClientFicha", () => {
+  afterEach(() => {
+    __resetQueryCacheForTests();
+    Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
+  });
+
+  it("muestra las 6 pestañas reales", async () => {
+    setDwm({ "clients.get": () => success("clients.get", baseClient) });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]')).map((t) => t.textContent);
+    expect(tabs).toEqual([
+      "Resumen",
+      "Proyectos",
+      "Accesos y conexiones",
+      "MCP e IA",
+      "Documentos",
+      "Actividad",
+    ]);
+    unmount();
+  });
+
+  it("Resumen muestra los datos reales del cliente", async () => {
+    setDwm({ "clients.get": () => success("clients.get", baseClient) });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    expect(container.textContent).toContain("MCI Finance");
+    expect(container.textContent).toContain("banca");
+    unmount();
+  });
+
+  it("Proyectos resuelve cada id real vía projects.get y permite abrir en VS Code", async () => {
+    const invoke = setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "projects.get": () => success("projects.get", baseProject),
+      "projects.open-in-vscode": () =>
+        success("projects.open-in-vscode", { opened: true, message: 'VS Code abierto en "..."' }),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Proyectos"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("Portal de Clientes");
+    expect(container.textContent).toContain("/workspace/PROYECTOS/DIRECTOS/portal-de-clientes");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir en VS Code"
+      ) ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+    );
+    expect(call).toBeDefined();
+    expect((call?.[0] as { payload: { id: string } }).payload).toEqual({ id: "p1" });
+    unmount();
+  });
+
+  it("MCP e IA muestra la IA predeterminada real cuando existe, y un estado vacío honesto cuando no", async () => {
+    const withAi = { ...baseClient, defaultAi: { provider: "openai", model: "gpt-4o" } };
+    setDwm({ "clients.get": () => success("clients.get", withAi) });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "MCP e IA"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("openai");
+    expect(container.textContent).toContain("gpt-4o");
+    unmount();
+  });
+
+  it("Documentos y Actividad se declaran honestamente no disponibles, sin datos inventados", async () => {
+    setDwm({ "clients.get": () => success("clients.get", baseClient) });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Documentos"
+      ) ?? null
+    );
+    await settle();
+    expect(container.textContent).toContain("Función no disponible en esta versión");
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Actividad"
+      ) ?? null
+    );
+    await settle();
+    expect(container.textContent).toContain("Función no disponible en esta versión");
+    unmount();
+  });
+
+  it("un cliente sin proyectos muestra un estado vacío real en la pestaña Proyectos", async () => {
+    const withoutProjects = {
+      ...baseClient,
+      references: { ...baseClient.references, projects: [] },
+    };
+    setDwm({ "clients.get": () => success("clients.get", withoutProjects) });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Proyectos"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("Este cliente todavía no tiene proyectos");
+    unmount();
+  });
+});

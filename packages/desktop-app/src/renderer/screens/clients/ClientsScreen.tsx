@@ -15,7 +15,7 @@ import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/inde
 import { Drawer } from "../../design-system/composites/Drawer/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ClientForm, type ClientFormValues } from "./ClientForm.js";
-import { ClientRelationsPanel } from "./ClientRelationsPanel.js";
+import { ClientFicha } from "./ClientFicha.js";
 
 /**
  * Módulo 33A — Fase 3: Clientes. Sin `clients.duplicate` (no existe en
@@ -77,6 +77,11 @@ export function ClientsScreen(): JSX.Element {
         />
       ),
     },
+    {
+      key: "updatedAt",
+      header: "Última actividad",
+      render: (client) => new Date(client.updatedAt).toLocaleString(),
+    },
   ];
 
   async function handleCreate(values: ClientFormValues): Promise<void> {
@@ -131,7 +136,7 @@ export function ClientsScreen(): JSX.Element {
               row={client}
               entityLabel={client.name}
               actions={[
-                { id: "detail", label: "Ver relaciones", onSelect: (c) => setDetailClientId(c.id) },
+                { id: "detail", label: "Ver cliente", onSelect: (c) => setDetailClientId(c.id) },
                 {
                   id: "archive",
                   label: "Archivar",
@@ -172,10 +177,10 @@ export function ClientsScreen(): JSX.Element {
 
       <Drawer
         open={Boolean(detailClientId)}
-        title="Relaciones del cliente"
+        title="Ficha del cliente"
         onClose={() => setDetailClientId(undefined)}
       >
-        {detailClientId && <ClientRelationsPanel clientId={detailClientId} />}
+        {detailClientId && <ClientFicha clientId={detailClientId} />}
       </Drawer>
 
       <ConfirmDialog
