@@ -1,23 +1,7 @@
 name: Build Windows installer (DWM Desktop)
 
-# v1.0.1 — este workflow existe porque el entorno de desarrollo/CI habitual
-# es Linux sin Wine, y electron-builder no puede generar un instalador NSIS
-# fiable en esas condiciones sin instalar herramientas globales adicionales
-# (explícitamente evitado en esta corrección). Un runner `windows-latest`
-# genera el .exe de forma nativa, sin necesidad de Wine ni de nada más
-# instalado a mano.
-#
-# Comando exacto que ejecuta este workflow (reproducible también en local,
-# en una máquina Windows real, con Node.js >= 18 y npm instalados):
-#
-#   npm install
-#   npm run build:internal-deps
-#   npm run package:electron:win -w packages/desktop-app
-#
-# El instalador y sus checksums quedan en packages/desktop-app/release/.
-
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -25,36 +9,66 @@ on:
 jobs:
   build-windows:
     runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
 
       - name: Instalar dependencias del monorepo
         run: npm install
 
-      - name: Compilar paquetes internos (dependencia de build:internal-deps)
-        run: npm run build:internal-deps
-
-      - name: Generar el instalador Windows (NSIS) de DWM Desktop
-        run: npm run package:electron:win -w packages/desktop-app
-
-      - name: Calcular checksums SHA-256 de los artefactos generados
+      - name: Instalar y verificar 7zip-bin para Windows
         shell: pwsh
         run: |
-          Get-ChildItem -Path packages/desktop-app/release -Recurse -File |
+          npm install --no-save 7zip-bin@5.2.0
+
+          $sevenZip = "node_modules\7zip-bin\win\x64\7za.exe"
+
+          if (-not (Test-Path $sevenZip)) {
+            Write-Error "No se encontró el ejecutable requerido: $sevenZip"
+            exit 1
+          }
+
+          Write-Host "7zip-bin verificado correctamente:"
+          Get-Item $sevenZip
+
+      - name: Compilar paquetes internos
+        run: npm run build:internal-deps
+
+      - name: Generar instalador Windows NSIS
+        run: npm run package:electron:win -w packages/desktop-app
+
+      - name: Calcular checksums SHA-256
+        shell: pwsh
+        run: |
+          $release = "packages\desktop-app\release"
+          $checksumFile = Join-Path $release "SHA256SUMS.txt"
+
+          if (Test-Path $checksumFile) {
+            Remove-Item $checksumFile
+          }
+
+          Get-ChildItem -Path $release -File |
+            Where-Object { $_.Name -ne "SHA256SUMS.txt" } |
             ForEach-Object {
               $hash = Get-FileHash $_.FullName -Algorithm SHA256
-              "$($hash.Hash)  $($_.Name)" | Out-File -FilePath (Join-Path $_.DirectoryName "SHA256SUMS.txt") -Append -Encoding utf8
+              "$($hash.Hash)  $($_.Name)" |
+                Out-File -FilePath $checksumFile -Append -Encoding utf8
             }
 
-      - uses: actions/upload-artifact@v4
+      - name: Subir instalador Windows
+        uses: actions/upload-artifact@v4
         with:
-          name: dwm-desktop-windows
+          name: DWM-Windows
           path: |
             packages/desktop-app/release/*.exe
             packages/desktop-app/release/*.blockmap
+            packages/desktop-app/release/*.yml
             packages/desktop-app/release/SHA256SUMS.txt
           if-no-files-found: error
