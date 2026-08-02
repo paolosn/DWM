@@ -6,6 +6,13 @@
     "lib": ["ES2022"],
     "types": ["node", "electron"]
   },
-  "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "src/shared/**/*.ts"],
-  "exclude": ["node_modules", "dist-electron", "dist-renderer", "tests", "src/renderer"]
+  "include": ["src/main/**/*.ts", "src/shared/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist-electron",
+    "dist-renderer",
+    "tests",
+    "src/renderer",
+    "src/preload"
+  ]
 }
