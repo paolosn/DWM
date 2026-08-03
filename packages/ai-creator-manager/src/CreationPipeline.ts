@@ -369,7 +369,7 @@ export class CreationPipeline {
   // ---------------------------------------------------------------------
 
   private async resolveTextContent(
-    kind: "skill" | "rule" | "knowledge",
+    kind: "agent" | "skill" | "rule" | "knowledge",
     manualContent: string | undefined,
     payload: GeneratedContentPayload
   ): Promise<{ content: string; metadata: CreationMetadata; warnings: CreationWarning[] }> {
@@ -455,104 +455,6 @@ export class CreationPipeline {
     });
   }
 
-  private async resolveDataObject(
-    manualData: Record<string, unknown> | undefined,
-    payload: GeneratedContentPayload
-  ): Promise<{
-    data: Record<string, unknown>;
-    metadata: CreationMetadata;
-    warnings: CreationWarning[];
-  }> {
-    const warnings: CreationWarning[] = [];
-    const sourceCount = [
-      manualData !== undefined,
-      payload.templateId !== undefined,
-      payload.promptId !== undefined,
-    ].filter(Boolean).length;
-    if (sourceCount > 1) {
-      throw createCreationError({
-        code: CreationErrorCode.CREATION_INVALID_REQUEST,
-        message: 'Solo se admite una fuente de datos (manual, templateId o promptId) para "agent".',
-        origin: "request",
-        recoverable: true,
-      });
-    }
-
-    if (manualData !== undefined) {
-      return { data: manualData, metadata: { source: "manual", generatedAt: now() }, warnings };
-    }
-    if (payload.templateId !== undefined) {
-      const definition = this.templateRegistry.require(payload.templateId);
-      if (definition.targetKind !== "agent") {
-        warnings.push({
-          field: "templateId",
-          message: `la plantilla "${payload.templateId}" está pensada para "${definition.targetKind}", no para "agent".`,
-        });
-      }
-      const rendered = renderCreationTemplate(definition, payload.variables ?? {});
-      if (rendered.data === undefined) {
-        throw createCreationError({
-          code: CreationErrorCode.CREATION_VALIDATION_FAILED,
-          message: `La plantilla "${payload.templateId}" no define datos estructurados, necesarios para "agent".`,
-          origin: "template",
-          recoverable: true,
-        });
-      }
-      return {
-        data: rendered.data,
-        metadata: { source: "template", templateId: definition.id, generatedAt: now() },
-        warnings,
-      };
-    }
-    if (payload.promptId !== undefined) {
-      const promptDefinition = this.promptRegistry.require(payload.promptId);
-      const providerId = payload.providerId ?? "null";
-      const provider = this.resolveProvider(providerId);
-      if (!provider) {
-        throw createCreationError({
-          code: CreationErrorCode.CREATION_PROVIDER_NOT_FOUND,
-          message: `No hay ningún proveedor de IA registrado con id "${providerId}".`,
-          origin: "provider",
-          recoverable: true,
-        });
-      }
-      const prompt = renderPromptTemplate(promptDefinition, payload.variables ?? {});
-      const generated = await provider.generate({
-        kind: "agent",
-        prompt,
-        ...(payload.variables !== undefined ? { variables: payload.variables } : {}),
-      });
-      let data: Record<string, unknown>;
-      try {
-        data = JSON.parse(generated.content) as Record<string, unknown>;
-      } catch (err) {
-        throw createCreationError({
-          code: CreationErrorCode.CREATION_VALIDATION_FAILED,
-          message: `El proveedor "${provider.id}" no devolvió JSON válido para los datos del agente.`,
-          origin: "provider",
-          recoverable: true,
-          cause: err,
-        });
-      }
-      return {
-        data,
-        metadata: {
-          source: "provider",
-          promptId: promptDefinition.id,
-          providerId: provider.id,
-          generatedAt: now(),
-        },
-        warnings,
-      };
-    }
-    throw createCreationError({
-      code: CreationErrorCode.CREATION_INVALID_REQUEST,
-      message: 'Hay que indicar data, templateId o promptId para crear "agent".',
-      origin: "request",
-      recoverable: true,
-    });
-  }
-
   // ---------------------------------------------------------------------
   // Resolución por tipo de recurso
   // ---------------------------------------------------------------------
@@ -571,7 +473,11 @@ export class CreationPipeline {
     payload: import("./CreationTypes.js").AgentCreationPayload,
     options: CreationOptions
   ): Promise<ResolvedCreation> {
-    const { data, metadata, warnings } = await this.resolveDataObject(payload.data, payload);
+    const { content, metadata, warnings } = await this.resolveTextContent(
+      "agent",
+      payload.content,
+      payload
+    );
     const missingDependencies = this.agentManager ? [] : ["agent-manager"];
     const conflicts: CreationConflict[] = [];
     const resolvedId = payload.id;
@@ -589,7 +495,7 @@ export class CreationPipeline {
     }
     return {
       ...(resolvedId !== undefined ? { resolvedId } : {}),
-      resolvedPayload: data,
+      resolvedPayload: content,
       metadata,
       dependencies: ["agent-manager"],
       missingDependencies,
@@ -605,7 +511,7 @@ export class CreationPipeline {
             recoverable: true,
           });
         }
-        return this.agentManager.createAgent({ id: resolvedId, data }, root);
+        return this.agentManager.createAgent({ id: resolvedId, content }, root);
       },
     };
   }

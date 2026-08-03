@@ -13,11 +13,10 @@ import { makeStatusReport } from "@dwm/status";
 import { AgentRepository } from "./AgentRepository.js";
 import { AgentRegistry } from "./AgentRegistry.js";
 import { AgentValidator, type AgentValidationResult } from "./AgentValidator.js";
+import { extractAgentDisplayFields } from "./AgentFrontmatter.js";
 import {
-  extractAgentDisplayFields,
   type Agent,
   type AgentCreateRequest,
-  type AgentData,
   type AgentFilter,
   type AgentListOptions,
   type AgentMetadata,
@@ -43,15 +42,18 @@ export interface AgentManagerOptions {
 type AgentEventPhase = "created" | "updated" | "deleted" | "duplicated" | "archived" | "restored";
 
 /**
- * Módulo 23 — Agent Manager. Primer gestor funcional de DWM: trabaja
- * directamente sobre los agentes reales del Workspace (ficheros JSON
- * dentro del recurso `agents` que ya reconoce `@dwm/psn-adapter`), sin
- * crear una base de datos, sin duplicar información y sin mover ningún
- * fichero —archivar y restaurar reescriben metadatos dentro del propio
- * fichero del agente—. Implementa `IModule`, integrándose con el resto
- * del Engine únicamente a través de las APIs públicas de `PSNAdapter`,
- * `WorkspaceManager`, `WorkspacePaths`, `ImportManager`,
- * `VerificationManager` y `@dwm/status`.
+ * Módulo 23 — Agent Manager. Trabaja directamente sobre los agentes
+ * reales del Workspace: ficheros Markdown individuales dentro del
+ * recurso `agents` que ya reconoce `@dwm/psn-adapter`
+ * (`.kilo/agents/<id>.md`), con el mismo frontmatter YAML
+ * (`description`/`mode`/`color`) que ya usan el PSN-BASE real y Kilo
+ * Code — sin crear una base de datos, sin duplicar información y sin
+ * mover ningún fichero: archivar y restaurar reescriben únicamente el
+ * bloque `dwm:` reservado del frontmatter, de forma no destructiva.
+ * Implementa `IModule`, integrándose con el resto del Engine únicamente
+ * a través de las APIs públicas de `PSNAdapter`, `WorkspaceManager`,
+ * `WorkspacePaths`, `ImportManager`, `VerificationManager` y
+ * `@dwm/status`.
  */
 export class AgentManager implements IModule {
   readonly id = "agent-manager";
@@ -143,7 +145,7 @@ export class AgentManager implements IModule {
   // Validación de estructura
   // ---------------------------------------------------------------------
 
-  /** Valida la estructura de un agente ya materializado (id + datos + metadatos), sin tocar el disco. */
+  /** Valida la estructura de un agente ya materializado (id + contenido + metadatos), sin tocar el disco. */
   validateAgentStructure(agent: Agent): AgentValidationResult {
     return this.validator.validateStructure(agent);
   }
@@ -154,7 +156,7 @@ export class AgentManager implements IModule {
 
   async createAgent(request: AgentCreateRequest, root?: string): Promise<Agent> {
     this.validator.assertValidId(request.id);
-    this.validator.assertValidData(request.data);
+    this.validator.assertValidContent(request.content);
     const directory = this.resolveDirectory(root);
 
     if (await this.repository.exists(directory, request.id)) {
@@ -168,21 +170,21 @@ export class AgentManager implements IModule {
 
     const now = new Date().toISOString();
     const metadata: AgentMetadata = { archived: false, createdAt: now, updatedAt: now };
-    const agent = await this.persist(directory, request.id, request.data, metadata);
+    const agent = await this.persist(directory, request.id, request.content, metadata);
     await this.notify("created", agent);
     await this.afterMutation(directory);
     return agent;
   }
 
-  /** Edita (sustituye por completo) los datos de un agente existente y guarda el resultado en disco. */
-  async updateAgent(id: string, data: AgentData, root?: string): Promise<Agent> {
+  /** Edita (sustituye por completo) el contenido de un agente existente y guarda el resultado en disco. */
+  async updateAgent(id: string, content: string, root?: string): Promise<Agent> {
     this.validator.assertValidId(id);
-    this.validator.assertValidData(data);
+    this.validator.assertValidContent(content);
     const directory = this.resolveDirectory(root);
     const existing = await this.readExisting(directory, id);
 
     const metadata: AgentMetadata = { ...existing.metadata, updatedAt: new Date().toISOString() };
-    const agent = await this.persist(directory, id, data, metadata);
+    const agent = await this.persist(directory, id, content, metadata);
     await this.notify("updated", agent);
     await this.afterMutation(directory);
     return agent;
@@ -193,7 +195,7 @@ export class AgentManager implements IModule {
     this.validator.assertValidStructure(agent);
     const directory = this.resolveDirectory(root);
     const metadata: AgentMetadata = { ...agent.metadata, updatedAt: new Date().toISOString() };
-    const saved = await this.persist(directory, agent.id, agent.data, metadata);
+    const saved = await this.persist(directory, agent.id, agent.content, metadata);
     await this.notify("updated", saved);
     await this.afterMutation(directory);
     return saved;
@@ -215,7 +217,7 @@ export class AgentManager implements IModule {
 
     const now = new Date().toISOString();
     const metadata: AgentMetadata = { archived: false, createdAt: now, updatedAt: now };
-    const duplicate = await this.persist(directory, newId, source.data, metadata);
+    const duplicate = await this.persist(directory, newId, source.content, metadata);
     await this.notify("duplicated", duplicate);
     await this.afterMutation(directory);
     return duplicate;
@@ -249,7 +251,7 @@ export class AgentManager implements IModule {
       archivedAt: now,
       updatedAt: now,
     };
-    const agent = await this.persist(directory, id, existing.data, metadata);
+    const agent = await this.persist(directory, id, existing.content, metadata);
     await this.notify("archived", agent);
     await this.afterMutation(directory);
     return agent;
@@ -271,7 +273,7 @@ export class AgentManager implements IModule {
       createdAt: existing.metadata.createdAt,
       updatedAt: new Date().toISOString(),
     };
-    const agent = await this.persist(directory, id, existing.data, metadata);
+    const agent = await this.persist(directory, id, existing.content, metadata);
     await this.notify("restored", agent);
     await this.afterMutation(directory);
     return agent;
@@ -310,24 +312,26 @@ export class AgentManager implements IModule {
   private async persist(
     directory: string,
     id: string,
-    data: AgentData,
+    content: string,
     metadata: AgentMetadata
   ): Promise<Agent> {
-    await this.repository.write(directory, id, data, metadata);
-    const agent: Agent = { id, data, metadata };
+    await this.repository.write(directory, id, content, metadata);
+    const agent: Agent = { id, content, metadata };
     this.registry.set(this.toSummary(agent));
     return agent;
   }
 
   private toSummary(agent: Agent): AgentSummary {
-    const { name, tags } = extractAgentDisplayFields(agent.data);
+    const { name, description, mode, color } = extractAgentDisplayFields(agent.content);
     return {
       id: agent.id,
       archived: agent.metadata.archived,
       createdAt: agent.metadata.createdAt,
       updatedAt: agent.metadata.updatedAt,
       ...(name ? { name } : {}),
-      ...(tags ? { tags } : {}),
+      ...(description ? { description } : {}),
+      ...(mode ? { mode } : {}),
+      ...(color ? { color } : {}),
     };
   }
 

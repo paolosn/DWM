@@ -1,5 +1,4 @@
 export type {
-  AgentData,
   AgentMetadata,
   Agent,
   AgentSummary,
@@ -8,11 +7,23 @@ export type {
   AgentListOptions,
 } from "./AgentTypes.js";
 export {
-  AGENT_MANAGED_METADATA_KEY,
+  AGENT_FILE_EXTENSION,
+  AGENT_DWM_FRONTMATTER_KEY,
   isSafeAgentId,
-  isAgentData,
-  extractAgentDisplayFields,
+  isAgentContent,
 } from "./AgentTypes.js";
+
+export {
+  splitFrontmatter,
+  joinFrontmatter,
+  hasDwmBlock,
+  removeDwmBlock,
+  serializeDwmBlock,
+  upsertDwmBlock,
+  parseDwmMetadata,
+  extractAgentDisplayFields,
+  type SplitFrontmatterResult,
+} from "./AgentFrontmatter.js";
 
 export {
   AgentValidator,

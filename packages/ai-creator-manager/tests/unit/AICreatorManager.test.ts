@@ -42,7 +42,10 @@ describe("AICreatorManager", () => {
       eventBus,
       verificationManager: fakeVerificationManager,
     });
-    const result = await creatorWithExtras.createAgent({ id: "extra-agent", data: {} });
+    const result = await creatorWithExtras.createAgent({
+      id: "extra-agent",
+      content: "# Extra Agent\n",
+    });
     expect(result.created).toBe(true);
     expect(logs.length).toBeGreaterThan(0);
     expect(events).toContain("creation.completed");
@@ -51,7 +54,10 @@ describe("AICreatorManager", () => {
 
   it("createStructure ignora huecos vacíos en la lista de elementos", async () => {
     const result = await harness.creator.createStructure({
-      items: [{ kind: "agent", payload: { id: "gap-agent", data: {} } }, undefined as never],
+      items: [
+        { kind: "agent", payload: { id: "gap-agent", content: "Contenido de agente de prueba." } },
+        undefined as never,
+      ],
     });
     expect(result.results).toHaveLength(1);
     expect(result.failedAt).toBeUndefined();
@@ -64,7 +70,7 @@ describe("AICreatorManager", () => {
   });
 
   it("crea recursos de cada tipo mediante los atajos createX", async () => {
-    const agent = await harness.creator.createAgent({ id: "a1", data: { name: "A" } });
+    const agent = await harness.creator.createAgent({ id: "a1", content: "# A\n" });
     expect(agent.created).toBe(true);
 
     const skill = await harness.creator.createSkill({ id: "s1", content: "# S1\n" });
@@ -98,7 +104,7 @@ describe("AICreatorManager", () => {
   it("previewCreation delega en la vista previa del pipeline", async () => {
     const preview = await harness.creator.previewCreation({
       kind: "agent",
-      payload: { id: "a1", data: {} },
+      payload: { id: "a1", content: "Contenido de agente de prueba." },
     });
     expect(preview.kind).toBe("agent");
     expect(preview.resolvedId).toBe("a1");
@@ -112,7 +118,10 @@ describe("AICreatorManager", () => {
   it("createStructure crea varios recursos relacionados en orden", async () => {
     const result = await harness.creator.createStructure({
       items: [
-        { kind: "agent", payload: { id: "struct-agent", data: {} } },
+        {
+          kind: "agent",
+          payload: { id: "struct-agent", content: "Contenido de agente de prueba." },
+        },
         { kind: "skill", payload: { id: "struct-skill", content: "# hola" } },
       ],
     });
@@ -124,8 +133,8 @@ describe("AICreatorManager", () => {
   it("createStructure se detiene en el primer fallo y reporta failedAt", async () => {
     const result = await harness.creator.createStructure({
       items: [
-        { kind: "agent", payload: { id: "struct-ok", data: {} } },
-        { kind: "agent", payload: { id: "struct-ok", data: {} } }, // conflicto: id duplicado
+        { kind: "agent", payload: { id: "struct-ok", content: "Contenido de agente de prueba." } },
+        { kind: "agent", payload: { id: "struct-ok", content: "Contenido de agente de prueba." } }, // conflicto: id duplicado
         { kind: "skill", payload: { id: "nunca-se-crea", content: "x" } },
       ],
     });
@@ -137,7 +146,14 @@ describe("AICreatorManager", () => {
 
   it("createStructure respeta dryRun para todos los elementos", async () => {
     const result = await harness.creator.createStructure(
-      { items: [{ kind: "agent", payload: { id: "dry-struct", data: {} } }] },
+      {
+        items: [
+          {
+            kind: "agent",
+            payload: { id: "dry-struct", content: "Contenido de agente de prueba." },
+          },
+        ],
+      },
       { dryRun: true }
     );
     expect(result.dryRun).toBe(true);
@@ -152,7 +168,7 @@ describe("AICreatorManager", () => {
   it("cancel/getOperation/listOperations reflejan el ciclo de vida de una operación", async () => {
     const preview = await harness.creator.previewCreation({
       kind: "agent",
-      payload: { id: "op-agent", data: {} },
+      payload: { id: "op-agent", content: "Contenido de agente de prueba." },
     });
     expect(harness.creator.getOperation(preview.operationId)?.state).toBe("previewed");
     expect(await harness.creator.cancel(preview.operationId)).toBe(true);

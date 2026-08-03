@@ -8,12 +8,16 @@ const admin = { grantedCapabilities: ["read", "write", "archive", "restore", "de
 function buildApi(overrides: Partial<AgentManager> = {}) {
   const fakeManager = {
     listAgents: vi.fn().mockResolvedValue([{ id: "a1", archived: false }]),
-    getAgent: vi.fn().mockResolvedValue({ id: "a1", data: {}, metadata: {} }),
-    createAgent: vi.fn().mockResolvedValue({ id: "a1", data: {}, metadata: {} }),
-    updateAgent: vi.fn().mockResolvedValue({ id: "a1", data: {}, metadata: {} }),
-    duplicateAgent: vi.fn().mockResolvedValue({ id: "a2", data: {}, metadata: {} }),
-    archiveAgent: vi.fn().mockResolvedValue({ id: "a1", data: {}, metadata: { archived: true } }),
-    restoreAgent: vi.fn().mockResolvedValue({ id: "a1", data: {}, metadata: { archived: false } }),
+    getAgent: vi.fn().mockResolvedValue({ id: "a1", content: "# a1\n", metadata: {} }),
+    createAgent: vi.fn().mockResolvedValue({ id: "a1", content: "# a1\n", metadata: {} }),
+    updateAgent: vi.fn().mockResolvedValue({ id: "a1", content: "# a1\n", metadata: {} }),
+    duplicateAgent: vi.fn().mockResolvedValue({ id: "a2", content: "# a1\n", metadata: {} }),
+    archiveAgent: vi
+      .fn()
+      .mockResolvedValue({ id: "a1", content: "# a1\n", metadata: { archived: true } }),
+    restoreAgent: vi
+      .fn()
+      .mockResolvedValue({ id: "a1", content: "# a1\n", metadata: { archived: false } }),
     deleteAgent: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as AgentManager;
@@ -42,25 +46,22 @@ describe("AgentController", () => {
     expect(invalid.success).toBe(false);
   });
 
-  it("agents.create delega en createAgent con id y data", async () => {
+  it("agents.create delega en createAgent con id y content", async () => {
     const { api, fakeManager } = buildApi();
     const response = await api.execute(
-      makeRequest("agents.create", { id: "a1", data: { name: "x" } }, { caller: admin })
+      makeRequest("agents.create", { id: "a1", content: "# x\n" }, { caller: admin })
     );
     expect(response.success).toBe(true);
-    expect(fakeManager.createAgent).toHaveBeenCalledWith(
-      { id: "a1", data: { name: "x" } },
-      undefined
-    );
+    expect(fakeManager.createAgent).toHaveBeenCalledWith({ id: "a1", content: "# x\n" }, undefined);
   });
 
   it("agents.update delega en updateAgent", async () => {
     const { api, fakeManager } = buildApi();
     const response = await api.execute(
-      makeRequest("agents.update", { id: "a1", data: { name: "y" } }, { caller: admin })
+      makeRequest("agents.update", { id: "a1", content: "# y\n" }, { caller: admin })
     );
     expect(response.success).toBe(true);
-    expect(fakeManager.updateAgent).toHaveBeenCalledWith("a1", { name: "y" }, undefined);
+    expect(fakeManager.updateAgent).toHaveBeenCalledWith("a1", "# y\n", undefined);
   });
 
   it("agents.duplicate delega en duplicateAgent", async () => {

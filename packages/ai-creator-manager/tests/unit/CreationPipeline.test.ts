@@ -53,12 +53,12 @@ describe("CreationPipeline", () => {
   it("crea un agente con datos manuales", async () => {
     const result = await pipeline.create({
       kind: "agent",
-      payload: { id: "mi-agente", data: { name: "Mi Agente" } },
+      payload: { id: "mi-agente", content: "Contenido de agente de prueba." },
     });
     expect(result.created).toBe(true);
     expect(result.id).toBe("mi-agente");
     const agent = await harness.agentManager.getAgent("mi-agente");
-    expect(agent.data).toEqual({ name: "Mi Agente" });
+    expect(agent.content).toContain("Contenido de agente de prueba.");
   });
 
   it("crea una skill con contenido manual", async () => {
@@ -152,11 +152,11 @@ describe("CreationPipeline", () => {
     expect(file).toContain("Para MCI.");
   });
 
-  it("resuelve los datos de un agente a partir de una plantilla registrada", async () => {
+  it("resuelve el contenido de un agente a partir de una plantilla registrada", async () => {
     templateRegistry.register({
       id: "tpl-agent",
       targetKind: "agent",
-      data: { name: "{{name}}", role: "asistente" },
+      content: "# {{name}}\n\nAgente asistente.\n",
     });
     const result = await pipeline.create({
       kind: "agent",
@@ -164,7 +164,7 @@ describe("CreationPipeline", () => {
     });
     expect(result.created).toBe(true);
     const agent = await harness.agentManager.getAgent("agente-plantilla");
-    expect(agent.data).toEqual({ name: "Ana", role: "asistente" });
+    expect(agent.content).toContain("# Ana");
   });
 
   it("avisa si la plantilla usada no coincide con el tipo de recurso", async () => {
@@ -198,8 +198,8 @@ describe("CreationPipeline", () => {
     });
   });
 
-  it("lanza si la plantilla de un agente no define datos", async () => {
-    templateRegistry.register({ id: "tpl-no-data", targetKind: "agent", content: "x" });
+  it("lanza si la plantilla de un agente no define contenido", async () => {
+    templateRegistry.register({ id: "tpl-no-data", targetKind: "agent", data: { x: 1 } });
     await expect(
       pipeline.create({ kind: "agent", payload: { id: "a1", templateId: "tpl-no-data" } })
     ).rejects.toThrow(CreationError);
@@ -249,11 +249,11 @@ describe("CreationPipeline", () => {
     ).rejects.toMatchObject({ code: CreationErrorCode.CREATION_PROVIDER_NOT_IMPLEMENTED });
   });
 
-  it("usa el proveedor registrado para resolver los datos de un agente en JSON", async () => {
+  it("usa el proveedor registrado para resolver el contenido Markdown de un agente", async () => {
     promptRegistry.register({ id: "prompt-agent", kind: "agent", template: "crea {{name}}" });
     const fakeProvider: AIProvider = {
       id: "fake",
-      generate: async () => ({ content: JSON.stringify({ name: "Ana" }) }),
+      generate: async () => ({ content: "# Ana\n\nAgente generado por IA.\n" }),
     };
     providers.set(fakeProvider.id, fakeProvider);
     const result = await pipeline.create({
@@ -267,19 +267,7 @@ describe("CreationPipeline", () => {
     });
     expect(result.created).toBe(true);
     const agent = await harness.agentManager.getAgent("a1");
-    expect(agent.data).toEqual({ name: "Ana" });
-  });
-
-  it("lanza si el proveedor no devuelve JSON válido para los datos de un agente", async () => {
-    promptRegistry.register({ id: "prompt-agent", kind: "agent", template: "crea algo" });
-    const fakeProvider: AIProvider = { id: "fake", generate: async () => ({ content: "no-json" }) };
-    providers.set(fakeProvider.id, fakeProvider);
-    await expect(
-      pipeline.create({
-        kind: "agent",
-        payload: { id: "a1", promptId: "prompt-agent", providerId: "fake" },
-      })
-    ).rejects.toThrow(CreationError);
+    expect(agent.content).toContain("# Ana");
   });
 
   it("lanza si no se indica ninguna fuente de datos para un agente", async () => {
@@ -293,7 +281,7 @@ describe("CreationPipeline", () => {
     await expect(
       pipeline.create({
         kind: "agent",
-        payload: { id: "a1", data: { y: 2 }, templateId: "tpl-agent2" },
+        payload: { id: "a1", content: "Contenido de agente de prueba.", templateId: "tpl-agent2" },
       })
     ).rejects.toMatchObject({ code: CreationErrorCode.CREATION_INVALID_REQUEST });
   });
@@ -303,16 +291,25 @@ describe("CreationPipeline", () => {
   // ---------------------------------------------------------------------
 
   it("detecta conflicto de id al crear un agente duplicado", async () => {
-    await pipeline.create({ kind: "agent", payload: { id: "dup", data: {} } });
+    await pipeline.create({
+      kind: "agent",
+      payload: { id: "dup", content: "Contenido de agente de prueba." },
+    });
     await expect(
-      pipeline.create({ kind: "agent", payload: { id: "dup", data: {} } })
+      pipeline.create({
+        kind: "agent",
+        payload: { id: "dup", content: "Contenido de agente de prueba." },
+      })
     ).rejects.toMatchObject({ code: CreationErrorCode.CREATION_CONFLICT });
   });
 
   it("con allowAlternativeId, reintenta automáticamente con un id alternativo", async () => {
-    await pipeline.create({ kind: "agent", payload: { id: "dup", data: {} } });
+    await pipeline.create({
+      kind: "agent",
+      payload: { id: "dup", content: "Contenido de agente de prueba." },
+    });
     const result = await pipeline.create(
-      { kind: "agent", payload: { id: "dup", data: {} } },
+      { kind: "agent", payload: { id: "dup", content: "Contenido de agente de prueba." } },
       { allowAlternativeId: true }
     );
     expect(result.created).toBe(true);
@@ -430,7 +427,10 @@ describe("CreationPipeline", () => {
       resolveProvider: () => undefined,
       registry: bareRegistry,
     });
-    const preview = await barePipeline.preview({ kind: "agent", payload: { id: "a1", data: {} } });
+    const preview = await barePipeline.preview({
+      kind: "agent",
+      payload: { id: "a1", content: "Contenido de agente de prueba." },
+    });
     expect(preview.missingDependencies).toEqual(["agent-manager"]);
   });
 
@@ -443,7 +443,10 @@ describe("CreationPipeline", () => {
       registry: bareRegistry,
     });
     await expect(
-      barePipeline.create({ kind: "agent", payload: { id: "a1", data: {} } })
+      barePipeline.create({
+        kind: "agent",
+        payload: { id: "a1", content: "Contenido de agente de prueba." },
+      })
     ).rejects.toMatchObject({ code: CreationErrorCode.CREATION_DEPENDENCY_MISSING });
   });
 
@@ -453,7 +456,7 @@ describe("CreationPipeline", () => {
 
   it("con dryRun no escribe nada y created es false", async () => {
     const result = await pipeline.create(
-      { kind: "agent", payload: { id: "dry-agent", data: {} } },
+      { kind: "agent", payload: { id: "dry-agent", content: "Contenido de agente de prueba." } },
       { dryRun: true }
     );
     expect(result.created).toBe(false);
@@ -462,7 +465,10 @@ describe("CreationPipeline", () => {
   });
 
   it("preview nunca escribe nada", async () => {
-    await pipeline.preview({ kind: "agent", payload: { id: "preview-agent", data: {} } });
+    await pipeline.preview({
+      kind: "agent",
+      payload: { id: "preview-agent", content: "Contenido de agente de prueba." },
+    });
     await expect(harness.agentManager.getAgent("preview-agent")).rejects.toThrow();
   });
 
@@ -471,18 +477,24 @@ describe("CreationPipeline", () => {
   // ---------------------------------------------------------------------
 
   it("cancel impide que una operación pendiente se ejecute", async () => {
-    const preview = await pipeline.preview({ kind: "agent", payload: { id: "a1", data: {} } });
+    const preview = await pipeline.preview({
+      kind: "agent",
+      payload: { id: "a1", content: "Contenido de agente de prueba." },
+    });
     expect(await pipeline.cancel(preview.operationId)).toBe(true);
     await expect(
       pipeline.create(
-        { kind: "agent", payload: { id: "a1", data: {} } },
+        { kind: "agent", payload: { id: "a1", content: "Contenido de agente de prueba." } },
         { operationId: preview.operationId }
       )
     ).rejects.toMatchObject({ code: CreationErrorCode.CREATION_CANCELLED });
   });
 
   it("cancel devuelve false para una operación ya completada", async () => {
-    const result = await pipeline.create({ kind: "agent", payload: { id: "a1", data: {} } });
+    const result = await pipeline.create({
+      kind: "agent",
+      payload: { id: "a1", content: "Contenido de agente de prueba." },
+    });
     expect(await pipeline.cancel(result.operationId)).toBe(false);
   });
 
@@ -491,10 +503,13 @@ describe("CreationPipeline", () => {
   });
 
   it("no permite reutilizar un operationId ya completado", async () => {
-    const result = await pipeline.create({ kind: "agent", payload: { id: "a1", data: {} } });
+    const result = await pipeline.create({
+      kind: "agent",
+      payload: { id: "a1", content: "Contenido de agente de prueba." },
+    });
     await expect(
       pipeline.create(
-        { kind: "agent", payload: { id: "a2", data: {} } },
+        { kind: "agent", payload: { id: "a2", content: "Contenido de agente de prueba." } },
         { operationId: result.operationId }
       )
     ).rejects.toMatchObject({ code: CreationErrorCode.CREATION_ALREADY_COMPLETED });
@@ -517,7 +532,10 @@ describe("CreationPipeline", () => {
       resolveProvider: (id) => providers.get(id),
       eventBus,
     });
-    await pipelineWithEvents.create({ kind: "agent", payload: { id: "evt-agent", data: {} } });
+    await pipelineWithEvents.create({
+      kind: "agent",
+      payload: { id: "evt-agent", content: "Contenido de agente de prueba." },
+    });
     expect(phases).toContain("creation.started");
     expect(phases).toContain("creation.previewed");
     expect(phases).toContain("creation.completed");
@@ -536,7 +554,10 @@ describe("CreationPipeline", () => {
       eventBus,
     });
     await expect(
-      pipelineWithEvents.create({ kind: "agent", payload: { id: "a1", data: {} } })
+      pipelineWithEvents.create({
+        kind: "agent",
+        payload: { id: "a1", content: "Contenido de agente de prueba." },
+      })
     ).rejects.toThrow();
     expect(phases).toContain("creation.failed");
   });
@@ -556,7 +577,7 @@ describe("CreationPipeline", () => {
     });
     const preview = await pipelineWithEvents.preview({
       kind: "agent",
-      payload: { id: "a1", data: {} },
+      payload: { id: "a1", content: "Contenido de agente de prueba." },
     });
     await pipelineWithEvents.cancel(preview.operationId);
     expect(phases).toContain("creation.cancelled");
@@ -575,7 +596,10 @@ describe("CreationPipeline", () => {
       resolveProvider: (id) => providers.get(id),
       logger,
     });
-    await pipelineWithLogger.create({ kind: "agent", payload: { id: "logged-agent", data: {} } });
+    await pipelineWithLogger.create({
+      kind: "agent",
+      payload: { id: "logged-agent", content: "Contenido de agente de prueba." },
+    });
     expect(logs.some((m) => m.includes("creation:started"))).toBe(true);
     expect(logs.some((m) => m.includes("creation:completed"))).toBe(true);
   });
@@ -601,7 +625,7 @@ describe("CreationPipeline", () => {
     });
     const result = await pipelineWithVerification.create({
       kind: "agent",
-      payload: { id: "verified-agent", data: {} },
+      payload: { id: "verified-agent", content: "Contenido de agente de prueba." },
     });
     expect(result.created).toBe(true);
     expect(logs.some((m) => m.includes("verificación posterior"))).toBe(true);
@@ -610,7 +634,7 @@ describe("CreationPipeline", () => {
   it("no falla la creación si no hay verificationManager configurado (afterExecution es un no-op)", async () => {
     const result = await pipeline.create({
       kind: "agent",
-      payload: { id: "no-verify-agent", data: {} },
+      payload: { id: "no-verify-agent", content: "Contenido de agente de prueba." },
     });
     expect(result.created).toBe(true);
   });

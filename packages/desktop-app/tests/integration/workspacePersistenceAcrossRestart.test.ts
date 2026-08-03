@@ -109,7 +109,7 @@ describe("Integración real: persistencia del Workspace tras reiniciar DWM", () 
         await fixtureEngine2.execute({
           requestId: "fx-agent",
           operation: "agents.create",
-          payload: { id: "agente-persistencia", data: { name: "Agente de persistencia" } },
+          payload: { id: "agente-persistencia", content: "# Agente de persistencia\n" },
           caller: admin,
         })
       ).success

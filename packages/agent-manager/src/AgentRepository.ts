@@ -1,30 +1,32 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
+import { AGENT_FILE_EXTENSION, type Agent, type AgentMetadata } from "./AgentTypes.js";
 import {
-  AGENT_MANAGED_METADATA_KEY,
-  isAgentData,
-  type Agent,
-  type AgentData,
-  type AgentMetadata,
-} from "./AgentTypes.js";
+  joinFrontmatter,
+  parseDwmMetadata,
+  removeDwmBlock,
+  splitFrontmatter,
+  upsertDwmBlock,
+} from "./AgentFrontmatter.js";
 import { AgentErrorCode } from "./errors/AgentErrorCode.js";
 import { AgentError } from "./errors/AgentError.js";
 
-const FILE_SUFFIX = ".json";
-
 /**
- * Responsable exclusivo de leer y escribir agentes como lo que realmente
- * son: ficheros JSON individuales dentro del recurso `agents` del
- * Workspace. No mantiene ningún estado propio, no crea una base de
- * datos, no mueve ni renombra ficheros —archivar/restaurar se hace
- * reescribiendo los metadatos gestionados dentro del propio fichero— y
- * nunca decide por sí mismo qué directorio usar: quien lo invoca
- * (`AgentManager`) es responsable de resolverlo, típicamente a través de
- * `@dwm/psn-adapter`.
+ * Responsable exclusivo de leer y escribir agentes como lo que
+ * realmente son: ficheros Markdown individuales dentro del recurso
+ * `agents` del Workspace, compatibles con el formato real de Kilo Code
+ * y del PSN-BASE original (`description`/`mode`/`color` en frontmatter
+ * más un encabezado `# Nombre`). No mantiene ningún estado propio, no
+ * crea una base de datos y no mueve ni renombra ficheros —archivar y
+ * restaurar se hace reescribiendo el bloque `dwm:` reservado del
+ * frontmatter dentro del propio fichero, nunca moviéndolo—. Nunca
+ * decide por sí mismo qué directorio usar: quien lo invoca
+ * (`AgentManager`) es responsable de resolverlo, típicamente a través
+ * de `@dwm/psn-adapter`.
  */
 export class AgentRepository {
   private fileNameFor(id: string): string {
-    return `${id}${FILE_SUFFIX}`;
+    return `${id}${AGENT_FILE_EXTENSION}`;
   }
 
   private pathFor(directory: string, id: string): string {
@@ -62,49 +64,39 @@ export class AgentRepository {
       });
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (err) {
-      throw AgentError.wrap(err, {
-        code: AgentErrorCode.AGENT_INVALID_STRUCTURE,
-        origin: "repository",
-        recoverable: true,
-        message: `El fichero del agente "${id}" no contiene JSON válido.`,
-      });
-    }
-
-    if (!isAgentData(parsed)) {
+    const { frontmatter, body, malformed } = splitFrontmatter(raw);
+    if (malformed) {
       throw new AgentError({
         code: AgentErrorCode.AGENT_INVALID_STRUCTURE,
         origin: "repository",
         recoverable: true,
-        message: `El fichero del agente "${id}" no contiene un objeto JSON plano.`,
+        message: `El agente "${id}" tiene un frontmatter mal formado (delimitador de apertura sin cierre).`,
       });
     }
 
-    const { [AGENT_MANAGED_METADATA_KEY]: managed, ...data } = parsed as AgentData & {
-      [AGENT_MANAGED_METADATA_KEY]?: Partial<AgentMetadata>;
-    };
-
+    const managed = parseDwmMetadata(frontmatter);
+    const content = joinFrontmatter(removeDwmBlock(frontmatter), body);
     const stat = await this.statOrUndefined(filePath);
     const metadata = this.resolveMetadata(managed, stat);
 
-    return { id, data, metadata };
+    return { id, content, metadata };
   }
 
-  /** Escribe (crea o sobrescribe por completo) un agente en disco, incluidos sus metadatos gestionados. */
+  /** Escribe (crea o sobrescribe por completo) un agente en disco, insertando sus metadatos gestionados en el frontmatter. */
   async write(
     directory: string,
     id: string,
-    data: AgentData,
+    content: string,
     metadata: AgentMetadata
   ): Promise<void> {
     const filePath = this.pathFor(directory, id);
-    const content: Record<string, unknown> = { ...data, [AGENT_MANAGED_METADATA_KEY]: metadata };
+    const { frontmatter, body } = splitFrontmatter(content);
+    const withDwm = upsertDwmBlock(frontmatter, metadata);
+    const finalContent = joinFrontmatter(withDwm, body);
+
     try {
       await fs.mkdir(directory, { recursive: true });
-      await fs.writeFile(filePath, `${JSON.stringify(content, null, 2)}\n`, "utf-8");
+      await fs.writeFile(filePath, finalContent, "utf-8");
     } catch (err) {
       throw AgentError.wrap(err, {
         code: AgentErrorCode.AGENT_WRITE_FAILED,
@@ -137,7 +129,7 @@ export class AgentRepository {
     }
   }
 
-  /** Lista los identificadores de todos los agentes presentes físicamente en `directory` (ficheros `.json` de primer nivel), ordenados. */
+  /** Lista los identificadores de todos los agentes presentes físicamente en `directory` (ficheros de primer nivel con la extensión de agente), ordenados. */
   async listIds(directory: string): Promise<string[]> {
     let entries: string[];
     try {
@@ -152,8 +144,8 @@ export class AgentRepository {
       });
     }
     return entries
-      .filter((name) => name.endsWith(FILE_SUFFIX))
-      .map((name) => name.slice(0, -FILE_SUFFIX.length))
+      .filter((name) => name.endsWith(AGENT_FILE_EXTENSION))
+      .map((name) => name.slice(0, -AGENT_FILE_EXTENSION.length))
       .sort();
   }
 

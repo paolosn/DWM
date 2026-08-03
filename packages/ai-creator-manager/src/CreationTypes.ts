@@ -55,7 +55,7 @@ export interface GeneratedContentPayload {
 
 export interface AgentCreationPayload extends GeneratedContentPayload {
   readonly id?: string;
-  readonly data?: Record<string, unknown>;
+  readonly content?: string;
 }
 
 export interface SkillCreationPayload extends GeneratedContentPayload {

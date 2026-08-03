@@ -54,22 +54,18 @@ export class AgentRegistry {
   filter(criteria: AgentFilter): AgentSummary[] {
     return this.list().filter((summary) => {
       if (criteria.archived !== undefined && summary.archived !== criteria.archived) return false;
-      if (criteria.tags && criteria.tags.length > 0) {
-        const summaryTags = new Set(summary.tags ?? []);
-        if (!criteria.tags.every((tag) => summaryTags.has(tag))) return false;
-      }
       return true;
     });
   }
 
-  /** Búsqueda de texto libre, sin distinguir mayúsculas, sobre el id, el nombre y las etiquetas. */
+  /** Búsqueda de texto libre, sin distinguir mayúsculas, sobre el id, el nombre y la descripción. */
   search(query: string): AgentSummary[] {
     const needle = query.trim().toLowerCase();
     if (needle.length === 0) return this.list();
     return this.list().filter((summary) => {
       if (summary.id.toLowerCase().includes(needle)) return true;
       if (summary.name?.toLowerCase().includes(needle)) return true;
-      return (summary.tags ?? []).some((tag) => tag.toLowerCase().includes(needle));
+      return summary.description?.toLowerCase().includes(needle) ?? false;
     });
   }
 

@@ -8,7 +8,7 @@ describe("AgentValidator", () => {
 
   describe("validateId() / assertValidId()", () => {
     it("acepta identificadores válidos", () => {
-      expect(validator.validateId("agente-1").valid).toBe(true);
+      expect(validator.validateId("mi-agente").valid).toBe(true);
     });
 
     it("reporta un issue claro para identificadores inválidos", () => {
@@ -28,39 +28,45 @@ describe("AgentValidator", () => {
     });
   });
 
-  describe("validateData() / assertValidData()", () => {
-    it("acepta un objeto plano sin la clave reservada", () => {
-      expect(validator.validateData({ name: "x" }).valid).toBe(true);
+  describe("validateContent() / assertValidContent()", () => {
+    it("acepta contenido Markdown sin frontmatter reservado", () => {
+      expect(validator.validateContent("# Título\nCuerpo.\n").valid).toBe(true);
+      expect(validator.validateContent("---\ntitle: X\n---\nCuerpo\n").valid).toBe(true);
     });
 
-    it("rechaza valores que no son objetos planos", () => {
-      expect(validator.validateData(null).valid).toBe(false);
-      expect(validator.validateData([]).valid).toBe(false);
-      expect(validator.validateData("texto").valid).toBe(false);
+    it("rechaza valores que no son cadenas", () => {
+      expect(validator.validateContent(null).valid).toBe(false);
+      expect(validator.validateContent(42).valid).toBe(false);
     });
 
-    it("rechaza datos que incluyen la clave reservada __dwm", () => {
-      const result = validator.validateData({ name: "x", __dwm: { archived: true } });
+    it("rechaza contenido con frontmatter mal formado", () => {
+      const result = validator.validateContent("---\ntitle: X\nnunca se cierra\n");
       expect(result.valid).toBe(false);
-      expect(result.issues.some((i) => i.field === "data.__dwm")).toBe(true);
+      expect(result.issues[0]?.field).toBe("content");
     });
 
-    it("assertValidData lanza AgentError con código AGENT_VALIDATION_FAILED", () => {
-      expect(() => validator.assertValidData(null)).toThrowError(
+    it("rechaza contenido cuyo frontmatter ya usa la clave reservada dwm:", () => {
+      const result = validator.validateContent("---\ndwm:\n  archived: true\n---\nCuerpo\n");
+      expect(result.valid).toBe(false);
+      expect(result.issues.some((i) => i.message.includes("dwm:"))).toBe(true);
+    });
+
+    it("assertValidContent lanza AgentError con código AGENT_VALIDATION_FAILED", () => {
+      expect(() => validator.assertValidContent(null)).toThrowError(
         expect.objectContaining({ code: AgentErrorCode.AGENT_VALIDATION_FAILED })
       );
     });
 
-    it("assertValidData no lanza para datos válidos", () => {
-      expect(() => validator.assertValidData({})).not.toThrow();
+    it("assertValidContent no lanza para contenido válido", () => {
+      expect(() => validator.assertValidContent("# X\n")).not.toThrow();
     });
   });
 
   describe("validateStructure() / assertValidStructure()", () => {
-    function makeAgent(overrides: Partial<Agent> = {}): Agent {
+    function makeRule(overrides: Partial<Agent> = {}): Agent {
       return {
-        id: "agente-1",
-        data: { name: "x" },
+        id: "mi-agente",
+        content: "# X\n",
         metadata: {
           archived: false,
           createdAt: new Date().toISOString(),
@@ -70,12 +76,12 @@ describe("AgentValidator", () => {
       };
     }
 
-    it("acepta un agente bien formado", () => {
-      expect(validator.validateStructure(makeAgent()).valid).toBe(true);
+    it("acepta una agente bien formada", () => {
+      expect(validator.validateStructure(makeRule()).valid).toBe(true);
     });
 
-    it("acepta un agente archivado con archivedAt válido", () => {
-      const agent = makeAgent({
+    it("acepta una agente archivada con archivedAt válido", () => {
+      const agent = makeRule({
         metadata: {
           archived: true,
           archivedAt: new Date().toISOString(),
@@ -86,10 +92,10 @@ describe("AgentValidator", () => {
       expect(validator.validateStructure(agent).valid).toBe(true);
     });
 
-    it("acumula issues de id, datos y metadatos inválidos", () => {
-      const agent = makeAgent({
+    it("acumula issues de id, contenido y metadatos inválidos", () => {
+      const agent = makeRule({
         id: "..",
-        data: null as unknown as Record<string, unknown>,
+        content: 42 as unknown as string,
         metadata: {
           archived: "no" as unknown as boolean,
           createdAt: "no-es-fecha",
@@ -101,7 +107,7 @@ describe("AgentValidator", () => {
       expect(result.valid).toBe(false);
       const fields = result.issues.map((i) => i.field);
       expect(fields).toContain("id");
-      expect(fields).toContain("data");
+      expect(fields).toContain("content");
       expect(fields).toContain("metadata.createdAt");
       expect(fields).toContain("metadata.updatedAt");
       expect(fields).toContain("metadata.archived");
@@ -109,14 +115,14 @@ describe("AgentValidator", () => {
     });
 
     it("assertValidStructure lanza AgentError con código AGENT_INVALID_STRUCTURE", () => {
-      const agent = makeAgent({ id: ".." });
+      const agent = makeRule({ id: ".." });
       expect(() => validator.assertValidStructure(agent)).toThrowError(
         expect.objectContaining({ code: AgentErrorCode.AGENT_INVALID_STRUCTURE })
       );
     });
 
-    it("assertValidStructure no lanza para un agente válido", () => {
-      expect(() => validator.assertValidStructure(makeAgent())).not.toThrow();
+    it("assertValidStructure no lanza para una agente válida", () => {
+      expect(() => validator.assertValidStructure(makeRule())).not.toThrow();
     });
   });
 });
