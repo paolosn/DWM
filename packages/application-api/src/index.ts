@@ -107,6 +107,10 @@ export { PluginController } from "./controllers/PluginController.js";
 export { DeliveryController, type DeliveryDTO } from "./controllers/DeliveryController.js";
 export { ConnectionsController } from "./controllers/ConnectionsController.js";
 export { ProvisioningController } from "./controllers/ProvisioningController.js";
+export {
+  ContentSyncController,
+  type ContentSyncCatalogEntry,
+} from "./controllers/ContentSyncController.js";
 export { appendClientActivity, listClientActivity, type ActivityEntry } from "./ActivityLog.js";
 export { indexProjectDocuments, type ClientDocumentEntry } from "./ClientDocumentIndex.js";
 

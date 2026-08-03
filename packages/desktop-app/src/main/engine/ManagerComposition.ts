@@ -28,7 +28,11 @@ import { ImportManager } from "@dwm/import-manager";
 import { DeliveryManager } from "@dwm/delivery-manager";
 import { SecretsManager } from "@dwm/secrets";
 import { ConnectionsManager } from "@dwm/connections-manager";
-import { ProjectProvisioningService, ViabilityAnalysisService } from "@dwm/project-provisioning";
+import {
+  ProjectProvisioningService,
+  ViabilityAnalysisService,
+  ContentSyncService,
+} from "@dwm/project-provisioning";
 import { AIManager } from "@dwm/ai-manager";
 
 export interface ManagerCompositionOptions {
@@ -155,6 +159,16 @@ export async function composeManagers(
   const knowledgeManager = new KnowledgeManager({ psnAdapter });
   const clientManager = new ClientManager({ psnAdapter });
   const projectManager = new ProjectManager({ projectsDir: path.join(dataDir, "projects") });
+
+  // kilo-content-integration (Commit 3) — reutiliza tal cual psnAdapter/
+  // agentManager/skillManager/ruleManager ya compuestos arriba; ningún
+  // motor de sincronización nuevo ni instancia duplicada.
+  const contentSyncService = new ContentSyncService({
+    psnAdapter,
+    agentManager,
+    skillManager,
+    ruleManager,
+  });
 
   const environmentManager = new EnvironmentManager(base({ configManager, workspaceManager }));
   const profileManager = new ProfileManager(
@@ -309,6 +323,7 @@ export async function composeManagers(
       projectProvisioningService,
       aiManager,
       viabilityAnalysisService,
+      contentSyncService,
       psnAdapter,
       agentManager,
       skillManager,

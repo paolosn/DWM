@@ -26,6 +26,7 @@ import type { ConnectionsManager } from "@dwm/connections-manager";
 import type {
   ProjectProvisioningService,
   ViabilityAnalysisService,
+  ContentSyncService,
 } from "@dwm/project-provisioning";
 import type { AIManager } from "@dwm/ai-manager";
 
@@ -66,6 +67,7 @@ export interface ApplicationContextOptions {
   readonly projectProvisioningService?: ProjectProvisioningService;
   readonly aiManager?: AIManager;
   readonly viabilityAnalysisService?: ViabilityAnalysisService;
+  readonly contentSyncService?: ContentSyncService;
 }
 
 export class ApplicationContext {
@@ -97,6 +99,7 @@ export class ApplicationContext {
   readonly projectProvisioningService?: ProjectProvisioningService;
   readonly aiManager?: AIManager;
   readonly viabilityAnalysisService?: ViabilityAnalysisService;
+  readonly contentSyncService?: ContentSyncService;
 
   constructor(options: ApplicationContextOptions = {}) {
     if (options.logger) this.logger = options.logger;
@@ -133,6 +136,7 @@ export class ApplicationContext {
     if (options.aiManager) this.aiManager = options.aiManager;
     if (options.viabilityAnalysisService)
       this.viabilityAnalysisService = options.viabilityAnalysisService;
+    if (options.contentSyncService) this.contentSyncService = options.contentSyncService;
   }
 
   /** Lista de integraciones efectivamente disponibles (para `system.status`). */
@@ -163,6 +167,7 @@ export class ApplicationContext {
     if (this.connectionsManager) connected.push("connections-manager");
     if (this.projectProvisioningService) connected.push("project-provisioning");
     if (this.aiManager) connected.push("ai-manager");
+    if (this.contentSyncService) connected.push("content-sync");
     return connected;
   }
 }
