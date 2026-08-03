@@ -21,6 +21,15 @@ export {
   type ViabilityAnalysisInput,
   type ViabilityReport,
 } from "./ViabilityAnalysisService.js";
+export {
+  ContentSyncService,
+  type SyncKind,
+  type SyncAction,
+  type SyncPreview,
+  type AssignResult,
+  type WithdrawResult,
+  type ContentSyncServiceOptions,
+} from "./ContentSyncService.js";
 
 export {
   ProjectProvisioningError,
