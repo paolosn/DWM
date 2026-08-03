@@ -69,6 +69,21 @@ interface CreateResult {
   readonly vsCodeMessage: string;
 }
 
+interface ViabilityReport {
+  readonly veredicto: string;
+  readonly puntuacion: number;
+  readonly resumen: string;
+  readonly riesgos: readonly string[];
+  readonly complejidad: string;
+  readonly plazoEstimado: string;
+  readonly costeOrientativo: string;
+  readonly preguntasPendientes: readonly string[];
+  readonly recomendacion: string;
+  readonly siguientePaso: string;
+  readonly providerId: string;
+  readonly model?: string;
+}
+
 /**
  * client-workflow-v2 — punto de entrada humano principal (README
  * secciones 1-3): Nueva viabilidad / Nueva auditoría / Nueva revisión de
@@ -89,6 +104,37 @@ export function ProvisioningScreen(): JSX.Element {
   const [error, setError] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<CreateResult | undefined>(undefined);
 
+  const [analysis, setAnalysis] = useState<ViabilityReport | undefined>(undefined);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | undefined>(undefined);
+
+  async function handleAnalyze(): Promise<void> {
+    if (!fields.descripcion.trim() || !fields.nombreProyecto.trim()) return;
+    setAnalyzing(true);
+    setAnalysisError(undefined);
+    setAnalysis(undefined);
+    try {
+      const report = (await callOperation("provisioning.analyze-viability", {
+        project: {
+          projectName: fields.nombreProyecto.trim(),
+          descripcion: fields.descripcion.trim(),
+          ...(fields.objetivo.trim() ? { objetivo: fields.objetivo.trim() } : {}),
+          ...(fields.precio.trim() ? { presupuesto: fields.precio.trim() } : {}),
+          ...(fields.plazo.trim() ? { plazo: fields.plazo.trim() } : {}),
+          ...(fields.tecnologia.trim() ? { tecnologia: fields.tecnologia.trim() } : {}),
+          ...(fields.notas.trim() ? { notas: fields.notas.trim() } : {}),
+        },
+      })) as ViabilityReport;
+      setAnalysis(report);
+    } catch (err) {
+      setAnalysisError(
+        err instanceof DwmOperationError ? err.message : "No se pudo generar el análisis."
+      );
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   function setField<K extends keyof FormFields>(key: K, value: string): void {
     setFields((prev) => ({ ...prev, [key]: value }));
   }
@@ -98,6 +144,8 @@ export function ProvisioningScreen(): JSX.Element {
     setFields(EMPTY_FIELDS);
     setError(undefined);
     setResult(undefined);
+    setAnalysis(undefined);
+    setAnalysisError(undefined);
   }
 
   function buildDescription(): string {
@@ -148,11 +196,21 @@ export function ProvisioningScreen(): JSX.Element {
         },
         ...(category === "viabilidad"
           ? {
-              briefing: {
-                ...(fields.precio.trim() ? { presupuestoCliente: fields.precio.trim() } : {}),
-                ...(fields.objetivo.trim() ? { siguientePaso: fields.objetivo.trim() } : {}),
-                ...(fields.notas.trim() ? { notasNegociacion: fields.notas.trim() } : {}),
-              },
+              briefing: analysis
+                ? {
+                    veredicto: analysis.veredicto,
+                    explicacionVeredicto: analysis.resumen,
+                    precioMercado: analysis.costeOrientativo,
+                    riesgos: analysis.riesgos,
+                    preguntasAlCliente: analysis.preguntasPendientes,
+                    siguientePaso: analysis.siguientePaso,
+                    notasNegociacion: `Puntuación de viabilidad: ${analysis.puntuacion}/100. Complejidad: ${analysis.complejidad}. Plazo estimado: ${analysis.plazoEstimado}. Recomendación: ${analysis.recomendacion}`,
+                  }
+                : {
+                    ...(fields.precio.trim() ? { presupuestoCliente: fields.precio.trim() } : {}),
+                    ...(fields.objetivo.trim() ? { siguientePaso: fields.objetivo.trim() } : {}),
+                    ...(fields.notas.trim() ? { notasNegociacion: fields.notas.trim() } : {}),
+                  },
             }
           : {}),
       })) as CreateResult;
@@ -315,23 +373,80 @@ export function ProvisioningScreen(): JSX.Element {
 
           {error && <ErrorState title="No se pudo crear el proyecto" technicalDetail={error} />}
 
+          {category === "viabilidad" && analysisError && (
+            <ErrorState title="No se pudo generar el análisis" technicalDetail={analysisError} />
+          )}
+
+          {category === "viabilidad" && analysis && (
+            <div className="dwm-provisioning-screen__report">
+              <InlineAlert
+                tone={analysis.puntuacion >= 60 ? "success" : "warning"}
+                title={`${analysis.veredicto} — ${analysis.puntuacion}/100`}
+              >
+                {analysis.resumen}
+              </InlineAlert>
+              <dl className="dwm-provisioning-screen__report-grid">
+                <dt>Complejidad</dt>
+                <dd>{analysis.complejidad}</dd>
+                <dt>Plazo estimado</dt>
+                <dd>{analysis.plazoEstimado}</dd>
+                <dt>Coste orientativo</dt>
+                <dd>{analysis.costeOrientativo}</dd>
+                <dt>Recomendación</dt>
+                <dd>{analysis.recomendacion}</dd>
+                <dt>Siguiente paso</dt>
+                <dd>{analysis.siguientePaso}</dd>
+              </dl>
+              {analysis.riesgos.length > 0 && (
+                <div>
+                  <strong>Riesgos</strong>
+                  <ul>
+                    {analysis.riesgos.map((riesgo, i) => (
+                      <li key={i}>{riesgo}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {analysis.preguntasPendientes.length > 0 && (
+                <div>
+                  <strong>Preguntas pendientes</strong>
+                  <ul>
+                    {analysis.preguntasPendientes.map((pregunta, i) => (
+                      <li key={i}>{pregunta}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="dwm-provisioning-screen__actions">
             <Button variant="secondary" onClick={reset}>
               Cancelar
             </Button>
-            <Button
-              onClick={() => void handleSubmit()}
-              loading={submitting}
-              disabled={!fields.cliente.trim() || !fields.nombreProyecto.trim()}
-            >
-              {category === "viabilidad"
-                ? "Cliente acepta — crear proyecto"
-                : category === "auditoria"
-                  ? "Cliente acepta — preparar auditoría"
-                  : category === "seguridad"
-                    ? "Confirmar"
-                    : "Crear proyecto"}
-            </Button>
+            {category === "viabilidad" && !analysis ? (
+              <Button
+                onClick={() => void handleAnalyze()}
+                loading={analyzing}
+                disabled={!fields.descripcion.trim() || !fields.nombreProyecto.trim()}
+              >
+                Generar análisis
+              </Button>
+            ) : (
+              <Button
+                onClick={() => void handleSubmit()}
+                loading={submitting}
+                disabled={!fields.cliente.trim() || !fields.nombreProyecto.trim()}
+              >
+                {category === "viabilidad"
+                  ? "Cliente acepta — crear proyecto"
+                  : category === "auditoria"
+                    ? "Cliente acepta — preparar auditoría"
+                    : category === "seguridad"
+                      ? "Confirmar"
+                      : "Crear proyecto"}
+              </Button>
+            )}
           </div>
         </div>
       </Card>

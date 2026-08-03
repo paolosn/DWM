@@ -67,15 +67,26 @@ export interface ClientDefaultAi {
   readonly fallbackModel?: string;
   /** Referencia a `@dwm/secrets`; nunca el valor de la clave. */
   readonly secretReference?: string;
+  /** Endpoint HTTP del proveedor (cierre de limitaciones, item 6): permite cualquier proveedor/despliegue compatible, nunca acoplado a uno fijo. */
+  readonly baseUrl?: string;
+  /** Forma de la API HTTP a usar contra `baseUrl`; por defecto "openai" (el formato más ampliamente compatible). */
+  readonly format?: "openai" | "anthropic";
 }
 
 export function isSafeClientDefaultAi(value: unknown): value is ClientDefaultAi {
   if (value === undefined) return true;
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  for (const key of ["provider", "model", "fallbackModel", "secretReference"] as const) {
+  for (const key of ["provider", "model", "fallbackModel", "secretReference", "baseUrl"] as const) {
     const field = record[key];
     if (field !== undefined && (typeof field !== "string" || field.length > 256)) return false;
+  }
+  if (
+    record["format"] !== undefined &&
+    record["format"] !== "openai" &&
+    record["format"] !== "anthropic"
+  ) {
+    return false;
   }
   return true;
 }

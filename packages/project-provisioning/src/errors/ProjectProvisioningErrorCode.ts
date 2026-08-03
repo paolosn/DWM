@@ -7,4 +7,6 @@ export enum ProjectProvisioningErrorCode {
   PROVISIONING_DESTINATION_EXISTS = "PROVISIONING_DESTINATION_EXISTS",
   PROVISIONING_COPY_FAILED = "PROVISIONING_COPY_FAILED",
   PROVISIONING_ROLLBACK_FAILED = "PROVISIONING_ROLLBACK_FAILED",
+  /** Fallo real de la IA (respuesta no interpretable, sin proveedor configurado, etc.) — encargo cierre de limitaciones, item 6. */
+  PROVISIONING_AI_FAILED = "PROVISIONING_AI_FAILED",
 }

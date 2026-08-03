@@ -15,6 +15,12 @@ export {
   ProjectProvisioningService,
   type ProjectProvisioningServiceOptions,
 } from "./ProjectProvisioningService.js";
+export {
+  ViabilityAnalysisService,
+  type ResolvedAiConfig,
+  type ViabilityAnalysisInput,
+  type ViabilityReport,
+} from "./ViabilityAnalysisService.js";
 
 export {
   ProjectProvisioningError,

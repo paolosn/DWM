@@ -9,6 +9,11 @@ export type { AIProviderFactory } from "./AIProviderFactory.js";
 export { AIProviderRegistry, type RegisteredProvider } from "./AIProviderRegistry.js";
 export { AIHealthMonitor, type AIHealthMonitorOptions } from "./AIHealthMonitor.js";
 export { AIManager, type AIManagerOptions, type RegisterProviderOptions } from "./AIManager.js";
+export {
+  HttpAIProvider,
+  type HttpAIProviderOptions,
+  type HttpAIProviderFormat,
+} from "./HttpAIProvider.js";
 
 export {
   AIError,

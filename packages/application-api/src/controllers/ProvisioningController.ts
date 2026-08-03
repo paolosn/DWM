@@ -14,6 +14,8 @@ import {
   type ProjectProvisioningCategory,
   type ProvisionProjectResult,
   type ViabilityBriefingInput,
+  type ViabilityReport,
+  type ResolvedAiConfig,
 } from "@dwm/project-provisioning";
 
 declare module "../ApplicationRequest.js" {
@@ -30,6 +32,23 @@ declare module "../ApplicationRequest.js" {
         readonly vsCodeOpened: boolean;
         readonly vsCodeMessage: string;
       };
+    };
+    /** Motor real de viabilidad con IA (cierre de limitaciones, item 6). Nunca persiste nada; solo devuelve el informe estructurado. */
+    "provisioning.analyze-viability": {
+      payload: {
+        existingClientId?: string;
+        projectId?: string;
+        project: {
+          projectName: string;
+          descripcion: string;
+          objetivo?: string;
+          presupuesto?: string;
+          plazo?: string;
+          tecnologia?: string;
+          notas?: string;
+        };
+      };
+      result: ViabilityReport;
     };
   }
 }
@@ -247,5 +266,87 @@ export class ProvisioningController implements ApplicationController {
         return { ...result, vsCodeOpened: launch.opened, vsCodeMessage: launch.message };
       },
     });
+
+    // "Viabilidad con IA" (encargo, cierre de limitaciones item 6):
+    // reutiliza tal cual ViabilityAnalysisService (que a su vez reutiliza
+    // AIManager/AIProviderRegistry/SecretsManager, ya cableados) — sin
+    // motor propio ni segundo resolutor de configuración de IA.
+    permissions.register("provisioning.analyze-viability", ["execute"]);
+    operations.register({
+      name: "provisioning.analyze-viability",
+      version: "1.0.0",
+      capabilities: ["execute"],
+      long: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const projectRecord = asRecord(record["project"]);
+        const projectName = requireString(projectRecord, "projectName");
+        const descripcion = requireString(projectRecord, "descripcion");
+        return {
+          ...(optionalString(record, "existingClientId") !== undefined
+            ? { existingClientId: optionalString(record, "existingClientId")! }
+            : {}),
+          ...(optionalString(record, "projectId") !== undefined
+            ? { projectId: optionalString(record, "projectId")! }
+            : {}),
+          project: {
+            projectName,
+            descripcion,
+            ...(optionalString(projectRecord, "objetivo") !== undefined
+              ? { objetivo: optionalString(projectRecord, "objetivo")! }
+              : {}),
+            ...(optionalString(projectRecord, "presupuesto") !== undefined
+              ? { presupuesto: optionalString(projectRecord, "presupuesto")! }
+              : {}),
+            ...(optionalString(projectRecord, "plazo") !== undefined
+              ? { plazo: optionalString(projectRecord, "plazo")! }
+              : {}),
+            ...(optionalString(projectRecord, "tecnologia") !== undefined
+              ? { tecnologia: optionalString(projectRecord, "tecnologia")! }
+              : {}),
+            ...(optionalString(projectRecord, "notas") !== undefined
+              ? { notas: optionalString(projectRecord, "notas")! }
+              : {}),
+          },
+        };
+      },
+      handler: async (payload) => {
+        const viabilityService = requireDependency(
+          this.context.viabilityAnalysisService,
+          "viability-analysis-service"
+        );
+        const aiConfig = await this.resolveAiConfig(payload.projectId, payload.existingClientId);
+        return viabilityService.analyze(aiConfig, payload.project);
+      },
+    });
+  }
+
+  /**
+   * Único punto de resolución de la configuración de IA a usar (encargo,
+   * item 6: "override de proyecto → defaultAi del cliente → IA global").
+   * No es un resolutor paralelo: solo arma el `ResolvedAiConfig` real que
+   * ya consume `ViabilityAnalysisService`; nunca decide nada por su
+   * cuenta ni retiene un valor de secreto (solo su referencia).
+   */
+  private async resolveAiConfig(
+    projectId: string | undefined,
+    existingClientId: string | undefined
+  ): Promise<ResolvedAiConfig> {
+    if (projectId) {
+      const project = this.context.projectManager?.getProject(projectId);
+      const projectAi = project?.configuration.settings?.["ai"];
+      if (projectAi && typeof projectAi === "object") {
+        return projectAi as ResolvedAiConfig;
+      }
+    }
+    if (existingClientId && this.context.clientManager) {
+      try {
+        const client = await this.context.clientManager.getClient(existingClientId);
+        if (client.defaultAi) return client.defaultAi;
+      } catch {
+        // Cliente no encontrado o error de lectura: se cae al fallback global, nunca se rompe el análisis.
+      }
+    }
+    return {};
   }
 }

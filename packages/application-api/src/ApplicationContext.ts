@@ -23,7 +23,11 @@ import type { StatusManager } from "@dwm/status";
 import type { ProfileManager } from "@dwm/profile";
 import type { PluginManager } from "@dwm/plugin";
 import type { ConnectionsManager } from "@dwm/connections-manager";
-import type { ProjectProvisioningService } from "@dwm/project-provisioning";
+import type {
+  ProjectProvisioningService,
+  ViabilityAnalysisService,
+} from "@dwm/project-provisioning";
+import type { AIManager } from "@dwm/ai-manager";
 
 /**
  * Referencias, todas opcionales, a las APIs públicas de los managers ya
@@ -60,6 +64,8 @@ export interface ApplicationContextOptions {
   readonly pluginManager?: PluginManager;
   readonly connectionsManager?: ConnectionsManager;
   readonly projectProvisioningService?: ProjectProvisioningService;
+  readonly aiManager?: AIManager;
+  readonly viabilityAnalysisService?: ViabilityAnalysisService;
 }
 
 export class ApplicationContext {
@@ -89,6 +95,8 @@ export class ApplicationContext {
   readonly pluginManager?: PluginManager;
   readonly connectionsManager?: ConnectionsManager;
   readonly projectProvisioningService?: ProjectProvisioningService;
+  readonly aiManager?: AIManager;
+  readonly viabilityAnalysisService?: ViabilityAnalysisService;
 
   constructor(options: ApplicationContextOptions = {}) {
     if (options.logger) this.logger = options.logger;
@@ -122,6 +130,9 @@ export class ApplicationContext {
     if (options.connectionsManager) this.connectionsManager = options.connectionsManager;
     if (options.projectProvisioningService)
       this.projectProvisioningService = options.projectProvisioningService;
+    if (options.aiManager) this.aiManager = options.aiManager;
+    if (options.viabilityAnalysisService)
+      this.viabilityAnalysisService = options.viabilityAnalysisService;
   }
 
   /** Lista de integraciones efectivamente disponibles (para `system.status`). */
@@ -151,6 +162,7 @@ export class ApplicationContext {
     if (this.pluginManager) connected.push("plugin");
     if (this.connectionsManager) connected.push("connections-manager");
     if (this.projectProvisioningService) connected.push("project-provisioning");
+    if (this.aiManager) connected.push("ai-manager");
     return connected;
   }
 }

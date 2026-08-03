@@ -28,7 +28,8 @@ import { ImportManager } from "@dwm/import-manager";
 import { DeliveryManager } from "@dwm/delivery-manager";
 import { SecretsManager } from "@dwm/secrets";
 import { ConnectionsManager } from "@dwm/connections-manager";
-import { ProjectProvisioningService } from "@dwm/project-provisioning";
+import { ProjectProvisioningService, ViabilityAnalysisService } from "@dwm/project-provisioning";
+import { AIManager } from "@dwm/ai-manager";
 
 export interface ManagerCompositionOptions {
   /** Directorio de datos de la app (`app.getPath("userData")`); aquí viven las carpetas propias de cada manager. */
@@ -279,6 +280,21 @@ export async function composeManagers(
   );
   const connectionsManager = new ConnectionsManager(base({ secretsManager }));
 
+  // client-workflow-v2 (cierre de limitaciones, item 6) — reutiliza tal
+  // cual la misma instancia de SecretsManager de arriba; AIManager nunca
+  // retiene una credencial más allá de una única llamada (la resuelve él
+  // mismo, vía @dwm/secrets, justo antes de cada petición).
+  const aiManager = new AIManager(
+    base({
+      configuration: {
+        timeoutMs: 30_000,
+        retry: { maxAttempts: 2, backoff: { baseDelayMs: 500 } },
+      },
+      secretsManager,
+    })
+  );
+  const viabilityAnalysisService = new ViabilityAnalysisService(aiManager);
+
   return {
     workspaceLocated,
     context: {
@@ -291,6 +307,8 @@ export async function composeManagers(
       deliveryManager,
       connectionsManager,
       projectProvisioningService,
+      aiManager,
+      viabilityAnalysisService,
       psnAdapter,
       agentManager,
       skillManager,

@@ -1,7 +1,7 @@
 import type { ProjectProvisioningErrorCode } from "./ProjectProvisioningErrorCode.js";
 
 export type ProjectProvisioningErrorOrigin =
-  "request" | "psn-base" | "profile" | "path" | "copy" | "rollback" | "client" | "project";
+  "request" | "psn-base" | "profile" | "path" | "copy" | "rollback" | "client" | "project" | "ai";
 
 export interface ProjectProvisioningErrorOptions {
   code: ProjectProvisioningErrorCode;
