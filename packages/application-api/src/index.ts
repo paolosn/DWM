@@ -108,6 +108,7 @@ export { DeliveryController, type DeliveryDTO } from "./controllers/DeliveryCont
 export { ConnectionsController } from "./controllers/ConnectionsController.js";
 export { ProvisioningController } from "./controllers/ProvisioningController.js";
 export { appendClientActivity, listClientActivity, type ActivityEntry } from "./ActivityLog.js";
+export { indexProjectDocuments, type ClientDocumentEntry } from "./ClientDocumentIndex.js";
 
 // Adaptador in-process (único adaptador implementado en este módulo)
 export { InProcessAdapter, type InProcessCallOptions } from "./adapters/InProcessAdapter.js";

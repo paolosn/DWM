@@ -247,8 +247,21 @@ describe("ClientFicha", () => {
     unmount();
   });
 
-  it("Documentos se declara honestamente no disponible por ahora, sin datos inventados", async () => {
-    setDwm({ "clients.get": () => success("clients.get", baseClient) });
+  it("Documentos muestra el índice real de documentos vía clients.documents", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "clients.documents": () =>
+        success("clients.documents", [
+          {
+            name: "briefing-inicial.md",
+            type: "Briefing",
+            path: "/workspace/proyectos/portal/briefing-inicial.md",
+            projectId: "p1",
+            projectName: "Portal de Clientes",
+            modifiedAt: "2026-01-02T10:00:00.000Z",
+          },
+        ]),
+    });
     const { container, unmount } = mount(
       <ToastProvider>
         <ClientFicha clientId="mci-finance" />
@@ -262,7 +275,40 @@ describe("ClientFicha", () => {
       ) ?? null
     );
     await settle();
-    expect(container.textContent).toContain("Función no disponible en esta versión");
+    expect(container.textContent).toContain("briefing-inicial.md");
+    expect(container.textContent).toContain("Briefing");
+    expect(container.textContent).toContain("Portal de Clientes");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Abrir") ??
+        null
+    );
+    await settle();
+    expect(window.dwm.openFolder).toHaveBeenCalledWith(
+      "/workspace/proyectos/portal/briefing-inicial.md"
+    );
+    unmount();
+  });
+
+  it("Documentos muestra un estado vacío real cuando no hay ninguno indexado", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "clients.documents": () => success("clients.documents", []),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Documentos"
+      ) ?? null
+    );
+    await settle();
+    expect(container.textContent).toContain("Todavía no hay documentos indexados");
     unmount();
   });
 

@@ -242,13 +242,54 @@ function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
   );
 }
 
-function DocumentosTab(): JSX.Element {
+function DocumentosTab({ client }: { readonly client: Client }): JSX.Element {
+  const { showToast } = useToast();
+  const query = useDwmQuery("clients.documents", { id: client.id });
+
+  async function openDocument(docPath: string, name: string): Promise<void> {
+    try {
+      const result = await window.dwm.openFolder(docPath);
+      showToast({
+        title: `${name}: ${result.message}`,
+        tone: result.opened ? "success" : "warning",
+      });
+    } catch {
+      showToast({ title: `No se pudo abrir «${name}»`, tone: "danger" });
+    }
+  }
+
+  if (query.status === "loading" || query.status === "idle") {
+    return <Spinner label="Cargando documentos…" />;
+  }
+  if (query.status === "error") {
+    return (
+      <ErrorState
+        title="No se pudieron cargar los documentos"
+        {...(query.error?.message ? { technicalDetail: query.error.message } : {})}
+      />
+    );
+  }
+  const documents = query.data ?? [];
+  if (documents.length === 0) {
+    return <EmptyState title="Todavía no hay documentos indexados para este cliente" />;
+  }
+
   return (
-    <InlineAlert tone="info" title="Función no disponible en esta versión">
-      No existe todavía una operación pública que indexe documentos (briefings, propuestas,
-      auditorías, informes) por cliente. Los ficheros reales (`cliente.json`, `briefing-inicial.md`,
-      `estado-proyecto.md`) están dentro de la carpeta de cada proyecto.
-    </InlineAlert>
+    <ul className="dwm-client-ficha__documents">
+      {documents.map((doc) => (
+        <li key={doc.path} className="dwm-client-ficha__document-row">
+          <div>
+            <strong>{doc.name}</strong>
+            <p className="dwm-client-ficha__document-meta">
+              {doc.type} · Proyecto: {doc.projectName} · {formatDate(doc.modifiedAt)}
+            </p>
+          </div>
+          <Button variant="secondary" onClick={() => void openDocument(doc.path, doc.name)}>
+            Abrir
+          </Button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -336,7 +377,7 @@ export function ClientFicha({ clientId }: ClientFichaProps): JSX.Element {
         { id: "proyectos", label: "Proyectos", content: <ProyectosTab client={client} /> },
         { id: "accesos", label: "Accesos y conexiones", content: <AccesosTab client={client} /> },
         { id: "mcp-ia", label: "MCP e IA", content: <McpIaTab client={client} /> },
-        { id: "documentos", label: "Documentos", content: <DocumentosTab /> },
+        { id: "documentos", label: "Documentos", content: <DocumentosTab client={client} /> },
         { id: "actividad", label: "Actividad", content: <ActividadTab client={client} /> },
       ]}
     />

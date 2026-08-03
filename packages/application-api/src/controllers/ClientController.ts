@@ -14,6 +14,7 @@ import {
 } from "../payloadHelpers.js";
 import type { Client, ClientSummary } from "@dwm/client-manager";
 import { listClientActivity, type ActivityEntry } from "../ActivityLog.js";
+import { indexProjectDocuments, type ClientDocumentEntry } from "../ClientDocumentIndex.js";
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
 
@@ -51,6 +52,8 @@ declare module "../ApplicationRequest.js" {
     "clients.restore": { payload: { id: string; root?: string }; result: Client };
     /** Cronología real de actividad del cliente (encargo, cierre de limitaciones item 3). Solo lectura. */
     "clients.activity": { payload: { id: string }; result: ActivityEntry[] };
+    /** Índice real de documentos del cliente y sus proyectos (encargo, cierre de limitaciones item 4). Solo lectura, sin duplicar ficheros. */
+    "clients.documents": { payload: { id: string }; result: ClientDocumentEntry[] };
   }
 }
 
@@ -238,6 +241,40 @@ export class ClientController implements ApplicationController {
         }
         const workspaceRoot = path.dirname(clientesDir);
         return [...(await listClientActivity(workspaceRoot, payload.id))];
+      },
+    });
+
+    // "Documentos reales" (encargo, cierre de limitaciones item 4): indexa
+    // en vivo (sin caché, sin copiar nada) la carpeta real de cada
+    // proyecto del cliente. Reutiliza ProjectManager.getProject() tal
+    // cual para resolver projectPath/nombre; nunca inventa un segundo
+    // almacenamiento de documentos.
+    permissions.register("clients.documents", ["read"]);
+    operations.register({
+      name: "clients.documents",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return { id: requireString(record, "id") };
+      },
+      handler: async (payload) => {
+        const client = await manager().getClient(payload.id);
+        const projectManager = requireDependency(this.context.projectManager, "project");
+
+        const perProject = await Promise.all(
+          client.references.projects.map(async (projectId) => {
+            const project = projectManager.getProject(projectId);
+            if (!project) return [];
+            return indexProjectDocuments(
+              project.configuration.projectPath,
+              project.id,
+              project.metadata.name
+            );
+          })
+        );
+
+        return perProject.flat().sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
       },
     });
   }
