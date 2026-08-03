@@ -92,6 +92,29 @@ describe("ProjectsScreen", () => {
 
     expect(container.textContent).toContain("DWM");
     expect(container.textContent).toContain("/x/dwm");
+    expect(container.textContent).toContain("Sin cliente asignado");
+    unmount();
+  });
+
+  it("migración/compatibilidad: un proyecto con clientId muestra el cliente en vez de 'Sin cliente asignado'", async () => {
+    const projectWithClient = {
+      ...project1,
+      configuration: { ...project1.configuration, clientId: "mci-finance" },
+    };
+    setDwm({
+      "projects.list": { success: true, requestId: "x", operation: "projects.list", data: ["p1"] },
+      "projects.get:p1": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: projectWithClient,
+      },
+    });
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    expect(container.textContent).toContain("mci-finance");
+    expect(container.textContent).not.toContain("Sin cliente asignado");
     unmount();
   });
 
