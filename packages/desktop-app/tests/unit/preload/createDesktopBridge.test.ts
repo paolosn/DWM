@@ -5,6 +5,7 @@ import {
   DWM_VERSION_CHANNEL,
   DWM_SELECT_IMPORT_FOLDER_CHANNEL,
   DWM_SELECT_IMPORT_ZIP_CHANNEL,
+  DWM_OPEN_FOLDER_CHANNEL,
 } from "../../../src/shared/ipc/IpcContract.js";
 
 describe("createDesktopBridge", () => {
@@ -66,5 +67,15 @@ describe("createDesktopBridge", () => {
 
     expect(invoke).toHaveBeenCalledWith(DWM_SELECT_IMPORT_ZIP_CHANNEL);
     expect(result).toEqual({ canceled: true });
+  });
+
+  it("openFolder() invoca DWM_OPEN_FOLDER_CHANNEL con la ruta indicada", async () => {
+    const invoke = vi.fn().mockResolvedValue({ opened: true, message: 'Carpeta abierta: "/x".' });
+    const bridge = createDesktopBridge(invoke);
+
+    const result = await bridge.openFolder("/x");
+
+    expect(invoke).toHaveBeenCalledWith(DWM_OPEN_FOLDER_CHANNEL, "/x");
+    expect(result).toEqual({ opened: true, message: 'Carpeta abierta: "/x".' });
   });
 });

@@ -7,6 +7,7 @@ import {
   DWM_VERSION_CHANNEL,
   DWM_SELECT_IMPORT_FOLDER_CHANNEL,
   DWM_SELECT_IMPORT_ZIP_CHANNEL,
+  DWM_OPEN_FOLDER_CHANNEL,
 } from "../../../src/shared/ipc/IpcContract.js";
 import { createFakeLogger } from "../support/fakeLogger.js";
 import type { EngineBootstrap } from "../../../src/main/engine/EngineBootstrap.js";
@@ -53,6 +54,7 @@ function buildRouter(
 
   const logger = createFakeLogger();
   const dialog = { showOpenDialog: vi.fn().mockResolvedValue({ canceled: true, filePaths: [] }) };
+  const shell = { openPath: vi.fn().mockResolvedValue("") };
   const router = new IpcRouter({
     ipcMain,
     engine,
@@ -60,27 +62,77 @@ function buildRouter(
     appVersion: "0.1.0",
     allowedOrigins: ["file://"],
     dialog,
+    shell,
   });
   router.register();
-  return { router, handlers, engine, logger, ipcMain, dialog };
+  return { router, handlers, engine, logger, ipcMain, dialog, shell };
 }
 
 describe("IpcRouter", () => {
-  it("register() registra los cuatro canales", () => {
+  it("register() registra los cinco canales", () => {
     const { handlers } = buildRouter();
     expect(handlers.has(DWM_IPC_CHANNEL)).toBe(true);
     expect(handlers.has(DWM_VERSION_CHANNEL)).toBe(true);
     expect(handlers.has(DWM_SELECT_IMPORT_FOLDER_CHANNEL)).toBe(true);
     expect(handlers.has(DWM_SELECT_IMPORT_ZIP_CHANNEL)).toBe(true);
+    expect(handlers.has(DWM_OPEN_FOLDER_CHANNEL)).toBe(true);
   });
 
-  it("unregister() elimina los cuatro manejadores", () => {
+  it("unregister() elimina los cinco manejadores", () => {
     const { router, ipcMain } = buildRouter();
     router.unregister();
     expect(ipcMain.removeHandler).toHaveBeenCalledWith(DWM_IPC_CHANNEL);
     expect(ipcMain.removeHandler).toHaveBeenCalledWith(DWM_VERSION_CHANNEL);
     expect(ipcMain.removeHandler).toHaveBeenCalledWith(DWM_SELECT_IMPORT_FOLDER_CHANNEL);
     expect(ipcMain.removeHandler).toHaveBeenCalledWith(DWM_SELECT_IMPORT_ZIP_CHANNEL);
+    expect(ipcMain.removeHandler).toHaveBeenCalledWith(DWM_OPEN_FOLDER_CHANNEL);
+  });
+
+  describe("openFolder — 'Abrir carpeta'", () => {
+    it("reutiliza shell.openPath y confirma el éxito real", async () => {
+      const { handlers, shell } = buildRouter();
+      const handler = handlers.get(DWM_OPEN_FOLDER_CHANNEL)!;
+      const result = (await handler(trustedEvent(), "/workspace/PROYECTOS/DIRECTOS/portal")) as {
+        opened: boolean;
+        message: string;
+      };
+      expect(shell.openPath).toHaveBeenCalledWith("/workspace/PROYECTOS/DIRECTOS/portal");
+      expect(result.opened).toBe(true);
+      expect(result.message).toContain("/workspace/PROYECTOS/DIRECTOS/portal");
+    });
+
+    it("informa con claridad si shell.openPath devuelve un error (sin lanzar)", async () => {
+      const { handlers, shell } = buildRouter();
+      shell.openPath.mockResolvedValueOnce("no existe la ruta");
+      const handler = handlers.get(DWM_OPEN_FOLDER_CHANNEL)!;
+      const result = (await handler(trustedEvent(), "/ruta/inexistente")) as {
+        opened: boolean;
+        message: string;
+      };
+      expect(result.opened).toBe(false);
+      expect(result.message).toContain("no existe la ruta");
+    });
+
+    it("rechaza un origen no confiable sin llamar a shell.openPath", async () => {
+      const { handlers, shell } = buildRouter();
+      const handler = handlers.get(DWM_OPEN_FOLDER_CHANNEL)!;
+      const untrusted = {
+        senderFrame: { url: "https://evil.example" },
+      } as unknown as IpcMainInvokeEvent;
+      const result = (await handler(untrusted, "/workspace/proyecto")) as {
+        opened: boolean;
+        message: string;
+      };
+      expect(result.opened).toBe(false);
+      expect(shell.openPath).not.toHaveBeenCalled();
+    });
+
+    it("rechaza una ruta vacía o inválida", async () => {
+      const { handlers } = buildRouter();
+      const handler = handlers.get(DWM_OPEN_FOLDER_CHANNEL)!;
+      const result = (await handler(trustedEvent(), "")) as { opened: boolean; message: string };
+      expect(result.opened).toBe(false);
+    });
   });
 
   it("rechaza peticiones de un remitente no confiable", async () => {

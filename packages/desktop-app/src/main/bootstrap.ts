@@ -1,5 +1,5 @@
 import type { App, IpcMain } from "electron";
-import { dialog } from "electron";
+import { dialog, shell } from "electron";
 import { EngineBootstrap } from "./engine/EngineBootstrap.js";
 import { ConfigurationManager } from "./config/ConfigurationManager.js";
 import { WindowManager, type RendererEntry } from "./window/WindowManager.js";
@@ -108,6 +108,9 @@ export async function bootstrapDesktopApp(
           ? dialog.showOpenDialog(parent, dialogOptions)
           : dialog.showOpenDialog(dialogOptions);
       },
+    },
+    shell: {
+      openPath: (path) => shell.openPath(path),
     },
   });
   ipcRouter.register();

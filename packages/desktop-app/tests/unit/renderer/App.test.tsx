@@ -68,6 +68,7 @@ function setDwm(options: {
           : { canceled: true }
       ),
     selectImportZip: vi.fn().mockResolvedValue({ canceled: true }),
+    openFolder: vi.fn().mockResolvedValue({ opened: true, message: "Carpeta abierta." }),
   };
   Object.defineProperty(window, "dwm", { value: bridge, configurable: true });
   return { invoke, getWorkspaceRoot: () => workspaceRoot };

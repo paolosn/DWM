@@ -20,7 +20,11 @@ function setDwm(
     return success(request.operation, undefined);
   });
   Object.defineProperty(window, "dwm", {
-    value: { invoke, getVersionInfo: vi.fn() },
+    value: {
+      invoke,
+      getVersionInfo: vi.fn(),
+      openFolder: vi.fn().mockResolvedValue({ opened: true, message: "Carpeta abierta." }),
+    },
     configurable: true,
   });
   return invoke;
@@ -141,6 +145,38 @@ describe("ClientFicha", () => {
     );
     expect(call).toBeDefined();
     expect((call?.[0] as { payload: { id: string } }).payload).toEqual({ id: "p1" });
+    unmount();
+  });
+
+  it("Proyectos permite 'Abrir carpeta' reutilizando window.dwm.openFolder con la ruta real", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "projects.get": () => success("projects.get", baseProject),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Proyectos"
+      ) ?? null
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir carpeta"
+      ) ?? null
+    );
+    await settle();
+
+    expect(window.dwm.openFolder).toHaveBeenCalledWith(
+      "/workspace/PROYECTOS/DIRECTOS/portal-de-clientes"
+    );
     unmount();
   });
 

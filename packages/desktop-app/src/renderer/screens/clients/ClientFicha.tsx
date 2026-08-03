@@ -84,6 +84,18 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
     }
   }
 
+  async function openFolder(projectPath: string, name: string): Promise<void> {
+    try {
+      const result = await window.dwm.openFolder(projectPath);
+      showToast({
+        title: `${name}: ${result.message}`,
+        tone: result.opened ? "success" : "warning",
+      });
+    } catch {
+      showToast({ title: `No se pudo abrir la carpeta de «${name}»`, tone: "danger" });
+    }
+  }
+
   if (error)
     return <ErrorState title="No se pudieron cargar los proyectos" technicalDetail={error} />;
   if (!projects) return <Spinner label="Cargando proyectos…" />;
@@ -106,6 +118,14 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
               onClick={() => void openInVsCode(project.id, project.metadata.name)}
             >
               Abrir en VS Code
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() =>
+                void openFolder(project.configuration.projectPath, project.metadata.name)
+              }
+            >
+              Abrir carpeta
             </Button>
           </div>
         </li>
