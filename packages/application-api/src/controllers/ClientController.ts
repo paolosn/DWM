@@ -2,6 +2,7 @@ import type { ApplicationController } from "../ApplicationRegistry.js";
 import type { ApplicationOperationRegistry } from "../ApplicationOperationRegistry.js";
 import type { ApplicationPermissions } from "../ApplicationPermissions.js";
 import type { ApplicationContext } from "../ApplicationContext.js";
+import * as path from "node:path";
 import { requireDependency } from "../requireDependency.js";
 import {
   asRecord,
@@ -12,6 +13,9 @@ import {
   requireString,
 } from "../payloadHelpers.js";
 import type { Client, ClientSummary } from "@dwm/client-manager";
+import { listClientActivity, type ActivityEntry } from "../ActivityLog.js";
+import { createApplicationError } from "../errors/ApplicationError.js";
+import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
 
 declare module "../ApplicationRequest.js" {
   interface ApplicationOperationMap {
@@ -45,6 +49,8 @@ declare module "../ApplicationRequest.js" {
     "clients.delete": { payload: { id: string; root?: string }; result: { deleted: true } };
     "clients.archive": { payload: { id: string; root?: string }; result: Client };
     "clients.restore": { payload: { id: string; root?: string }; result: Client };
+    /** Cronología real de actividad del cliente (encargo, cierre de limitaciones item 3). Solo lectura. */
+    "clients.activity": { payload: { id: string }; result: ActivityEntry[] };
   }
 }
 
@@ -202,6 +208,36 @@ export class ClientController implements ApplicationController {
       handler: async (payload) => {
         await manager().deleteClient(payload.id, { confirmPermanent: true }, payload.root);
         return { deleted: true as const };
+      },
+    });
+
+    // "Actividad real" (encargo, cierre de limitaciones item 3): lee el
+    // fichero JSON-lines del cliente escrito por ProvisioningController/
+    // ProjectController/ConnectionsController al ocurrir cada acción real.
+    permissions.register("clients.activity", ["read"]);
+    operations.register({
+      name: "clients.activity",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return { id: requireString(record, "id") };
+      },
+      handler: async (payload) => {
+        const psnAdapter = requireDependency(this.context.psnAdapter, "psn-adapter");
+        const clientesDir = psnAdapter.getResourcePath("clientes");
+        if (!clientesDir) {
+          throw createApplicationError({
+            code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+            message: "No hay ningún Sistema de Trabajo activo.",
+            origin: "validation",
+            category: "not-found",
+            retryable: false,
+            recoverable: true,
+          });
+        }
+        const workspaceRoot = path.dirname(clientesDir);
+        return [...(await listClientActivity(workspaceRoot, payload.id))];
       },
     });
   }

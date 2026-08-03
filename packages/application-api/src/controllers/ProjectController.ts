@@ -13,6 +13,7 @@ import {
   requireString,
 } from "../payloadHelpers.js";
 import type { Project, ProjectConfiguration } from "@dwm/project";
+import { appendClientActivity } from "../ActivityLog.js";
 
 declare module "../ApplicationRequest.js" {
   interface ApplicationOperationMap {
@@ -166,6 +167,11 @@ export class ProjectController implements ApplicationController {
             recoverable: true,
           });
         }
+        await this.logProjectActivity(project, () => ({
+          type: "project.archived",
+          message: `Proyecto «${project.metadata.name}» archivado.`,
+          relatedProjectId: project.id,
+        }));
         return project;
       },
     });
@@ -200,8 +206,33 @@ export class ProjectController implements ApplicationController {
           this.context.environmentManager,
           "environment-manager"
         );
-        return environmentManager.openInVSCode(project.configuration.projectPath);
+        const result = await environmentManager.openInVSCode(project.configuration.projectPath);
+        if (result.opened) {
+          await this.logProjectActivity(project, () => ({
+            type: "project.opened-in-vscode",
+            message: `VS Code abierto para «${project.metadata.name}».`,
+            relatedProjectId: project.id,
+          }));
+        }
+        return result;
       },
     });
+  }
+
+  /** Registra actividad real (encargo, item 3) solo cuando el proyecto tiene cliente asociado; nunca falla la operación principal si el registro falla. */
+  /** Registra actividad real (encargo, item 3): secundario siempre — si falta clientId, portableWorkspaceManager, Workspace activo, o falla por cualquier otro motivo (incluida la propia construcción de `entry`), nunca rompe la operación principal. */
+  private async logProjectActivity(
+    project: Project,
+    buildEntry: () => { type: string; message: string; relatedProjectId?: string }
+  ): Promise<void> {
+    try {
+      const clientId = project.configuration?.clientId;
+      if (!clientId) return;
+      const active = this.context.portableWorkspaceManager?.getActiveWorkspace();
+      if (!active) return;
+      await appendClientActivity(active.root, clientId, buildEntry());
+    } catch {
+      // La actividad es secundaria: nunca debe romper la operación principal.
+    }
   }
 }

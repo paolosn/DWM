@@ -247,7 +247,7 @@ describe("ClientFicha", () => {
     unmount();
   });
 
-  it("Documentos y Actividad se declaran honestamente no disponibles, sin datos inventados", async () => {
+  it("Documentos se declara honestamente no disponible por ahora, sin datos inventados", async () => {
     setDwm({ "clients.get": () => success("clients.get", baseClient) });
     const { container, unmount } = mount(
       <ToastProvider>
@@ -263,6 +263,28 @@ describe("ClientFicha", () => {
     );
     await settle();
     expect(container.textContent).toContain("Función no disponible en esta versión");
+    unmount();
+  });
+
+  it("Actividad muestra la cronología real vía clients.activity, más reciente primero", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "clients.activity": () =>
+        success("clients.activity", [
+          {
+            type: "project.created",
+            message: "Proyecto «X» creado.",
+            at: "2026-01-02T10:00:00.000Z",
+          },
+          { type: "client.created", message: "Cliente creado.", at: "2026-01-01T10:00:00.000Z" },
+        ]),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
 
     click(
       Array.from(container.querySelectorAll('[role="tab"]')).find(
@@ -270,7 +292,35 @@ describe("ClientFicha", () => {
       ) ?? null
     );
     await settle();
-    expect(container.textContent).toContain("Función no disponible en esta versión");
+
+    expect(container.textContent).toContain("Proyecto creado");
+    expect(container.textContent).toContain("Proyecto «X» creado.");
+    expect(container.textContent).toContain("Cliente creado");
+    const rows = Array.from(container.querySelectorAll(".dwm-client-ficha__activity-row"));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.textContent).toContain("Proyecto creado");
+    unmount();
+  });
+
+  it("Actividad muestra un estado vacío real cuando no hay entradas", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "clients.activity": () => success("clients.activity", []),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Actividad"
+      ) ?? null
+    );
+    await settle();
+    expect(container.textContent).toContain("Todavía no hay actividad registrada");
     unmount();
   });
 

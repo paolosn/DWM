@@ -6,6 +6,7 @@ import { requireDependency } from "../requireDependency.js";
 import { asRecord, optionalString, optionalStringArray, requireString } from "../payloadHelpers.js";
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
+import { appendClientActivity } from "../ActivityLog.js";
 import {
   PROJECT_PROVISIONING_CATEGORIES,
   type ClientIntakeData,
@@ -208,6 +209,22 @@ export class ProvisioningController implements ApplicationController {
         }
         const result = await service().provisionProject(active.root, payload);
 
+        // "Registrar en Actividad" (encargo, cierre de limitaciones item 3):
+        // entradas reales, escritas en el mismo momento en que ocurre la
+        // acción — nunca texto estático. Secundario siempre: un fallo aquí
+        // nunca debe deshacer ni ocultar que el proyecto ya se creó.
+        if (result.clientCreated) {
+          await appendClientActivity(active.root, result.clientId, {
+            type: "client.created",
+            message: `Cliente creado (${payload.client?.name ?? result.clientId}).`,
+          }).catch(() => {});
+        }
+        await appendClientActivity(active.root, result.clientId, {
+          type: "project.created",
+          message: `Proyecto «${payload.project.name}» creado (${payload.category}).`,
+          relatedProjectId: result.projectId,
+        }).catch(() => {});
+
         // "Abrir automáticamente VS Code" (encargo, punto 3): reutiliza tal
         // cual EnvironmentManager.openInVSCode(), el mismo ProcessRunner ya
         // probado por VSCodeDetector — no es un segundo lanzador. Opcional:
@@ -219,6 +236,13 @@ export class ProvisioningController implements ApplicationController {
               opened: false,
               message: "El proyecto se creó correctamente; no se pudo comprobar VS Code.",
             };
+        if (launch.opened) {
+          await appendClientActivity(active.root, result.clientId, {
+            type: "project.opened-in-vscode",
+            message: `VS Code abierto para «${payload.project.name}».`,
+            relatedProjectId: result.projectId,
+          }).catch(() => {});
+        }
 
         return { ...result, vsCodeOpened: launch.opened, vsCodeMessage: launch.message };
       },

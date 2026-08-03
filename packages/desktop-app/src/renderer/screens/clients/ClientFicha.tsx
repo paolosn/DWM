@@ -252,11 +252,51 @@ function DocumentosTab(): JSX.Element {
   );
 }
 
-function ActividadTab(): JSX.Element {
+const ACTIVITY_LABEL: Record<string, string> = {
+  "client.created": "Cliente creado",
+  "client.updated": "Cliente actualizado",
+  "project.created": "Proyecto creado",
+  "project.archived": "Proyecto archivado",
+  "project.opened-in-vscode": "Abierto en VS Code",
+  "connection.created": "Conexión creada",
+  "mcp.registered": "Servidor MCP registrado",
+  "connection.tested": "Conexión probada",
+  "connection.assigned": "Conexión asignada a proyecto",
+  "connection.revoked": "Asignación de conexión retirada",
+  "document.generated": "Documento generado",
+};
+
+function ActividadTab({ client }: { readonly client: Client }): JSX.Element {
+  const query = useDwmQuery("clients.activity", { id: client.id });
+
+  if (query.status === "loading" || query.status === "idle") {
+    return <Spinner label="Cargando actividad…" />;
+  }
+  if (query.status === "error") {
+    return (
+      <ErrorState
+        title="No se pudo cargar la actividad"
+        {...(query.error?.message ? { technicalDetail: query.error.message } : {})}
+      />
+    );
+  }
+  const entries = query.data ?? [];
+  if (entries.length === 0) {
+    return <EmptyState title="Todavía no hay actividad registrada para este cliente" />;
+  }
+
   return (
-    <InlineAlert tone="info" title="Función no disponible en esta versión">
-      No existe todavía una operación pública de consulta del historial de eventos por cliente.
-    </InlineAlert>
+    <ol className="dwm-client-ficha__activity">
+      {entries.map((entry, index) => (
+        <li key={`${entry.type}-${entry.at}-${index}`} className="dwm-client-ficha__activity-row">
+          <span className="dwm-client-ficha__activity-date">{formatDate(entry.at)}</span>
+          <div>
+            <strong>{ACTIVITY_LABEL[entry.type] ?? entry.type}</strong>
+            <p className="dwm-client-ficha__activity-message">{entry.message}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -297,7 +337,7 @@ export function ClientFicha({ clientId }: ClientFichaProps): JSX.Element {
         { id: "accesos", label: "Accesos y conexiones", content: <AccesosTab client={client} /> },
         { id: "mcp-ia", label: "MCP e IA", content: <McpIaTab client={client} /> },
         { id: "documentos", label: "Documentos", content: <DocumentosTab /> },
-        { id: "actividad", label: "Actividad", content: <ActividadTab /> },
+        { id: "actividad", label: "Actividad", content: <ActividadTab client={client} /> },
       ]}
     />
   );

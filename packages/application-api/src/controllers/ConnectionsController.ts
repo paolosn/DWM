@@ -13,6 +13,7 @@ import {
 } from "../payloadHelpers.js";
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
+import { appendClientActivity } from "../ActivityLog.js";
 import {
   isConnectionType,
   type Connection,
@@ -326,6 +327,10 @@ export class ConnectionsController implements ApplicationController {
       }
       return path.join(active.root, "CLIENTES", ".connections", clientId);
     };
+
+    /** Mismo Workspace activo que `clientConnectionsRootFor`, sin el sufijo de carpeta — para "Registrar en Actividad" (item 3). */
+    const activeWorkspaceRootFor = (): string | undefined =>
+      this.context.portableWorkspaceManager?.getActiveWorkspace()?.root;
 
     // -----------------------------------------------------------------
     // connections.*
@@ -1008,7 +1013,22 @@ export class ConnectionsController implements ApplicationController {
         // El manager solo usa "projectId" como espacio de nombres para los
         // secretos (@dwm/secrets); aquí el espacio de nombres es el propio
         // cliente — no representa un proyecto real.
-        return manager().create(root, { ...payload, projectId: payload.clientId });
+        const connection = await manager().create(root, {
+          ...payload,
+          projectId: payload.clientId,
+        });
+        const isMcp = payload.type === "mcp-stdio" || payload.type === "mcp-remote";
+        const activityRoot = activeWorkspaceRootFor();
+        if (activityRoot) {
+          await appendClientActivity(activityRoot, payload.clientId, {
+            type: isMcp ? "mcp.registered" : "connection.created",
+            message: isMcp
+              ? `Servidor MCP «${payload.name}» registrado.`
+              : `Conexión «${payload.name}» (${payload.type}) creada.`,
+            relatedConnectionId: connection.id,
+          }).catch(() => {});
+        }
+        return connection;
       },
     });
 
@@ -1025,8 +1045,18 @@ export class ConnectionsController implements ApplicationController {
           id: requireString(record, "id"),
         };
       },
-      handler: async (payload) =>
-        manager().test(clientConnectionsRootFor(payload.clientId), payload.id),
+      handler: async (payload) => {
+        const result = await manager().test(clientConnectionsRootFor(payload.clientId), payload.id);
+        const activityRoot = activeWorkspaceRootFor();
+        if (activityRoot) {
+          await appendClientActivity(activityRoot, payload.clientId, {
+            type: "connection.tested",
+            message: `Conexión probada: ${result.success ? "correcta" : "fallida"}.`,
+            relatedConnectionId: payload.id,
+          }).catch(() => {});
+        }
+        return result;
+      },
     });
 
     permissions.register("connections.delete-for-client", ["delete"], { destructive: true });
@@ -1072,6 +1102,15 @@ export class ConnectionsController implements ApplicationController {
           payload.projectId,
           CLIENT_CONNECTION_USE_CAPABILITY
         );
+        const activityRoot = activeWorkspaceRootFor();
+        if (activityRoot) {
+          await appendClientActivity(activityRoot, payload.clientId, {
+            type: "connection.assigned",
+            message: `Conexión asignada al proyecto "${payload.projectId}".`,
+            relatedConnectionId: payload.connectionId,
+            relatedProjectId: payload.projectId,
+          }).catch(() => {});
+        }
         return { assigned: true as const };
       },
     });
