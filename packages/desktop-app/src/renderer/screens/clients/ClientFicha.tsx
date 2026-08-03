@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Client } from "@dwm/client-manager";
 import type { Project } from "@dwm/project";
-import { callOperation, useDwmQuery } from "../../api-client/index.js";
+import { callOperation, useDwmQuery, DwmOperationError } from "../../api-client/index.js";
 import { Tabs } from "../../design-system/composites/Tabs/index.js";
 import { Spinner } from "../../design-system/primitives/Spinner/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
@@ -12,6 +12,7 @@ import { Button } from "../../design-system/primitives/Button/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ClientRelationsPanel } from "./ClientRelationsPanel.js";
 import { ClientConnectionsPanel } from "./ClientConnectionsPanel.js";
+import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/index.js";
 import "./ClientFicha.css";
 
 export interface ClientFichaProps {
@@ -48,10 +49,25 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
   const { showToast } = useToast();
   const [projects, setProjects] = useState<readonly Project[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [pendingArchive, setPendingArchive] = useState<{ id: string; name: string } | undefined>(
+    undefined
+  );
+
+  async function load(): Promise<void> {
+    setError(undefined);
+    try {
+      const results = await Promise.all(
+        client.references.projects.map((id) => callOperation("projects.get", { id }))
+      );
+      setProjects(results.filter((p): p is Project => p !== undefined));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido.");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
-    async function load(): Promise<void> {
+    async function initialLoad(): Promise<void> {
       setError(undefined);
       setProjects(undefined);
       try {
@@ -63,11 +79,33 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
         if (!cancelled) setError(err instanceof Error ? err.message : "Error desconocido.");
       }
     }
-    void load();
+    void initialLoad();
     return () => {
       cancelled = true;
     };
   }, [client.id, client.references.projects]);
+
+  async function handleArchive(): Promise<void> {
+    if (!pendingArchive) return;
+    try {
+      await callOperation(
+        "projects.archive",
+        { id: pendingArchive.id },
+        { confirmation: { confirmed: true } }
+      );
+      showToast({ title: `Proyecto «${pendingArchive.name}» archivado`, tone: "success" });
+      setPendingArchive(undefined);
+      await load();
+    } catch (err) {
+      showToast({
+        title:
+          err instanceof DwmOperationError
+            ? err.message
+            : `No se pudo archivar «${pendingArchive.name}»`,
+        tone: "danger",
+      });
+    }
+  }
 
   async function openInVsCode(projectId: string, name: string): Promise<void> {
     try {
@@ -102,35 +140,57 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
   if (projects.length === 0) return <EmptyState title="Este cliente todavía no tiene proyectos" />;
 
   return (
-    <ul className="dwm-client-ficha__projects">
-      {projects.map((project) => (
-        <li key={project.id} className="dwm-client-ficha__project-row">
-          <div>
-            <strong>{project.metadata.name}</strong>
-            <p className="dwm-client-ficha__project-path">{project.configuration.projectPath}</p>
-            <p className="dwm-client-ficha__project-meta">
-              Estado: {project.state} · Creado: {formatDate(project.metadata.createdAt)}
-            </p>
-          </div>
-          <div className="dwm-client-ficha__project-actions">
-            <Button
-              variant="secondary"
-              onClick={() => void openInVsCode(project.id, project.metadata.name)}
-            >
-              Abrir en VS Code
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                void openFolder(project.configuration.projectPath, project.metadata.name)
-              }
-            >
-              Abrir carpeta
-            </Button>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <ul className="dwm-client-ficha__projects">
+        {projects.map((project) => (
+          <li key={project.id} className="dwm-client-ficha__project-row">
+            <div>
+              <strong>{project.metadata.name}</strong>
+              <p className="dwm-client-ficha__project-path">{project.configuration.projectPath}</p>
+              <p className="dwm-client-ficha__project-meta">
+                Estado: {project.state} · Creado: {formatDate(project.metadata.createdAt)}
+              </p>
+            </div>
+            <div className="dwm-client-ficha__project-actions">
+              <Button
+                variant="secondary"
+                onClick={() => void openInVsCode(project.id, project.metadata.name)}
+              >
+                Abrir en VS Code
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  void openFolder(project.configuration.projectPath, project.metadata.name)
+                }
+              >
+                Abrir carpeta
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setPendingArchive({ id: project.id, name: project.metadata.name })}
+                disabled={project.state === "closed"}
+              >
+                Archivar
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <ConfirmDialog
+        open={Boolean(pendingArchive)}
+        title="Archivar proyecto"
+        description={
+          pendingArchive
+            ? `«${pendingArchive.name}» se archivará (queda cerrado, nunca se elimina). Podrás seguir viéndolo en esta lista.`
+            : ""
+        }
+        confirmLabel="Archivar"
+        onConfirm={() => void handleArchive()}
+        onCancel={() => setPendingArchive(undefined)}
+      />
+    </div>
   );
 }
 

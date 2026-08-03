@@ -180,6 +180,52 @@ describe("ClientFicha", () => {
     unmount();
   });
 
+  it("Proyectos permite archivar con confirmación, reutilizando projects.archive", async () => {
+    const invoke = setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "projects.get": () => success("projects.get", baseProject),
+      "projects.archive": () => success("projects.archive", { ...baseProject, state: "closed" }),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Proyectos"
+      ) ?? null
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Archivar") ??
+        null
+    );
+    await settle();
+    expect(container.textContent).toContain("se archivará");
+
+    const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    click(
+      Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === "Archivar") ??
+        null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.archive"
+    );
+    expect(call).toBeDefined();
+    expect((call?.[0] as { payload: { id: string } }).payload).toEqual({ id: "p1" });
+    expect((call?.[0] as { confirmation?: { confirmed: boolean } }).confirmation).toEqual({
+      confirmed: true,
+    });
+    unmount();
+  });
+
   it("MCP e IA muestra la IA predeterminada real cuando existe, y un estado vacío honesto cuando no", async () => {
     const withAi = { ...baseClient, defaultAi: { provider: "openai", model: "gpt-4o" } };
     setDwm({ "clients.get": () => success("clients.get", withAi) });

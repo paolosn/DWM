@@ -124,4 +124,59 @@ describe("ProjectController", () => {
     expect(response.success).toBe(false);
     expect(response.success || response.error.category).toBe("not-found");
   });
+
+  it("projects.archive reutiliza ProjectManager.closeProject() y devuelve el proyecto ya cerrado", async () => {
+    const closedProject = { id: "p1", state: "closed" };
+    const fakeManager = {
+      closeProject: vi.fn().mockResolvedValue(undefined),
+      getProject: vi.fn().mockReturnValue(closedProject),
+    } as unknown as ProjectManager;
+    const api = new ApplicationAPI({ projectManager: fakeManager });
+
+    const response = await api.execute(
+      makeRequest(
+        "projects.archive",
+        { id: "p1" },
+        { caller: admin, confirmation: { confirmed: true } }
+      )
+    );
+
+    expect(response.success).toBe(true);
+    expect(fakeManager.closeProject).toHaveBeenCalledWith("p1");
+    if (response.success) {
+      expect((response.data as { state: string }).state).toBe("closed");
+    }
+  });
+
+  it("projects.archive exige confirmación (operación destructiva)", async () => {
+    const fakeManager = {
+      closeProject: vi.fn().mockResolvedValue(undefined),
+      getProject: vi.fn().mockReturnValue({ id: "p1", state: "closed" }),
+    } as unknown as ProjectManager;
+    const api = new ApplicationAPI({ projectManager: fakeManager });
+
+    const response = await api.execute(
+      makeRequest("projects.archive", { id: "p1" }, { caller: admin })
+    );
+
+    expect(response.success).toBe(false);
+    expect(fakeManager.closeProject).not.toHaveBeenCalled();
+  });
+
+  it("projects.archive falla con un mensaje claro si el proyecto no existe tras cerrarlo", async () => {
+    const fakeManager = {
+      closeProject: vi.fn().mockResolvedValue(undefined),
+      getProject: vi.fn().mockReturnValue(undefined),
+    } as unknown as ProjectManager;
+    const api = new ApplicationAPI({ projectManager: fakeManager });
+
+    const response = await api.execute(
+      makeRequest(
+        "projects.archive",
+        { id: "no-existe" },
+        { caller: admin, confirmation: { confirmed: true } }
+      )
+    );
+    expect(response.success).toBe(false);
+  });
 });

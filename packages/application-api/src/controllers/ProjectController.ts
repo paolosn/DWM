@@ -32,6 +32,8 @@ declare module "../ApplicationRequest.js" {
       result: { updated: true };
     };
     "projects.delete": { payload: { id: string }; result: { deleted: true } };
+    /** Archiva un proyecto (nunca lo elimina): reutiliza ProjectManager.closeProject() tal cual. */
+    "projects.archive": { payload: { id: string }; result: Project };
     "projects.open-in-vscode": {
       payload: { id: string };
       result: { opened: boolean; message: string };
@@ -133,6 +135,38 @@ export class ProjectController implements ApplicationController {
       handler: async (payload) => {
         await manager().deleteProject(payload.id);
         return { deleted: true as const };
+      },
+    });
+
+    // "Archivar proyecto desde la ficha del cliente" (encargo, cierre de
+    // limitaciones item 2): reutiliza tal cual ProjectManager.closeProject()
+    // — nunca elimina, solo transiciona el estado a "closed". Requiere
+    // confirmación (destructive: true), igual que projects.delete.
+    permissions.register("projects.archive", ["write"], { destructive: true });
+    operations.register({
+      name: "projects.archive",
+      version: "1.0.0",
+      capabilities: ["write"],
+      destructive: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const id = requireString(record, "id");
+        return { id };
+      },
+      handler: async (payload) => {
+        await manager().closeProject(payload.id);
+        const project = manager().getProject(payload.id);
+        if (!project) {
+          throw createApplicationError({
+            code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+            message: `No existe ningún proyecto con id "${payload.id}".`,
+            origin: "validation",
+            category: "not-found",
+            retryable: false,
+            recoverable: true,
+          });
+        }
+        return project;
       },
     });
 
