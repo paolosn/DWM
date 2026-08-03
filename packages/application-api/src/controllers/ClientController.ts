@@ -2,6 +2,7 @@ import type { ApplicationController } from "../ApplicationRegistry.js";
 import type { ApplicationOperationRegistry } from "../ApplicationOperationRegistry.js";
 import type { ApplicationPermissions } from "../ApplicationPermissions.js";
 import type { ApplicationContext } from "../ApplicationContext.js";
+import * as path from "node:path";
 import { requireDependency } from "../requireDependency.js";
 import {
   asRecord,
@@ -12,6 +13,10 @@ import {
   requireString,
 } from "../payloadHelpers.js";
 import type { Client, ClientSummary } from "@dwm/client-manager";
+import { listClientActivity, type ActivityEntry } from "../ActivityLog.js";
+import { indexProjectDocuments, type ClientDocumentEntry } from "../ClientDocumentIndex.js";
+import { createApplicationError } from "../errors/ApplicationError.js";
+import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
 
 declare module "../ApplicationRequest.js" {
   interface ApplicationOperationMap {
@@ -45,6 +50,10 @@ declare module "../ApplicationRequest.js" {
     "clients.delete": { payload: { id: string; root?: string }; result: { deleted: true } };
     "clients.archive": { payload: { id: string; root?: string }; result: Client };
     "clients.restore": { payload: { id: string; root?: string }; result: Client };
+    /** Cronología real de actividad del cliente (encargo, cierre de limitaciones item 3). Solo lectura. */
+    "clients.activity": { payload: { id: string }; result: ActivityEntry[] };
+    /** Índice real de documentos del cliente y sus proyectos (encargo, cierre de limitaciones item 4). Solo lectura, sin duplicar ficheros. */
+    "clients.documents": { payload: { id: string }; result: ClientDocumentEntry[] };
   }
 }
 
@@ -202,6 +211,70 @@ export class ClientController implements ApplicationController {
       handler: async (payload) => {
         await manager().deleteClient(payload.id, { confirmPermanent: true }, payload.root);
         return { deleted: true as const };
+      },
+    });
+
+    // "Actividad real" (encargo, cierre de limitaciones item 3): lee el
+    // fichero JSON-lines del cliente escrito por ProvisioningController/
+    // ProjectController/ConnectionsController al ocurrir cada acción real.
+    permissions.register("clients.activity", ["read"]);
+    operations.register({
+      name: "clients.activity",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return { id: requireString(record, "id") };
+      },
+      handler: async (payload) => {
+        const psnAdapter = requireDependency(this.context.psnAdapter, "psn-adapter");
+        const clientesDir = psnAdapter.getResourcePath("clientes");
+        if (!clientesDir) {
+          throw createApplicationError({
+            code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+            message: "No hay ningún Sistema de Trabajo activo.",
+            origin: "validation",
+            category: "not-found",
+            retryable: false,
+            recoverable: true,
+          });
+        }
+        const workspaceRoot = path.dirname(clientesDir);
+        return [...(await listClientActivity(workspaceRoot, payload.id))];
+      },
+    });
+
+    // "Documentos reales" (encargo, cierre de limitaciones item 4): indexa
+    // en vivo (sin caché, sin copiar nada) la carpeta real de cada
+    // proyecto del cliente. Reutiliza ProjectManager.getProject() tal
+    // cual para resolver projectPath/nombre; nunca inventa un segundo
+    // almacenamiento de documentos.
+    permissions.register("clients.documents", ["read"]);
+    operations.register({
+      name: "clients.documents",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return { id: requireString(record, "id") };
+      },
+      handler: async (payload) => {
+        const client = await manager().getClient(payload.id);
+        const projectManager = requireDependency(this.context.projectManager, "project");
+
+        const perProject = await Promise.all(
+          client.references.projects.map(async (projectId) => {
+            const project = projectManager.getProject(projectId);
+            if (!project) return [];
+            return indexProjectDocuments(
+              project.configuration.projectPath,
+              project.id,
+              project.metadata.name
+            );
+          })
+        );
+
+        return perProject.flat().sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
       },
     });
   }

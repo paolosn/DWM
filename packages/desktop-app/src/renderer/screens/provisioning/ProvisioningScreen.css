@@ -27,3 +27,21 @@
   justify-content: flex-end;
   gap: var(--dwm-space-sm);
 }
+.dwm-provisioning-screen__report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+  padding: var(--dwm-space-sm) 0;
+}
+.dwm-provisioning-screen__report-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--dwm-space-xs) var(--dwm-space-md);
+}
+.dwm-provisioning-screen__report-grid dt {
+  font-weight: 600;
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-provisioning-screen__report-grid dd {
+  margin: 0;
+}

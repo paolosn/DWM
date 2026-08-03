@@ -52,3 +52,50 @@
 .dwm-client-ficha__mcp-ia dd {
   margin: 0;
 }
+.dwm-client-ficha__activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-client-ficha__activity-row {
+  display: flex;
+  gap: var(--dwm-space-md);
+  padding: var(--dwm-space-sm);
+  border-left: 2px solid var(--dwm-color-border-subtle);
+}
+.dwm-client-ficha__activity-date {
+  flex-shrink: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+  white-space: nowrap;
+}
+.dwm-client-ficha__activity-message {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-client-ficha__documents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-client-ficha__document-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
+  padding: var(--dwm-space-sm);
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-card);
+}
+.dwm-client-ficha__document-meta {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}

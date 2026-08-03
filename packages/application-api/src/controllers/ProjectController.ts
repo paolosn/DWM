@@ -13,6 +13,7 @@ import {
   requireString,
 } from "../payloadHelpers.js";
 import type { Project, ProjectConfiguration } from "@dwm/project";
+import { appendClientActivity } from "../ActivityLog.js";
 
 declare module "../ApplicationRequest.js" {
   interface ApplicationOperationMap {
@@ -32,6 +33,8 @@ declare module "../ApplicationRequest.js" {
       result: { updated: true };
     };
     "projects.delete": { payload: { id: string }; result: { deleted: true } };
+    /** Archiva un proyecto (nunca lo elimina): reutiliza ProjectManager.closeProject() tal cual. */
+    "projects.archive": { payload: { id: string }; result: Project };
     "projects.open-in-vscode": {
       payload: { id: string };
       result: { opened: boolean; message: string };
@@ -136,6 +139,43 @@ export class ProjectController implements ApplicationController {
       },
     });
 
+    // "Archivar proyecto desde la ficha del cliente" (encargo, cierre de
+    // limitaciones item 2): reutiliza tal cual ProjectManager.closeProject()
+    // — nunca elimina, solo transiciona el estado a "closed". Requiere
+    // confirmación (destructive: true), igual que projects.delete.
+    permissions.register("projects.archive", ["write"], { destructive: true });
+    operations.register({
+      name: "projects.archive",
+      version: "1.0.0",
+      capabilities: ["write"],
+      destructive: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const id = requireString(record, "id");
+        return { id };
+      },
+      handler: async (payload) => {
+        await manager().closeProject(payload.id);
+        const project = manager().getProject(payload.id);
+        if (!project) {
+          throw createApplicationError({
+            code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+            message: `No existe ningún proyecto con id "${payload.id}".`,
+            origin: "validation",
+            category: "not-found",
+            retryable: false,
+            recoverable: true,
+          });
+        }
+        await this.logProjectActivity(project, () => ({
+          type: "project.archived",
+          message: `Proyecto «${project.metadata.name}» archivado.`,
+          relatedProjectId: project.id,
+        }));
+        return project;
+      },
+    });
+
     // Reutiliza tal cual EnvironmentManager.openInVSCode() (Commit 3 de
     // client-workflow-v2); ProjectController es el punto natural para
     // "abrir en VS Code" un proyecto ya existente por id.
@@ -166,8 +206,33 @@ export class ProjectController implements ApplicationController {
           this.context.environmentManager,
           "environment-manager"
         );
-        return environmentManager.openInVSCode(project.configuration.projectPath);
+        const result = await environmentManager.openInVSCode(project.configuration.projectPath);
+        if (result.opened) {
+          await this.logProjectActivity(project, () => ({
+            type: "project.opened-in-vscode",
+            message: `VS Code abierto para «${project.metadata.name}».`,
+            relatedProjectId: project.id,
+          }));
+        }
+        return result;
       },
     });
+  }
+
+  /** Registra actividad real (encargo, item 3) solo cuando el proyecto tiene cliente asociado; nunca falla la operación principal si el registro falla. */
+  /** Registra actividad real (encargo, item 3): secundario siempre — si falta clientId, portableWorkspaceManager, Workspace activo, o falla por cualquier otro motivo (incluida la propia construcción de `entry`), nunca rompe la operación principal. */
+  private async logProjectActivity(
+    project: Project,
+    buildEntry: () => { type: string; message: string; relatedProjectId?: string }
+  ): Promise<void> {
+    try {
+      const clientId = project.configuration?.clientId;
+      if (!clientId) return;
+      const active = this.context.portableWorkspaceManager?.getActiveWorkspace();
+      if (!active) return;
+      await appendClientActivity(active.root, clientId, buildEntry());
+    } catch {
+      // La actividad es secundaria: nunca debe romper la operación principal.
+    }
   }
 }

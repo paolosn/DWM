@@ -253,6 +253,86 @@ describe("ConnectionsPanel", () => {
     unmount();
   });
 
+  it("edición: el formulario precarga el nombre, tipo y config reales de la conexión (regresión del bug de remount)", async () => {
+    setDwm({ "connections.list": () => success("connections.list", [wpConnection]) });
+    const { container, unmount } = mountPanel();
+    await settle();
+
+    click(findButton(container, "Editar"));
+    await settle();
+
+    const modal = container.querySelector('[role="dialog"]') as HTMLElement;
+    const nameInput = modal.querySelector("input") as HTMLInputElement;
+    expect(nameInput.value).toBe("WordPress Producción");
+    const inputValues = Array.from(modal.querySelectorAll("input")).map((i) => i.value);
+    expect(inputValues).toContain("https://example.test");
+    unmount();
+  });
+
+  it("crear una conexión nueva siempre parte de un formulario vacío, incluso tras haber editado antes", async () => {
+    setDwm({ "connections.list": () => success("connections.list", [wpConnection]) });
+    const { container, unmount } = mountPanel();
+    await settle();
+
+    click(findButton(container, "Editar"));
+    await settle();
+    click(findButton(container, "Cancelar"));
+    await settle();
+
+    click(findButton(container, "Nueva conexión…"));
+    await settle();
+
+    const modal = container.querySelector('[role="dialog"]') as HTMLElement;
+    const nameInput = modal.querySelector("input") as HTMLInputElement;
+    expect(nameInput.value).toBe("");
+    unmount();
+  });
+
+  it("cambiar de una conexión a otra nunca arrastra el estado de la anterior", async () => {
+    setDwm({
+      "connections.list": () => success("connections.list", [wpConnection, disabledConnection]),
+    });
+    const { container, unmount } = mountPanel();
+    await settle();
+
+    const editButtons = () =>
+      Array.from(container.querySelectorAll("button")).filter((b) => b.textContent === "Editar");
+    click(editButtons()[0] ?? null);
+    await settle();
+    let modal = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect((modal.querySelector("input") as HTMLInputElement).value).toBe("WordPress Producción");
+    click(findButton(container, "Cancelar"));
+    await settle();
+
+    click(editButtons()[1] ?? null);
+    await settle();
+    modal = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect((modal.querySelector("input") as HTMLInputElement).value).toBe("API pausada");
+    expect(modal.textContent).not.toContain("WordPress Producción");
+    unmount();
+  });
+
+  it("cerrar y volver a abrir el mismo formulario de edición no deja secretos ni valores residuales de otra sesión", async () => {
+    setDwm({ "connections.list": () => success("connections.list", [wpConnection]) });
+    const { container, unmount } = mountPanel();
+    await settle();
+
+    click(findButton(container, "Editar"));
+    await settle();
+    click(findButton(container, "Cancelar"));
+    await settle();
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+
+    click(findButton(container, "Editar"));
+    await settle();
+    const modal = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect(modal.textContent).not.toContain(
+      "connections.p1.wordpress-produccion.appPassword.abc12345"
+    );
+    expect((modal.querySelector("input") as HTMLInputElement).value).toBe("WordPress Producción");
+    unmount();
+  });
+
   it("prueba de conexión: Probar delega en connections.test con projectId/id", async () => {
     const invoke = setDwm({
       "connections.list": () => success("connections.list", [wpConnection]),

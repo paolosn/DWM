@@ -43,7 +43,8 @@
     "@dwm/delivery-manager": "*",
     "@dwm/connections-manager": "*",
     "@dwm/secrets": "*",
-    "@dwm/project-provisioning": "*"
+    "@dwm/project-provisioning": "*",
+    "@dwm/ai-manager": "*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

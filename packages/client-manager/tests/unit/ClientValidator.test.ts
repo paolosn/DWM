@@ -101,6 +101,23 @@ describe("validateDefaultAi / assertValidDefaultAi", () => {
     const result = validator.validateDefaultAi({ secretReference: "ref-segura" });
     expect(result.valid).toBe(true);
   });
+
+  it("acepta baseUrl y format (cierre de limitaciones item 6: agnóstico de proveedor)", () => {
+    expect(
+      validator.validateDefaultAi({
+        provider: "openai-compatible",
+        baseUrl: "https://api.example.test/v1",
+        format: "openai",
+      }).valid
+    ).toBe(true);
+    expect(validator.validateDefaultAi({ format: "anthropic" }).valid).toBe(true);
+  });
+
+  it("rechaza un format que no sea 'openai' ni 'anthropic'", () => {
+    expect(() => validator.assertValidDefaultAi({ format: "otro" })).toThrowError(
+      expect.objectContaining({ code: ClientErrorCode.CLIENT_INVALID_DEFAULT_AI })
+    );
+  });
 });
 
 describe("validateTags / assertValidTags", () => {

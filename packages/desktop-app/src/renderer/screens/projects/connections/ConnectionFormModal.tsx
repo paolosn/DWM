@@ -45,9 +45,14 @@ function pairsToSecrets(pairs: readonly KeyValuePair[]): Record<string, string> 
   return secrets;
 }
 
+/** A qué pertenece la conexión que edita el formulario — proyecto (ya existente) o cliente (encargo, cierre de limitaciones item 5): mismo formulario completo, sin duplicarlo. */
+export type ConnectionFormScope =
+  | { readonly kind: "project"; readonly projectId: string }
+  | { readonly kind: "client"; readonly clientId: string };
+
 export interface ConnectionFormModalProps {
   readonly open: boolean;
-  readonly projectId: string;
+  readonly scope: ConnectionFormScope;
   /** Si se indica, el modal edita esta conexión en vez de crear una nueva. */
   readonly connection?: Connection;
   readonly onClose: () => void;
@@ -65,7 +70,7 @@ export interface ConnectionFormModalProps {
  */
 export function ConnectionFormModal({
   open,
-  projectId,
+  scope,
   connection,
   onClose,
   onSaved,
@@ -81,8 +86,20 @@ export function ConnectionFormModal({
     (connection?.capabilities ?? []).join(", ")
   );
 
-  const createMutation = useDwmMutation("connections.create", { invalidates: [...INVALIDATES] });
-  const updateMutation = useDwmMutation("connections.update", { invalidates: [...INVALIDATES] });
+  const createProjectMutation = useDwmMutation("connections.create", {
+    invalidates: [...INVALIDATES],
+  });
+  const updateProjectMutation = useDwmMutation("connections.update", {
+    invalidates: [...INVALIDATES],
+  });
+  const createClientMutation = useDwmMutation("connections.create-for-client", {
+    invalidates: ["connections.list-for-client"],
+  });
+  const updateClientMutation = useDwmMutation("connections.update-for-client", {
+    invalidates: ["connections.list-for-client"],
+  });
+  const createMutation = scope.kind === "client" ? createClientMutation : createProjectMutation;
+  const updateMutation = scope.kind === "client" ? updateClientMutation : updateProjectMutation;
   const mutation = isEdit ? updateMutation : createMutation;
 
   function resetAndClose(): void {
@@ -105,23 +122,27 @@ export function ConnectionFormModal({
     try {
       if (isEdit && connection) {
         await updateMutation.mutate({
-          projectId,
+          ...(scope.kind === "client"
+            ? { clientId: scope.clientId }
+            : { projectId: scope.projectId }),
           id: connection.id,
           name,
           config,
           capabilities,
           ...(Object.keys(secrets).length > 0 ? { secrets } : {}),
-        });
+        } as never);
         showToast({ title: `Conexión «${name}» actualizada`, tone: "success" });
       } else {
         await createMutation.mutate({
-          projectId,
+          ...(scope.kind === "client"
+            ? { clientId: scope.clientId }
+            : { projectId: scope.projectId }),
           name,
           type: type as ConnectionType,
           config,
           capabilities,
           ...(Object.keys(secrets).length > 0 ? { secrets } : {}),
-        });
+        } as never);
         showToast({ title: `Conexión «${name}» creada`, tone: "success" });
       }
       onSaved();

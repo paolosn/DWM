@@ -32,12 +32,23 @@ export const DWM_VERSION_CHANNEL = "dwm:version" as const;
 export const DWM_SELECT_IMPORT_FOLDER_CHANNEL = "dwm:selectImportFolder" as const;
 export const DWM_SELECT_IMPORT_ZIP_CHANNEL = "dwm:selectImportZip" as const;
 
+/**
+ * Canal para abrir el explorador de archivos nativo del sistema
+ * operativo directamente en una carpeta ya conocida (encargo
+ * "client-workflow-v2 — cierre de limitaciones", item 4: "Abrir
+ * carpeta"). Reutiliza `shell.openPath` de Electron — el mecanismo
+ * nativo multiplataforma real (Windows/macOS/Linux), sin invocar
+ * ningún comando de shell propio.
+ */
+export const DWM_OPEN_FOLDER_CHANNEL = "dwm:openFolder" as const;
+
 /** Lista cerrada de canales `ipcMain.handle` que el proceso principal registra. */
 export const DWM_IPC_CHANNELS = [
   DWM_IPC_CHANNEL,
   DWM_VERSION_CHANNEL,
   DWM_SELECT_IMPORT_FOLDER_CHANNEL,
   DWM_SELECT_IMPORT_ZIP_CHANNEL,
+  DWM_OPEN_FOLDER_CHANNEL,
 ] as const;
 
 /**
@@ -119,6 +130,8 @@ export interface DesktopBridge {
   selectImportFolder(): Promise<DesktopSelectionResult>;
   /** Abre el diálogo nativo de selección de fichero ZIP origen para `import.*`. */
   selectImportZip(): Promise<DesktopSelectionResult>;
+  /** Abre el explorador de archivos nativo del sistema en `path`. Nunca lanza: informa del resultado real. */
+  openFolder(path: string): Promise<{ readonly opened: boolean; readonly message: string }>;
 }
 
 declare global {

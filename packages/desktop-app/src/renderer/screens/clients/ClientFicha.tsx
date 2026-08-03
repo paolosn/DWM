@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Client } from "@dwm/client-manager";
 import type { Project } from "@dwm/project";
-import { callOperation, useDwmQuery } from "../../api-client/index.js";
+import { callOperation, useDwmQuery, DwmOperationError } from "../../api-client/index.js";
 import { Tabs } from "../../design-system/composites/Tabs/index.js";
 import { Spinner } from "../../design-system/primitives/Spinner/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
@@ -12,6 +12,7 @@ import { Button } from "../../design-system/primitives/Button/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ClientRelationsPanel } from "./ClientRelationsPanel.js";
 import { ClientConnectionsPanel } from "./ClientConnectionsPanel.js";
+import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/index.js";
 import "./ClientFicha.css";
 
 export interface ClientFichaProps {
@@ -48,10 +49,25 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
   const { showToast } = useToast();
   const [projects, setProjects] = useState<readonly Project[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
+  const [pendingArchive, setPendingArchive] = useState<{ id: string; name: string } | undefined>(
+    undefined
+  );
+
+  async function load(): Promise<void> {
+    setError(undefined);
+    try {
+      const results = await Promise.all(
+        client.references.projects.map((id) => callOperation("projects.get", { id }))
+      );
+      setProjects(results.filter((p): p is Project => p !== undefined));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido.");
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
-    async function load(): Promise<void> {
+    async function initialLoad(): Promise<void> {
       setError(undefined);
       setProjects(undefined);
       try {
@@ -63,11 +79,33 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
         if (!cancelled) setError(err instanceof Error ? err.message : "Error desconocido.");
       }
     }
-    void load();
+    void initialLoad();
     return () => {
       cancelled = true;
     };
   }, [client.id, client.references.projects]);
+
+  async function handleArchive(): Promise<void> {
+    if (!pendingArchive) return;
+    try {
+      await callOperation(
+        "projects.archive",
+        { id: pendingArchive.id },
+        { confirmation: { confirmed: true } }
+      );
+      showToast({ title: `Proyecto «${pendingArchive.name}» archivado`, tone: "success" });
+      setPendingArchive(undefined);
+      await load();
+    } catch (err) {
+      showToast({
+        title:
+          err instanceof DwmOperationError
+            ? err.message
+            : `No se pudo archivar «${pendingArchive.name}»`,
+        tone: "danger",
+      });
+    }
+  }
 
   async function openInVsCode(projectId: string, name: string): Promise<void> {
     try {
@@ -84,33 +122,75 @@ function ProyectosTab({ client }: { readonly client: Client }): JSX.Element {
     }
   }
 
+  async function openFolder(projectPath: string, name: string): Promise<void> {
+    try {
+      const result = await window.dwm.openFolder(projectPath);
+      showToast({
+        title: `${name}: ${result.message}`,
+        tone: result.opened ? "success" : "warning",
+      });
+    } catch {
+      showToast({ title: `No se pudo abrir la carpeta de «${name}»`, tone: "danger" });
+    }
+  }
+
   if (error)
     return <ErrorState title="No se pudieron cargar los proyectos" technicalDetail={error} />;
   if (!projects) return <Spinner label="Cargando proyectos…" />;
   if (projects.length === 0) return <EmptyState title="Este cliente todavía no tiene proyectos" />;
 
   return (
-    <ul className="dwm-client-ficha__projects">
-      {projects.map((project) => (
-        <li key={project.id} className="dwm-client-ficha__project-row">
-          <div>
-            <strong>{project.metadata.name}</strong>
-            <p className="dwm-client-ficha__project-path">{project.configuration.projectPath}</p>
-            <p className="dwm-client-ficha__project-meta">
-              Estado: {project.state} · Creado: {formatDate(project.metadata.createdAt)}
-            </p>
-          </div>
-          <div className="dwm-client-ficha__project-actions">
-            <Button
-              variant="secondary"
-              onClick={() => void openInVsCode(project.id, project.metadata.name)}
-            >
-              Abrir en VS Code
-            </Button>
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div>
+      <ul className="dwm-client-ficha__projects">
+        {projects.map((project) => (
+          <li key={project.id} className="dwm-client-ficha__project-row">
+            <div>
+              <strong>{project.metadata.name}</strong>
+              <p className="dwm-client-ficha__project-path">{project.configuration.projectPath}</p>
+              <p className="dwm-client-ficha__project-meta">
+                Estado: {project.state} · Creado: {formatDate(project.metadata.createdAt)}
+              </p>
+            </div>
+            <div className="dwm-client-ficha__project-actions">
+              <Button
+                variant="secondary"
+                onClick={() => void openInVsCode(project.id, project.metadata.name)}
+              >
+                Abrir en VS Code
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  void openFolder(project.configuration.projectPath, project.metadata.name)
+                }
+              >
+                Abrir carpeta
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setPendingArchive({ id: project.id, name: project.metadata.name })}
+                disabled={project.state === "closed"}
+              >
+                Archivar
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <ConfirmDialog
+        open={Boolean(pendingArchive)}
+        title="Archivar proyecto"
+        description={
+          pendingArchive
+            ? `«${pendingArchive.name}» se archivará (queda cerrado, nunca se elimina). Podrás seguir viéndolo en esta lista.`
+            : ""
+        }
+        confirmLabel="Archivar"
+        onConfirm={() => void handleArchive()}
+        onCancel={() => setPendingArchive(undefined)}
+      />
+    </div>
   );
 }
 
@@ -162,21 +242,102 @@ function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
   );
 }
 
-function DocumentosTab(): JSX.Element {
+function DocumentosTab({ client }: { readonly client: Client }): JSX.Element {
+  const { showToast } = useToast();
+  const query = useDwmQuery("clients.documents", { id: client.id });
+
+  async function openDocument(docPath: string, name: string): Promise<void> {
+    try {
+      const result = await window.dwm.openFolder(docPath);
+      showToast({
+        title: `${name}: ${result.message}`,
+        tone: result.opened ? "success" : "warning",
+      });
+    } catch {
+      showToast({ title: `No se pudo abrir «${name}»`, tone: "danger" });
+    }
+  }
+
+  if (query.status === "loading" || query.status === "idle") {
+    return <Spinner label="Cargando documentos…" />;
+  }
+  if (query.status === "error") {
+    return (
+      <ErrorState
+        title="No se pudieron cargar los documentos"
+        {...(query.error?.message ? { technicalDetail: query.error.message } : {})}
+      />
+    );
+  }
+  const documents = query.data ?? [];
+  if (documents.length === 0) {
+    return <EmptyState title="Todavía no hay documentos indexados para este cliente" />;
+  }
+
   return (
-    <InlineAlert tone="info" title="Función no disponible en esta versión">
-      No existe todavía una operación pública que indexe documentos (briefings, propuestas,
-      auditorías, informes) por cliente. Los ficheros reales (`cliente.json`, `briefing-inicial.md`,
-      `estado-proyecto.md`) están dentro de la carpeta de cada proyecto.
-    </InlineAlert>
+    <ul className="dwm-client-ficha__documents">
+      {documents.map((doc) => (
+        <li key={doc.path} className="dwm-client-ficha__document-row">
+          <div>
+            <strong>{doc.name}</strong>
+            <p className="dwm-client-ficha__document-meta">
+              {doc.type} · Proyecto: {doc.projectName} · {formatDate(doc.modifiedAt)}
+            </p>
+          </div>
+          <Button variant="secondary" onClick={() => void openDocument(doc.path, doc.name)}>
+            Abrir
+          </Button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function ActividadTab(): JSX.Element {
+const ACTIVITY_LABEL: Record<string, string> = {
+  "client.created": "Cliente creado",
+  "client.updated": "Cliente actualizado",
+  "project.created": "Proyecto creado",
+  "project.archived": "Proyecto archivado",
+  "project.opened-in-vscode": "Abierto en VS Code",
+  "connection.created": "Conexión creada",
+  "mcp.registered": "Servidor MCP registrado",
+  "connection.tested": "Conexión probada",
+  "connection.assigned": "Conexión asignada a proyecto",
+  "connection.revoked": "Asignación de conexión retirada",
+  "document.generated": "Documento generado",
+};
+
+function ActividadTab({ client }: { readonly client: Client }): JSX.Element {
+  const query = useDwmQuery("clients.activity", { id: client.id });
+
+  if (query.status === "loading" || query.status === "idle") {
+    return <Spinner label="Cargando actividad…" />;
+  }
+  if (query.status === "error") {
+    return (
+      <ErrorState
+        title="No se pudo cargar la actividad"
+        {...(query.error?.message ? { technicalDetail: query.error.message } : {})}
+      />
+    );
+  }
+  const entries = query.data ?? [];
+  if (entries.length === 0) {
+    return <EmptyState title="Todavía no hay actividad registrada para este cliente" />;
+  }
+
   return (
-    <InlineAlert tone="info" title="Función no disponible en esta versión">
-      No existe todavía una operación pública de consulta del historial de eventos por cliente.
-    </InlineAlert>
+    <ol className="dwm-client-ficha__activity">
+      {entries.map((entry, index) => (
+        <li key={`${entry.type}-${entry.at}-${index}`} className="dwm-client-ficha__activity-row">
+          <span className="dwm-client-ficha__activity-date">{formatDate(entry.at)}</span>
+          <div>
+            <strong>{ACTIVITY_LABEL[entry.type] ?? entry.type}</strong>
+            <p className="dwm-client-ficha__activity-message">{entry.message}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -216,8 +377,8 @@ export function ClientFicha({ clientId }: ClientFichaProps): JSX.Element {
         { id: "proyectos", label: "Proyectos", content: <ProyectosTab client={client} /> },
         { id: "accesos", label: "Accesos y conexiones", content: <AccesosTab client={client} /> },
         { id: "mcp-ia", label: "MCP e IA", content: <McpIaTab client={client} /> },
-        { id: "documentos", label: "Documentos", content: <DocumentosTab /> },
-        { id: "actividad", label: "Actividad", content: <ActividadTab /> },
+        { id: "documentos", label: "Documentos", content: <DocumentosTab client={client} /> },
+        { id: "actividad", label: "Actividad", content: <ActividadTab client={client} /> },
       ]}
     />
   );

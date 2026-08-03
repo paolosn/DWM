@@ -113,12 +113,19 @@ describe("ClientConnectionsPanel", () => {
     );
     await settle();
 
-    const nameInput = container.querySelector("input") as HTMLInputElement;
-    setValue(nameInput, "Nueva conexión");
-    await settle();
     click(
       Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Crear conexión compartida"
+        (b) => b.textContent === "Nueva conexión"
+      ) ?? null
+    );
+    await settle();
+
+    const nameInput = container.querySelector('[role="dialog"] input') as HTMLInputElement;
+    setValue(nameInput, "Nueva conexión de cliente");
+    await settle();
+    click(
+      Array.from(container.querySelectorAll('[role="dialog"] button')).find(
+        (b) => b.textContent === "Crear conexión"
       ) ?? null
     );
     await settle();
@@ -146,7 +153,7 @@ describe("ClientConnectionsPanel", () => {
     );
     await settle();
 
-    const select = container.querySelectorAll("select")[1] as HTMLSelectElement;
+    const select = container.querySelectorAll("select")[0] as HTMLSelectElement;
     const selectSetter = Object.getOwnPropertyDescriptor(
       window.HTMLSelectElement.prototype,
       "value"
@@ -170,6 +177,51 @@ describe("ClientConnectionsPanel", () => {
       (call?.[0] as { payload: { clientId: string; connectionId: string; projectId: string } })
         .payload
     ).toEqual({ clientId: "mci-finance", connectionId: "conn-1", projectId: "p1" });
+    unmount();
+  });
+
+  it("editar abre el formulario completo precargado y llama a connections.update-for-client", async () => {
+    const invoke = setDwm({
+      "connections.list-for-client": () => success("connections.list-for-client", [connection]),
+      "connections.projects-for-client-connection": () =>
+        success("connections.projects-for-client-connection", []),
+      "connections.update-for-client": () =>
+        success("connections.update-for-client", { ...connection, name: "Editado" }),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientConnectionsPanel clientId="mci-finance" projects={[project as never]} />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Editar") ??
+        null
+    );
+    await settle();
+
+    const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    expect(dialog.textContent).toContain("Editar conexión");
+    const nameInput = dialog.querySelector("input") as HTMLInputElement;
+    expect(nameInput.value).toBe("WordPress compartido");
+
+    click(
+      Array.from(dialog.querySelectorAll("button")).find(
+        (b) => b.textContent === "Guardar cambios"
+      ) ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "connections.update-for-client"
+    );
+    expect(call).toBeDefined();
+    expect((call?.[0] as { payload: { clientId: string; id: string } }).payload).toMatchObject({
+      clientId: "mci-finance",
+      id: "conn-1",
+    });
     unmount();
   });
 

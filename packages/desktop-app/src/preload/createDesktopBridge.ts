@@ -3,6 +3,7 @@ import {
   DWM_VERSION_CHANNEL,
   DWM_SELECT_IMPORT_FOLDER_CHANNEL,
   DWM_SELECT_IMPORT_ZIP_CHANNEL,
+  DWM_OPEN_FOLDER_CHANNEL,
   type DesktopBridge,
   type DesktopInvokeRequest,
   type DesktopInvokeResponse,
@@ -35,6 +36,9 @@ export function createDesktopBridge(invoke: IpcInvoke): DesktopBridge {
     },
     async selectImportZip(): Promise<DesktopSelectionResult> {
       return invoke(DWM_SELECT_IMPORT_ZIP_CHANNEL) as Promise<DesktopSelectionResult>;
+    },
+    async openFolder(path: string): Promise<{ opened: boolean; message: string }> {
+      return invoke(DWM_OPEN_FOLDER_CHANNEL, path) as Promise<{ opened: boolean; message: string }>;
     },
   };
 }

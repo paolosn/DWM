@@ -7,6 +7,7 @@ import {
   DWM_VERSION_CHANNEL,
   DWM_SELECT_IMPORT_FOLDER_CHANNEL,
   DWM_SELECT_IMPORT_ZIP_CHANNEL,
+  DWM_OPEN_FOLDER_CHANNEL,
   isDesktopInvokeRequest,
   type DesktopInvokeRequest,
   type DesktopInvokeResponse,
@@ -30,6 +31,17 @@ export interface NativeDialogPort {
   }): Promise<{ canceled: boolean; filePaths: readonly string[] }>;
 }
 
+/**
+ * Superficie mínima de `shell.openPath` de Electron (item 4 del cierre de
+ * limitaciones: "Abrir carpeta"), para poder inyectar un doble de prueba.
+ * `shell.openPath` ya es, en sí mismo, el mecanismo nativo multiplataforma
+ * real de Electron (Windows/macOS/Linux): no se reimplementa nada.
+ */
+export interface NativeShellPort {
+  /** Devuelve cadena vacía si se abrió correctamente, o un mensaje de error si no. */
+  openPath(path: string): Promise<string>;
+}
+
 export interface IpcRouterOptions {
   readonly ipcMain: IpcMain;
   readonly engine: EngineBootstrap;
@@ -39,6 +51,8 @@ export interface IpcRouterOptions {
   readonly allowedOrigins: readonly string[];
   /** Puerto nativo de diálogos, para `import.*`: seleccionar carpeta o ZIP origen. */
   readonly dialog: NativeDialogPort;
+  /** Puerto nativo del explorador de archivos del sistema, para "Abrir carpeta". */
+  readonly shell: NativeShellPort;
 }
 
 /**
@@ -90,6 +104,9 @@ export class IpcRouter {
         [{ name: "Archivo ZIP", extensions: ["zip"] }]
       )
     );
+    this.options.ipcMain.handle(DWM_OPEN_FOLDER_CHANNEL, (event, path: unknown) =>
+      this.handleOpenFolder(event, path)
+    );
   }
 
   unregister(): void {
@@ -97,6 +114,7 @@ export class IpcRouter {
     this.options.ipcMain.removeHandler(DWM_VERSION_CHANNEL);
     this.options.ipcMain.removeHandler(DWM_SELECT_IMPORT_FOLDER_CHANNEL);
     this.options.ipcMain.removeHandler(DWM_SELECT_IMPORT_ZIP_CHANNEL);
+    this.options.ipcMain.removeHandler(DWM_OPEN_FOLDER_CHANNEL);
   }
 
   private async handleInvoke(
@@ -196,6 +214,29 @@ export class IpcRouter {
 
     if (result.canceled || result.filePaths.length === 0) return { canceled: true };
     return { canceled: false, path: result.filePaths[0]! };
+  }
+
+  /**
+   * "Abrir carpeta" (encargo, cierre de limitaciones item 4): abre el
+   * explorador de archivos nativo del sistema operativo directamente en
+   * `path`, reutilizando `shell.openPath` de Electron — funciona igual en
+   * Windows, macOS y Linux sin distinguir plataforma en este código.
+   */
+  private async handleOpenFolder(
+    event: IpcMainInvokeEvent,
+    path: unknown
+  ): Promise<{ opened: boolean; message: string }> {
+    if (!this.isTrustedSender(event)) {
+      return { opened: false, message: "Origen no autorizado." };
+    }
+    if (typeof path !== "string" || path.length === 0) {
+      return { opened: false, message: "Ruta no válida." };
+    }
+    const errorMessage = await this.options.shell.openPath(path);
+    if (errorMessage) {
+      return { opened: false, message: `No se pudo abrir la carpeta: ${errorMessage}` };
+    }
+    return { opened: true, message: `Carpeta abierta: "${path}".` };
   }
 
   private handleVersion(): DesktopVersionInfo {

@@ -4,6 +4,7 @@ import {
   DWM_VERSION_CHANNEL,
   DWM_SELECT_IMPORT_FOLDER_CHANNEL,
   DWM_SELECT_IMPORT_ZIP_CHANNEL,
+  DWM_OPEN_FOLDER_CHANNEL,
   DWM_IPC_CHANNELS,
   isDesktopInvokeRequest,
 } from "../../../src/shared/ipc/IpcContract.js";
@@ -14,11 +15,13 @@ describe("IpcContract", () => {
     expect(DWM_VERSION_CHANNEL).toBe("dwm:version");
     expect(DWM_SELECT_IMPORT_FOLDER_CHANNEL).toBe("dwm:selectImportFolder");
     expect(DWM_SELECT_IMPORT_ZIP_CHANNEL).toBe("dwm:selectImportZip");
+    expect(DWM_OPEN_FOLDER_CHANNEL).toBe("dwm:openFolder");
     expect(DWM_IPC_CHANNELS).toEqual([
       "dwm:invoke",
       "dwm:version",
       "dwm:selectImportFolder",
       "dwm:selectImportZip",
+      "dwm:openFolder",
     ]);
   });
 

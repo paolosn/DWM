@@ -20,7 +20,11 @@ function setDwm(
     return success(request.operation, undefined);
   });
   Object.defineProperty(window, "dwm", {
-    value: { invoke, getVersionInfo: vi.fn() },
+    value: {
+      invoke,
+      getVersionInfo: vi.fn(),
+      openFolder: vi.fn().mockResolvedValue({ opened: true, message: "Carpeta abierta." }),
+    },
     configurable: true,
   });
   return invoke;
@@ -144,6 +148,84 @@ describe("ClientFicha", () => {
     unmount();
   });
 
+  it("Proyectos permite 'Abrir carpeta' reutilizando window.dwm.openFolder con la ruta real", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "projects.get": () => success("projects.get", baseProject),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Proyectos"
+      ) ?? null
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir carpeta"
+      ) ?? null
+    );
+    await settle();
+
+    expect(window.dwm.openFolder).toHaveBeenCalledWith(
+      "/workspace/PROYECTOS/DIRECTOS/portal-de-clientes"
+    );
+    unmount();
+  });
+
+  it("Proyectos permite archivar con confirmación, reutilizando projects.archive", async () => {
+    const invoke = setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "projects.get": () => success("projects.get", baseProject),
+      "projects.archive": () => success("projects.archive", { ...baseProject, state: "closed" }),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Proyectos"
+      ) ?? null
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Archivar") ??
+        null
+    );
+    await settle();
+    expect(container.textContent).toContain("se archivará");
+
+    const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    click(
+      Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === "Archivar") ??
+        null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.archive"
+    );
+    expect(call).toBeDefined();
+    expect((call?.[0] as { payload: { id: string } }).payload).toEqual({ id: "p1" });
+    expect((call?.[0] as { confirmation?: { confirmed: boolean } }).confirmation).toEqual({
+      confirmed: true,
+    });
+    unmount();
+  });
+
   it("MCP e IA muestra la IA predeterminada real cuando existe, y un estado vacío honesto cuando no", async () => {
     const withAi = { ...baseClient, defaultAi: { provider: "openai", model: "gpt-4o" } };
     setDwm({ "clients.get": () => success("clients.get", withAi) });
@@ -165,8 +247,21 @@ describe("ClientFicha", () => {
     unmount();
   });
 
-  it("Documentos y Actividad se declaran honestamente no disponibles, sin datos inventados", async () => {
-    setDwm({ "clients.get": () => success("clients.get", baseClient) });
+  it("Documentos muestra el índice real de documentos vía clients.documents", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "clients.documents": () =>
+        success("clients.documents", [
+          {
+            name: "briefing-inicial.md",
+            type: "Briefing",
+            path: "/workspace/proyectos/portal/briefing-inicial.md",
+            projectId: "p1",
+            projectName: "Portal de Clientes",
+            modifiedAt: "2026-01-02T10:00:00.000Z",
+          },
+        ]),
+    });
     const { container, unmount } = mount(
       <ToastProvider>
         <ClientFicha clientId="mci-finance" />
@@ -180,7 +275,62 @@ describe("ClientFicha", () => {
       ) ?? null
     );
     await settle();
-    expect(container.textContent).toContain("Función no disponible en esta versión");
+    expect(container.textContent).toContain("briefing-inicial.md");
+    expect(container.textContent).toContain("Briefing");
+    expect(container.textContent).toContain("Portal de Clientes");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Abrir") ??
+        null
+    );
+    await settle();
+    expect(window.dwm.openFolder).toHaveBeenCalledWith(
+      "/workspace/proyectos/portal/briefing-inicial.md"
+    );
+    unmount();
+  });
+
+  it("Documentos muestra un estado vacío real cuando no hay ninguno indexado", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "clients.documents": () => success("clients.documents", []),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Documentos"
+      ) ?? null
+    );
+    await settle();
+    expect(container.textContent).toContain("Todavía no hay documentos indexados");
+    unmount();
+  });
+
+  it("Actividad muestra la cronología real vía clients.activity, más reciente primero", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "clients.activity": () =>
+        success("clients.activity", [
+          {
+            type: "project.created",
+            message: "Proyecto «X» creado.",
+            at: "2026-01-02T10:00:00.000Z",
+          },
+          { type: "client.created", message: "Cliente creado.", at: "2026-01-01T10:00:00.000Z" },
+        ]),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
 
     click(
       Array.from(container.querySelectorAll('[role="tab"]')).find(
@@ -188,7 +338,35 @@ describe("ClientFicha", () => {
       ) ?? null
     );
     await settle();
-    expect(container.textContent).toContain("Función no disponible en esta versión");
+
+    expect(container.textContent).toContain("Proyecto creado");
+    expect(container.textContent).toContain("Proyecto «X» creado.");
+    expect(container.textContent).toContain("Cliente creado");
+    const rows = Array.from(container.querySelectorAll(".dwm-client-ficha__activity-row"));
+    expect(rows).toHaveLength(2);
+    expect(rows[0]?.textContent).toContain("Proyecto creado");
+    unmount();
+  });
+
+  it("Actividad muestra un estado vacío real cuando no hay entradas", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "clients.activity": () => success("clients.activity", []),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Actividad"
+      ) ?? null
+    );
+    await settle();
+    expect(container.textContent).toContain("Todavía no hay actividad registrada");
     unmount();
   });
 

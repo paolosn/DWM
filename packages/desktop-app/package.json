@@ -40,7 +40,8 @@
     "@dwm/secrets": "*",
     "@dwm/connections-manager": "*",
     "lucide-react": "^1.28.0",
-    "@dwm/project-provisioning": "*"
+    "@dwm/project-provisioning": "*",
+    "@dwm/ai-manager": "*"
   },
   "scripts": {
     "dev:renderer": "vite",
