@@ -69,7 +69,7 @@ describe("Sidebar", () => {
       </NavigationProvider>
     );
     const navButtons = container.querySelectorAll(".dwm-sidebar__list button");
-    expect(navButtons).toHaveLength(21);
+    expect(navButtons).toHaveLength(22);
     expect(container.querySelectorAll(".dwm-sidebar__item--reserved")).toHaveLength(0);
 
     const labels = Array.from(navButtons).map((b) => b.textContent);
@@ -119,7 +119,7 @@ describe("Sidebar", () => {
       expect(icon).not.toBeNull();
       expect(icon?.getAttribute("aria-hidden")).toBe("true");
     });
-     
+
     const emojiPattern = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
     expect(emojiPattern.test(container.textContent ?? "")).toBe(false);
     unmount();

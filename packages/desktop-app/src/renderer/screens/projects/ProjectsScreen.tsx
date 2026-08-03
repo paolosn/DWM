@@ -75,6 +75,16 @@ export function ProjectsScreen(): JSX.Element {
     { key: "path", header: "Ruta", render: (project) => project.configuration.projectPath },
     { key: "profile", header: "Perfil", render: (project) => project.configuration.profileId },
     {
+      key: "client",
+      header: "Cliente",
+      render: (project) =>
+        project.configuration.clientId ? (
+          project.configuration.clientId
+        ) : (
+          <StatusBadge label="Sin cliente asignado" tone="neutral" />
+        ),
+    },
+    {
       key: "state",
       header: "Estado",
       render: (project) => <StatusBadge label={project.state} tone={stateTone[project.state]} />,

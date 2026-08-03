@@ -14,6 +14,7 @@ export interface DesktopWindowBounds {
 
 export type DesktopNavigationSection =
   | "dashboard"
+  | "provisioning"
   | "workspace"
   | "projects"
   | "agents"
@@ -75,6 +76,7 @@ export function isDesktopWindowBounds(value: unknown): value is DesktopWindowBou
 
 const KNOWN_NAVIGATION_SECTIONS: readonly DesktopNavigationSection[] = [
   "dashboard",
+  "provisioning",
   "workspace",
   "projects",
   "agents",

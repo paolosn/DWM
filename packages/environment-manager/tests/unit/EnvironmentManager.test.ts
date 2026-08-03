@@ -426,4 +426,41 @@ describe("EnvironmentManager", () => {
       rmSync(coreDir, { recursive: true, force: true });
     });
   });
+
+  describe("openInVSCode()", () => {
+    it("resuelve 'code' en PATH (mismo ProcessRunner que VSCodeDetector) y lo lanza sobre la carpeta del proyecto", async () => {
+      const processRunner = new FakeProcessRunner();
+      processRunner.setExecutable("code", "/usr/local/bin/code");
+      processRunner.setRunResult("/usr/local/bin/code", { stdout: "" });
+      const manager = makeManager({ processRunner });
+
+      const result = await manager.openInVSCode("/home/user/proyectos/portal-clientes");
+
+      expect(result.opened).toBe(true);
+      expect(result.message).toContain("/home/user/proyectos/portal-clientes");
+    });
+
+    it("informa con claridad, sin fallar, si 'code' no está en PATH", async () => {
+      const manager = makeManager({ processRunner: new FakeProcessRunner() });
+
+      const result = await manager.openInVSCode("/home/user/proyectos/portal-clientes");
+
+      expect(result.opened).toBe(false);
+      expect(result.message).toContain("PATH");
+    });
+
+    it("si el lanzamiento del CLI falla, informa sin ocultar que el proyecto ya se creó", async () => {
+      const processRunner = new FakeProcessRunner();
+      processRunner.setExecutable("code", "/usr/local/bin/code");
+      processRunner.setRunResult("/usr/local/bin/code", {
+        exitCode: 1,
+        stderr: "fallo inesperado",
+      });
+      const manager = makeManager({ processRunner });
+
+      const result = await manager.openInVSCode("/home/user/proyectos/portal-clientes");
+
+      expect(result.message).toContain("se creó correctamente");
+    });
+  });
 });

@@ -6,6 +6,8 @@ export interface ProjectConfiguration {
   /** Cada proyecto debe estar asociado a un único perfil. */
   readonly profileId: string;
   readonly workspaceId?: string;
+  /** Cliente propietario del proyecto (`@dwm/client-manager`); ausente = "Sin cliente asignado" — un estado válido, no un error, para proyectos antiguos o creados sin cliente. */
+  readonly clientId?: string;
   readonly usedTools: readonly string[];
   readonly usedAdapters: readonly string[];
   readonly settings?: Readonly<Record<string, unknown>>;
@@ -60,6 +62,17 @@ export function validateProjectConfiguration(config: ProjectConfiguration): void
     throw createProjectError({
       code: ProjectErrorCode.PROJECT_INVALID_CONFIGURATION,
       message: "ProjectConfiguration.workspaceId debe ser una cadena si se indica.",
+      origin: "configuration",
+      recoverable: false,
+    });
+  }
+  if (
+    config.clientId !== undefined &&
+    (typeof config.clientId !== "string" || config.clientId.length === 0)
+  ) {
+    throw createProjectError({
+      code: ProjectErrorCode.PROJECT_INVALID_CONFIGURATION,
+      message: "ProjectConfiguration.clientId debe ser una cadena no vacía si se indica.",
       origin: "configuration",
       recoverable: false,
     });

@@ -107,4 +107,32 @@ describe("ClientRepository", () => {
       repository.write(temp.dir, makeClient({ id: "../fuera", slug: "fuera" }))
     ).rejects.toThrowError(ClientError);
   });
+
+  it("migración: un cliente.json anterior a defaultAi (sin ese campo) se sigue leyendo con normalidad", async () => {
+    const legacyJson = {
+      id: "legacy-cliente",
+      name: "Cliente Antiguo",
+      slug: "legacy-cliente",
+      status: "active",
+      tags: [],
+      references: { projects: [], knowledge: [], agents: [], skills: [], rules: [] },
+      dwm: {
+        archived: false,
+        createdAt: "2025-01-01T00:00:00.000Z",
+        updatedAt: "2025-01-01T00:00:00.000Z",
+      },
+      // Sin "defaultAi": así eran todos los cliente.json antes de este cambio.
+    };
+    await fs.mkdir(temp.dir, { recursive: true });
+    await fs.writeFile(
+      path.join(temp.dir, "legacy-cliente.json"),
+      JSON.stringify(legacyJson, null, 2),
+      "utf-8"
+    );
+
+    const read = await repository.read(temp.dir, "legacy-cliente");
+    expect(read).toBeDefined();
+    expect(read?.defaultAi).toBeUndefined();
+    expect(read?.name).toBe("Cliente Antiguo");
+  });
 });

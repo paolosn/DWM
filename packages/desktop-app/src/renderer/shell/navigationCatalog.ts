@@ -15,6 +15,7 @@ import {
   ListChecks,
   Package,
   Plug,
+  Rocket,
   ScrollText,
   Settings,
   Sparkles,
@@ -42,6 +43,7 @@ export interface NavigationItem {
  */
 export const NAVIGATION_CATALOG: readonly NavigationItem[] = [
   { section: "dashboard", label: "Inicio", icon: Home },
+  { section: "provisioning", label: "Nuevo trabajo", icon: Rocket },
   { section: "workspace", label: "Centro de trabajo", icon: LayoutGrid },
   { section: "projects", label: "Proyectos", icon: FolderKanban },
   { section: "agents", label: "Agentes", icon: Bot },

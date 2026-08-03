@@ -253,6 +253,7 @@ export class ClientManager implements IModule {
     this.validator.assertValidSlug(request.slug);
     this.validator.assertValidName(request.name);
     this.validator.assertValidDescription(request.description);
+    this.validator.assertValidDefaultAi(request.defaultAi);
     if (request.tags) this.validator.assertValidTags(request.tags);
     if (request.status !== undefined) this.validator.assertValidStatus(request.status);
 
@@ -284,6 +285,7 @@ export class ClientManager implements IModule {
       tags: normalizeTags(request.tags ?? []),
       ...(request.description ? { description: request.description } : {}),
       references: { ...emptyClientReferences(), ...request.references },
+      ...(request.defaultAi ? { defaultAi: request.defaultAi } : {}),
       dwm: this.metadataService.createInitial(),
     };
     const created = await this.persist(directory, client);
@@ -299,6 +301,7 @@ export class ClientManager implements IModule {
     if (request.name !== undefined) this.validator.assertValidName(request.name);
     if (request.description !== undefined)
       this.validator.assertValidDescription(request.description);
+    if (request.defaultAi !== undefined) this.validator.assertValidDefaultAi(request.defaultAi);
     if (request.tags) this.validator.assertValidTags(request.tags);
     if (request.status !== undefined) this.validator.assertValidStatus(request.status);
 
@@ -319,15 +322,22 @@ export class ClientManager implements IModule {
     const nextDescription = descriptionChanged
       ? (request.description ?? undefined)
       : existing.description;
-    const { description: _existingDescription, ...withoutDescription } = existing;
+    const defaultAiChanged = request.defaultAi !== undefined;
+    const nextDefaultAi = defaultAiChanged ? (request.defaultAi ?? undefined) : existing.defaultAi;
+    const {
+      description: _existingDescription,
+      defaultAi: _existingDefaultAi,
+      ...withoutOptionals
+    } = existing;
 
     const client: Client = {
-      ...withoutDescription,
+      ...withoutOptionals,
       name: request.name ?? existing.name,
       slug: request.slug ?? existing.slug,
       status: request.status ?? existing.status,
       tags: request.tags ? normalizeTags(request.tags) : existing.tags,
       ...(nextDescription ? { description: nextDescription } : {}),
+      ...(nextDefaultAi ? { defaultAi: nextDefaultAi } : {}),
       dwm: this.metadataService.withTouchedTimestamp(existing.dwm),
     };
     const updated = await this.persist(directory, client);

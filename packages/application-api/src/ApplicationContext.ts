@@ -23,6 +23,7 @@ import type { StatusManager } from "@dwm/status";
 import type { ProfileManager } from "@dwm/profile";
 import type { PluginManager } from "@dwm/plugin";
 import type { ConnectionsManager } from "@dwm/connections-manager";
+import type { ProjectProvisioningService } from "@dwm/project-provisioning";
 
 /**
  * Referencias, todas opcionales, a las APIs públicas de los managers ya
@@ -58,6 +59,7 @@ export interface ApplicationContextOptions {
   readonly profileManager?: ProfileManager;
   readonly pluginManager?: PluginManager;
   readonly connectionsManager?: ConnectionsManager;
+  readonly projectProvisioningService?: ProjectProvisioningService;
 }
 
 export class ApplicationContext {
@@ -86,6 +88,7 @@ export class ApplicationContext {
   readonly profileManager?: ProfileManager;
   readonly pluginManager?: PluginManager;
   readonly connectionsManager?: ConnectionsManager;
+  readonly projectProvisioningService?: ProjectProvisioningService;
 
   constructor(options: ApplicationContextOptions = {}) {
     if (options.logger) this.logger = options.logger;
@@ -117,6 +120,8 @@ export class ApplicationContext {
     if (options.profileManager) this.profileManager = options.profileManager;
     if (options.pluginManager) this.pluginManager = options.pluginManager;
     if (options.connectionsManager) this.connectionsManager = options.connectionsManager;
+    if (options.projectProvisioningService)
+      this.projectProvisioningService = options.projectProvisioningService;
   }
 
   /** Lista de integraciones efectivamente disponibles (para `system.status`). */
@@ -145,6 +150,7 @@ export class ApplicationContext {
     if (this.profileManager) connected.push("profile");
     if (this.pluginManager) connected.push("plugin");
     if (this.connectionsManager) connected.push("connections-manager");
+    if (this.projectProvisioningService) connected.push("project-provisioning");
     return connected;
   }
 }

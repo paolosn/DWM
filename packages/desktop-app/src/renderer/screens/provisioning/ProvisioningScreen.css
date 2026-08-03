@@ -1,0 +1,29 @@
+.dwm-provisioning-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-lg);
+}
+.dwm-provisioning-screen__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--dwm-space-md);
+}
+.dwm-provisioning-screen__card-title {
+  font-size: var(--dwm-font-size-section-title);
+  margin: 0 0 var(--dwm-space-sm);
+}
+.dwm-provisioning-screen__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-provisioning-screen__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--dwm-space-sm);
+}
+.dwm-provisioning-screen__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dwm-space-sm);
+}

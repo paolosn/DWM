@@ -75,4 +75,53 @@ describe("ProjectController", () => {
     expect(ok.success).toBe(true);
     expect(fakeManager.deleteProject).toHaveBeenCalledWith("p1");
   });
+
+  it("projects.open-in-vscode reutiliza environmentManager.openInVSCode con la ruta real del proyecto", async () => {
+    const fakeManager = {
+      getProject: vi.fn().mockReturnValue({
+        id: "p1",
+        configuration: { projectPath: "/workspace/projects/portal-clientes" },
+      }),
+    } as unknown as ProjectManager;
+    const openInVSCode = vi.fn().mockResolvedValue({
+      opened: true,
+      message: 'VS Code abierto en "/workspace/projects/portal-clientes".',
+    });
+    const fakeEnvironmentManager = {
+      openInVSCode,
+    } as unknown as import("@dwm/environment-manager").EnvironmentManager;
+
+    const api = new ApplicationAPI({
+      projectManager: fakeManager,
+      environmentManager: fakeEnvironmentManager,
+    });
+    const response = await api.execute(
+      makeRequest("projects.open-in-vscode", { id: "p1" }, { caller: admin })
+    );
+
+    expect(response.success).toBe(true);
+    expect(openInVSCode).toHaveBeenCalledWith("/workspace/projects/portal-clientes");
+    if (response.success) {
+      expect((response.data as { opened: boolean }).opened).toBe(true);
+    }
+  });
+
+  it("projects.open-in-vscode falla con un mensaje claro si el proyecto no existe", async () => {
+    const fakeManager = {
+      getProject: vi.fn().mockReturnValue(undefined),
+    } as unknown as ProjectManager;
+    const fakeEnvironmentManager = {
+      openInVSCode: vi.fn(),
+    } as unknown as import("@dwm/environment-manager").EnvironmentManager;
+    const api = new ApplicationAPI({
+      projectManager: fakeManager,
+      environmentManager: fakeEnvironmentManager,
+    });
+
+    const response = await api.execute(
+      makeRequest("projects.open-in-vscode", { id: "no-existe" }, { caller: admin })
+    );
+    expect(response.success).toBe(false);
+    expect(response.success || response.error.category).toBe("not-found");
+  });
 });

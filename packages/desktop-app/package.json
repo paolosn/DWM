@@ -1,6 +1,6 @@
 {
   "name": "@dwm/desktop-app",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "M\u00f3dulo 32 \u2014 Desktop Application de Dev Workspace Manager (DWM): infraestructura Electron + React + TypeScript + Vite sobre la que se construir\u00e1 la interfaz de usuario (M\u00f3dulo 33). Proceso principal seguro (contextIsolation, sin nodeIntegration, preload con contextBridge), IPC tipado hacia la Application API (M\u00f3dulo 31), gesti\u00f3n de ventanas, configuraci\u00f3n persistida, manejo global de errores y AppShell vac\u00edo con navegaci\u00f3n preparada. No implementa pantallas funcionales ni l\u00f3gica de negocio.",
   "private": true,
   "author": "DWM",
@@ -39,7 +39,8 @@
     "react-dom": "^18.3.1",
     "@dwm/secrets": "*",
     "@dwm/connections-manager": "*",
-    "lucide-react": "^1.28.0"
+    "lucide-react": "^1.28.0",
+    "@dwm/project-provisioning": "*"
   },
   "scripts": {
     "dev:renderer": "vite",

@@ -96,11 +96,11 @@ describe("ClientsScreen", () => {
       (el) => el.textContent
     );
     expect(labels).not.toContain("Duplicar");
-    expect(labels).toEqual(["Ver relaciones", "Archivar", "Eliminar"]);
+    expect(labels).toEqual(["Ver cliente", "Archivar", "Eliminar"]);
     unmount();
   });
 
-  it("'Ver relaciones' llama a clients.get real y muestra los recursos vinculados", async () => {
+  it("'Ver cliente' llama a clients.get real y muestra los recursos vinculados", async () => {
     const invoke = vi.fn().mockImplementation((request: { operation: string }) => {
       if (request.operation === "clients.list") {
         return Promise.resolve({
@@ -146,7 +146,7 @@ describe("ClientsScreen", () => {
 
     click(container.querySelector('button[aria-label="Acciones para MCI Finance"]'));
     const detailItem = Array.from(container.querySelectorAll('[role="menuitem"]')).find(
-      (el) => el.textContent === "Ver relaciones"
+      (el) => el.textContent === "Ver cliente"
     );
     click(detailItem ?? null);
     await settle();

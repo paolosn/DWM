@@ -52,6 +52,34 @@ export function emptyClientReferences(): ClientReferences {
   return { projects: [], knowledge: [], agents: [], skills: [], rules: [] };
 }
 
+/**
+ * IA predeterminada de un cliente (encargo "client-workflow-v2"):
+ * proveedor y modelo por defecto, modelo de reserva, y una referencia
+ * de secreto (nunca el valor) para la clave asociada. Todo opcional:
+ * un cliente sin IA configurada simplemente no tiene este bloque. Un
+ * proyecto puede definir su propia configuración de IA independiente
+ * (fuera de este módulo, en la configuración del propio proyecto); esto
+ * es solo el valor por defecto a nivel de cliente.
+ */
+export interface ClientDefaultAi {
+  readonly provider?: string;
+  readonly model?: string;
+  readonly fallbackModel?: string;
+  /** Referencia a `@dwm/secrets`; nunca el valor de la clave. */
+  readonly secretReference?: string;
+}
+
+export function isSafeClientDefaultAi(value: unknown): value is ClientDefaultAi {
+  if (value === undefined) return true;
+  if (typeof value !== "object" || value === null) return false;
+  const record = value as Record<string, unknown>;
+  for (const key of ["provider", "model", "fallbackModel", "secretReference"] as const) {
+    const field = record[key];
+    if (field !== undefined && (typeof field !== "string" || field.length > 256)) return false;
+  }
+  return true;
+}
+
 /** Metadatos reservados de DWM: el ciclo de vida técnico del registro, separado de los campos de negocio del cliente. */
 export interface ClientDwmMetadata {
   readonly archived: boolean;
@@ -76,6 +104,8 @@ export interface Client {
   readonly tags: readonly string[];
   readonly description?: string;
   readonly references: ClientReferences;
+  /** IA predeterminada del cliente (opcional); ver `ClientDefaultAi`. */
+  readonly defaultAi?: ClientDefaultAi;
   readonly dwm: ClientDwmMetadata;
 }
 
@@ -99,6 +129,7 @@ export interface ClientCreateRequest {
   readonly tags?: readonly string[];
   readonly description?: string;
   readonly references?: Partial<ClientReferences>;
+  readonly defaultAi?: ClientDefaultAi;
 }
 
 /** Cambios parciales a los campos de negocio de un cliente, aplicables sin tocar sus referencias. */
@@ -108,6 +139,7 @@ export interface ClientUpdateRequest {
   readonly status?: ClientStatus;
   readonly tags?: readonly string[];
   readonly description?: string | null;
+  readonly defaultAi?: ClientDefaultAi | null;
 }
 
 export interface ClientFilter {

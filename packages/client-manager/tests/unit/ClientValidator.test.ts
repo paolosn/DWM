@@ -63,6 +63,46 @@ describe("validateDescription / assertValidDescription", () => {
   });
 });
 
+describe("validateDefaultAi / assertValidDefaultAi", () => {
+  it("acepta ausente, undefined, null y un objeto con campos de texto válidos", () => {
+    expect(validator.validateDefaultAi(undefined).valid).toBe(true);
+    expect(validator.validateDefaultAi(null).valid).toBe(true);
+    expect(
+      validator.validateDefaultAi({
+        provider: "openai",
+        model: "gpt-4o",
+        fallbackModel: "gpt-4o-mini",
+        secretReference: "connections.mci.openai.apiKey.abc123",
+      }).valid
+    ).toBe(true);
+  });
+
+  it("acepta un objeto vacío (todos los campos son opcionales)", () => {
+    expect(validator.validateDefaultAi({}).valid).toBe(true);
+  });
+
+  it("rechaza un valor que no sea un objeto", () => {
+    expect(() => validator.assertValidDefaultAi("openai")).toThrowError(
+      expect.objectContaining({ code: ClientErrorCode.CLIENT_INVALID_DEFAULT_AI })
+    );
+  });
+
+  it("rechaza campos que no sean texto o que excedan la longitud máxima", () => {
+    expect(() => validator.assertValidDefaultAi({ provider: 123 })).toThrowError(
+      expect.objectContaining({ code: ClientErrorCode.CLIENT_INVALID_DEFAULT_AI })
+    );
+    expect(() => validator.assertValidDefaultAi({ model: "a".repeat(257) })).toThrowError(
+      expect.objectContaining({ code: ClientErrorCode.CLIENT_INVALID_DEFAULT_AI })
+    );
+  });
+
+  it("nunca exige ni acepta un valor de secreto en claro: solo referencias de texto", () => {
+    // No hay ningún campo "secretValue"/"apiKey" en la forma válida; solo "secretReference".
+    const result = validator.validateDefaultAi({ secretReference: "ref-segura" });
+    expect(result.valid).toBe(true);
+  });
+});
+
 describe("validateTags / assertValidTags", () => {
   it("acepta listas válidas, incluida la vacía", () => {
     expect(validator.validateTags([]).valid).toBe(true);

@@ -28,6 +28,7 @@ import { ImportManager } from "@dwm/import-manager";
 import { DeliveryManager } from "@dwm/delivery-manager";
 import { SecretsManager } from "@dwm/secrets";
 import { ConnectionsManager } from "@dwm/connections-manager";
+import { ProjectProvisioningService } from "@dwm/project-provisioning";
 
 export interface ManagerCompositionOptions {
   /** Directorio de datos de la app (`app.getPath("userData")`); aquí viven las carpetas propias de cada manager. */
@@ -159,6 +160,14 @@ export async function composeManagers(
     base({ profilesDir: path.join(dataDir, "profiles"), configManager, workspaceManager })
   );
 
+  // client-workflow-v2 — reutiliza tal cual clientManager/projectManager/
+  // profileManager ya compuestos arriba; no crea instancias duplicadas.
+  const projectProvisioningService = new ProjectProvisioningService({
+    clientManager,
+    projectManager,
+    profileManager,
+  });
+
   const localBackupProvider = new LocalBackupProvider(dataDir);
   const backupManager = new BackupManager(
     base({
@@ -281,6 +290,7 @@ export async function composeManagers(
       importManager,
       deliveryManager,
       connectionsManager,
+      projectProvisioningService,
       psnAdapter,
       agentManager,
       skillManager,

@@ -35,6 +35,7 @@ import { ProfileController } from "./controllers/ProfileController.js";
 import { PluginController } from "./controllers/PluginController.js";
 import { DeliveryController } from "./controllers/DeliveryController.js";
 import { ConnectionsController } from "./controllers/ConnectionsController.js";
+import { ProvisioningController } from "./controllers/ProvisioningController.js";
 
 export interface ApplicationAPIOptions extends ApplicationContextOptions {
   readonly logger?: Logger;
@@ -109,6 +110,7 @@ export class ApplicationAPI implements IModule {
     this.registry.add(new PluginController(this.context));
     this.registry.add(new DeliveryController(this.context));
     this.registry.add(new ConnectionsController(this.context));
+    this.registry.add(new ProvisioningController(this.context));
   }
 
   // ---------------------------------------------------------------------

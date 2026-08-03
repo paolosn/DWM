@@ -1,4 +1,4 @@
-# Dev Workspace Manager (DWM) — v1.0.2
+# Dev Workspace Manager (DWM) — v1.1.0
 
 ## Propósito
 
@@ -16,21 +16,24 @@ El diseño original del sistema está fijado en dos documentos de referencia:
 - [`docs/frs/FRS-001-DWM-Especificacion-Funcional.md`](docs/frs/FRS-001-DWM-Especificacion-Funcional.md) —
   especificación funcional oficial.
 
-## Estado de esta entrega (v1.0.2)
+## Estado de esta entrega (v1.1.0)
 
-Corrección de estabilización sobre v1.0.1, con alcance cerrado a dos problemas: el
-Workspace importado ahora **se recupera automáticamente al reabrir DWM** (antes,
-`composeManagers()` solo buscaba el Workspace hacia arriba desde `dataDir`, y nunca
-podía encontrar uno importado en `<dataDir>/workspace/<nombre>`, que es una
-subcarpeta); y el instalador Windows (NSIS) quedó revisado y confirmado completo. Ver
-[`RELEASE-NOTES-v1.0.2.md`](RELEASE-NOTES-v1.0.2.md) para el detalle completo.
+`client-workflow-v2`: DWM reproduce el flujo operativo real de
+`SISTEMA-DE-TRABAJO/PSN-PANEL` — Viabilidad/Auditoría/Seguridad/Nuevo proyecto
+directo → creación o reutilización automática del cliente → duplicado real de
+`PSN-BASE` → apertura automática en VS Code — sin pedir nunca ruta ni perfil
+técnico. Ver [`RELEASE-NOTES-v1.1.0.md`](RELEASE-NOTES-v1.1.0.md) para el
+detalle completo y [`LIMITATIONS-v1.1.0.md`](LIMITATIONS-v1.1.0.md) para lo que
+queda deliberadamente fuera de esta entrega.
 
-Todo lo demás hereda el estado de v1.0.1: Core, Application API, los managers de
+Todo lo demás hereda el estado de v1.0.2 (ver
+[`RELEASE-NOTES-v1.0.2.md`](RELEASE-NOTES-v1.0.2.md) y
+[`LIMITATIONS-v1.0.2.md`](LIMITATIONS-v1.0.2.md)): Core, Application API, los managers de
 dominio (Agent, Skill, Rule, Knowledge, Client, Project, Environment, Profile, Plugin,
 Backup, Restore, Verification, Status, Migration, Portable Package, AI Creator,
 Import, PSN Adapter, Portable Workspace, Config, Event Bus) y la aplicación de
-escritorio completa (21 pantallas: Inicio, Centro de trabajo, Proyectos, Agentes,
-Skills, Reglas, Conocimiento, Clientes, Perfiles, Workspaces, AI Creator, IA,
+escritorio completa (22 pantallas: Inicio, Nuevo trabajo, Centro de trabajo, Proyectos,
+Agentes, Skills, Reglas, Conocimiento, Clientes, Perfiles, Workspaces, AI Creator, IA,
 Herramientas, Plugins, Paquetes, Backups, Estado, Logs, Configuración, Ayuda, Acerca
 de DWM) están integrados de extremo a extremo: la Desktop App conecta managers reales
 (no simulados), verificado con pruebas de integración reales
