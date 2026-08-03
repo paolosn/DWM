@@ -252,4 +252,47 @@ describe("ConnectionsController — conexiones compartidas de cliente (Commit 5)
     );
     expect(response.success).toBe(false);
   });
+
+  it("connections.update-for-client edita nombre/config/secretos completos, con el mismo alcance de tipos que connections.update", async () => {
+    const { api } = buildApi();
+    const created = await api.execute(
+      makeRequest(
+        "connections.create-for-client",
+        {
+          clientId: "mci-finance",
+          name: "WordPress",
+          type: "wordpress-rest",
+          config: { url: "https://old.example.test" },
+        },
+        { caller: admin }
+      )
+    );
+    if (!created.success) throw new Error("se esperaba éxito");
+    const id = (created.data as { id: string }).id;
+
+    const updated = await api.execute(
+      makeRequest(
+        "connections.update-for-client",
+        {
+          clientId: "mci-finance",
+          id,
+          name: "WordPress Producción",
+          config: { url: "https://nuevo.example.test" },
+          secrets: { appPassword: "nueva-clave-en-claro" },
+        },
+        { caller: admin }
+      )
+    );
+    expect(updated.success).toBe(true);
+    if (!updated.success) return;
+    const connection = updated.data as {
+      name: string;
+      config: Record<string, unknown>;
+      secretReferences: Record<string, string>;
+    };
+    expect(connection.name).toBe("WordPress Producción");
+    expect(connection.config["url"]).toBe("https://nuevo.example.test");
+    expect(connection.secretReferences["appPassword"]).toBeDefined();
+    expect(JSON.stringify(updated.data)).not.toContain("nueva-clave-en-claro");
+  });
 });

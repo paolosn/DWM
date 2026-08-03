@@ -105,6 +105,18 @@ declare module "../ApplicationRequest.js" {
       payload: { clientId: string; id: string };
       result: ConnectionTestResult;
     };
+    /** Edición completa de una conexión de cliente (encargo, cierre de limitaciones item 5): mismos campos que connections.update. */
+    "connections.update-for-client": {
+      payload: {
+        clientId: string;
+        id: string;
+        name?: string;
+        config?: SafeConnectionConfig;
+        capabilities?: readonly string[];
+        secrets?: Readonly<Record<string, string>>;
+      };
+      result: Connection;
+    };
     "connections.delete-for-client": {
       payload: { clientId: string; id: string };
       result: { deleted: true };
@@ -1056,6 +1068,37 @@ export class ConnectionsController implements ApplicationController {
           }).catch(() => {});
         }
         return result;
+      },
+    });
+
+    permissions.register("connections.update-for-client", ["write"]);
+    operations.register({
+      name: "connections.update-for-client",
+      version: "1.0.0",
+      capabilities: ["write"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return {
+          clientId: requireString(record, "clientId"),
+          id: requireString(record, "id"),
+          ...(optionalString(record, "name") !== undefined
+            ? { name: optionalString(record, "name")! }
+            : {}),
+          ...(optionalSafeConfig(record, "config") !== undefined
+            ? { config: optionalSafeConfig(record, "config")! }
+            : {}),
+          ...(optionalStringArray(record, "capabilities") !== undefined
+            ? { capabilities: optionalStringArray(record, "capabilities")! }
+            : {}),
+          ...(optionalSecretsRecord(record, "secrets") !== undefined
+            ? { secrets: optionalSecretsRecord(record, "secrets")! }
+            : {}),
+        };
+      },
+      handler: async (payload) => {
+        const root = clientConnectionsRootFor(payload.clientId);
+        const { clientId: _clientId, id, ...rest } = payload;
+        return manager().update(root, id, rest);
       },
     });
 

@@ -245,8 +245,9 @@ export function ConnectionsPanel({ projectId }: ConnectionsPanelProps): JSX.Elem
       <McpServersPanel projectId={projectId} mcpConnections={mcpConnections} />
 
       <ConnectionFormModal
+        key={formTarget === "create" ? "create" : (formTarget?.id ?? "closed")}
         open={formTarget !== undefined}
-        projectId={projectId}
+        scope={{ kind: "project", projectId }}
         {...(formTarget && formTarget !== "create" ? { connection: formTarget } : {})}
         onClose={() => setFormTarget(undefined)}
         onSaved={() => listQuery.refetch()}

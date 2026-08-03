@@ -1,18 +1,16 @@
 import { useEffect, useState } from "react";
-import type { Connection, ConnectionType } from "@dwm/connections-manager";
+import type { Connection } from "@dwm/connections-manager";
 import type { Project } from "@dwm/project";
 import { callOperation, DwmOperationError } from "../../api-client/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
-import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
-import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { Spinner } from "../../design-system/primitives/Spinner/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
+import { ConnectionFormModal } from "../projects/connections/ConnectionFormModal.js";
 import {
-  CONNECTION_TYPE_OPTIONS,
   CONNECTION_STATUS_LABEL,
   CONNECTION_STATUS_TONE,
 } from "../projects/connections/connectionsConstants.js";
@@ -29,14 +27,15 @@ interface AssignedState {
 }
 
 /**
- * client-workflow-v2 (Commit 5) — conexiones COMPARTIDAS de un cliente:
- * mismo `ConnectionsManager` que las de proyecto (README "amplía los
- * existentes"), solo con la raíz de persistencia por cliente. La
- * asignación a un proyecto es siempre explícita (denegación por
- * defecto): una conexión de cliente nunca se hereda automáticamente.
- * Formulario de creación deliberadamente compacto (nombre + tipo); la
- * configuración/secretos avanzados por tipo de conector siguen viviendo
- * en la pestaña «Conexiones» de cada proyecto (`ConnectionFormModal`).
+ * client-workflow-v2 (Commit 5 / cierre de limitaciones, item 5) —
+ * conexiones COMPARTIDAS de un cliente: mismo `ConnectionsManager` que
+ * las de proyecto (README "amplía los existentes"), solo con la raíz de
+ * persistencia por cliente. La asignación a un proyecto es siempre
+ * explícita (denegación por defecto): una conexión de cliente nunca se
+ * hereda automáticamente. El formulario de creación/edición es el mismo
+ * `ConnectionFormModal` real que ya usa la pestaña «Conexiones» de cada
+ * proyecto (todos los tipos, configuración y secretos completos) — no
+ * se duplica, solo se le indica `scope: { kind: "client" }`.
  */
 export function ClientConnectionsPanel({
   clientId,
@@ -47,9 +46,7 @@ export function ClientConnectionsPanel({
   const [error, setError] = useState<string | undefined>(undefined);
   const [assigned, setAssigned] = useState<AssignedState>({});
 
-  const [name, setName] = useState("");
-  const [type, setType] = useState("http");
-  const [creating, setCreating] = useState(false);
+  const [formTarget, setFormTarget] = useState<Connection | "create" | undefined>(undefined);
 
   const [assignProjectId, setAssignProjectId] = useState<Record<string, string>>({});
 
@@ -81,28 +78,6 @@ export function ClientConnectionsPanel({
   useEffect(() => {
     void reload();
   }, [clientId]);
-
-  async function handleCreate(): Promise<void> {
-    if (!name.trim()) return;
-    setCreating(true);
-    try {
-      await callOperation("connections.create-for-client", {
-        clientId,
-        name: name.trim(),
-        type: type as ConnectionType,
-      });
-      setName("");
-      showToast({ title: `Conexión «${name.trim()}» creada`, tone: "success" });
-      await reload();
-    } catch (err) {
-      showToast({
-        title: err instanceof DwmOperationError ? err.message : "No se pudo crear la conexión",
-        tone: "danger",
-      });
-    } finally {
-      setCreating(false);
-    }
-  }
 
   async function handleTest(id: string): Promise<void> {
     try {
@@ -170,16 +145,7 @@ export function ClientConnectionsPanel({
   return (
     <div className="dwm-client-connections">
       <div className="dwm-client-connections__create">
-        <TextField label="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
-        <Select
-          label="Tipo"
-          options={CONNECTION_TYPE_OPTIONS}
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        />
-        <Button onClick={() => void handleCreate()} loading={creating} disabled={!name.trim()}>
-          Crear conexión compartida
-        </Button>
+        <Button onClick={() => setFormTarget("create")}>Nueva conexión</Button>
       </div>
 
       {error && <ErrorState title="No se pudieron cargar las conexiones" technicalDetail={error} />}
@@ -202,6 +168,9 @@ export function ClientConnectionsPanel({
               </div>
 
               <div className="dwm-client-connections__actions">
+                <Button variant="secondary" onClick={() => setFormTarget(connection)}>
+                  Editar
+                </Button>
                 <Button variant="secondary" onClick={() => void handleTest(connection.id)}>
                   Probar
                 </Button>
@@ -252,10 +221,14 @@ export function ClientConnectionsPanel({
         </ul>
       )}
 
-      <InlineAlert tone="info" title="Configuración avanzada">
-        La URL, credenciales y demás configuración específica de cada tipo de conexión se edita
-        desde la pestaña «Conexiones» de un proyecto al que esté asignada.
-      </InlineAlert>
+      <ConnectionFormModal
+        key={formTarget === "create" ? "create" : (formTarget?.id ?? "closed")}
+        open={formTarget !== undefined}
+        scope={{ kind: "client", clientId }}
+        {...(formTarget && formTarget !== "create" ? { connection: formTarget } : {})}
+        onClose={() => setFormTarget(undefined)}
+        onSaved={() => void reload()}
+      />
     </div>
   );
 }
