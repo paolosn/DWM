@@ -3,8 +3,18 @@ import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProjectsScreen } from "../../../../../src/renderer/screens/projects/ProjectsScreen.js";
 import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import {
+  NavigationProvider,
+  useNavigation,
+} from "../../../../../src/renderer/shell/NavigationContext.js";
 import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
+
+/** Sonda mínima solo para pruebas: hace visible qué sección está activa, para poder comprobar navegaciones reales sin duplicar el Sidebar. */
+function ActiveSectionProbe(): JSX.Element {
+  const { activeSection } = useNavigation();
+  return <span data-testid="active-section">{activeSection}</span>;
+}
 
 const originalDwm = window.dwm;
 
@@ -65,9 +75,11 @@ async function settle(times = 4): Promise<void> {
 
 function mountScreen() {
   return mount(
-    <ToastProvider>
-      <ProjectsScreen />
-    </ToastProvider>
+    <NavigationProvider>
+      <ToastProvider>
+        <ProjectsScreen />
+      </ToastProvider>
+    </NavigationProvider>
   );
 }
 
@@ -267,70 +279,32 @@ describe("ProjectsScreen — reintentar y crear", () => {
     unmount();
   });
 
-  it("crear un proyecto envía projects.create con configuration completa", async () => {
-    const invoke = setDwm({
+  it("'Nuevo proyecto' navega al provisioning unificado (Nuevo trabajo), sin abrir un formulario ni pedir ruta/UUID", async () => {
+    setDwm({
       "projects.list": { success: true, requestId: "x", operation: "projects.list", data: [] },
-      "profiles.list": {
-        success: true,
-        requestId: "x",
-        operation: "profiles.list",
-        data: ["default"],
-      },
-      "projects.create": {
-        success: true,
-        requestId: "x",
-        operation: "projects.create",
-        data: project1,
-      },
     });
-    const { container, unmount } = mountScreen();
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ToastProvider>
+          <ActiveSectionProbe />
+          <ProjectsScreen />
+        </ToastProvider>
+      </NavigationProvider>
+    );
     await settle();
+
+    expect(container.textContent).toContain("dashboard");
 
     click(
       Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Crear proyecto"
-      ) ?? null
-    );
-
-    const inputs = container.querySelectorAll('[role="dialog"] input');
-    const inputSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype,
-      "value"
-    )?.set;
-    const textareaSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLTextAreaElement.prototype,
-      "value"
-    )?.set;
-    act(() => {
-      inputSetter?.call(inputs[0], "DWM");
-      inputs[0]?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    const textarea = container.querySelector('[role="dialog"] textarea') as HTMLTextAreaElement;
-    act(() => {
-      textareaSetter?.call(textarea, "Descripción");
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    act(() => {
-      inputSetter?.call(inputs[1], "/x/dwm");
-      inputs[1]?.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    const select = container.querySelector('[role="dialog"] select') as HTMLSelectElement;
-    act(() => {
-      select.value = "default";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-
-    click(
-      Array.from(container.querySelectorAll('[role="dialog"] button')).find(
-        (b) => b.textContent === "Crear proyecto"
+        (b) => b.textContent === "Nuevo proyecto"
       ) ?? null
     );
     await settle();
 
-    const createCall = invoke.mock.calls.find(
-      (c) => (c[0] as { operation: string }).operation === "projects.create"
-    );
-    expect(createCall).toBeDefined();
+    // Nunca abre un formulario propio: ni ruta manual, ni selector de perfil por id.
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.textContent).toContain("provisioning");
     unmount();
   });
 });
@@ -341,7 +315,7 @@ describe("ProjectsScreen — cancelar, vista de tarjetas y detalle desde tarjeta
     Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
   });
 
-  it("cancelar creación y eliminación no invocan mutaciones", async () => {
+  it("cancelar eliminación no invoca projects.delete, y 'Crear proyecto' nunca llama a projects.create", async () => {
     const invoke = setDwm({
       "projects.list": { success: true, requestId: "x", operation: "projects.list", data: ["p1"] },
       "projects.get:p1": {
@@ -353,18 +327,6 @@ describe("ProjectsScreen — cancelar, vista de tarjetas y detalle desde tarjeta
     });
     const { container, unmount } = mountScreen();
     await settle();
-
-    click(
-      Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Crear proyecto"
-      ) ?? null
-    );
-    click(
-      Array.from(container.querySelectorAll('[role="dialog"] button')).find(
-        (b) => b.textContent === "Cancelar"
-      ) ?? null
-    );
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
 
     click(container.querySelector('button[aria-label="Acciones para DWM"]'));
     const deleteItem = Array.from(container.querySelectorAll('[role="menuitem"]')).find(
