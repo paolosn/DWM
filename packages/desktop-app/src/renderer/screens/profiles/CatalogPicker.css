@@ -1,0 +1,40 @@
+.dwm-catalog-picker {
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-card);
+  padding: var(--dwm-space-sm);
+}
+.dwm-catalog-picker__empty {
+  margin: 0;
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-meta);
+}
+.dwm-catalog-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.dwm-catalog-picker__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dwm-space-sm);
+  padding: var(--dwm-space-xs) 0;
+}
+.dwm-catalog-picker__id {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-catalog-picker__desc {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+}
+.dwm-catalog-picker__tags {
+  display: flex;
+  gap: var(--dwm-space-xs);
+  margin-top: var(--dwm-space-xs);
+}

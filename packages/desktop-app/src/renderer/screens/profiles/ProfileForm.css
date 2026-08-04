@@ -1,0 +1,24 @@
+.dwm-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-profile-form__ai {
+  display: flex;
+  gap: var(--dwm-space-md);
+  flex-wrap: wrap;
+}
+.dwm-profile-form__summary {
+  padding: var(--dwm-space-sm);
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-card);
+}
+.dwm-profile-form__summary p {
+  margin: var(--dwm-space-xs) 0 0;
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-profile-form__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dwm-space-sm);
+}

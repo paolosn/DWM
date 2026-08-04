@@ -18,3 +18,34 @@
 .dwm-profiles-screen__facts dd {
   margin: 0;
 }
+
+.dwm-profiles-screen__toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+.dwm-profiles-screen__detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-lg);
+}
+.dwm-profiles-screen__apply,
+.dwm-profiles-screen__applied-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-profiles-screen__preview ul,
+.dwm-profiles-screen__applied-in ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+}
+.dwm-profiles-screen__applied-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
+}

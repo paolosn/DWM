@@ -6,6 +6,8 @@ import { requireDependency } from "../requireDependency.js";
 import { asRecord, optionalBoolean, requireString } from "../payloadHelpers.js";
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
+import { resolveContentRoot } from "../resolveContentRoot.js";
+import type { ProfileConfiguration } from "@dwm/profile";
 import type { ProfilePreview, ProfileApplyResult } from "@dwm/project-provisioning";
 
 declare module "../ApplicationRequest.js" {
@@ -22,10 +24,15 @@ declare module "../ApplicationRequest.js" {
 }
 
 /**
- * client-workflow "kilo-content-integration" (Commit 5) — controlador
- * fino: no contiene ninguna lógica de sincronización de perfil propia,
- * delega exclusivamente en `ProfileSyncService` (que a su vez reutiliza
- * `ContentSyncService` del Commit 2, sin motor nuevo).
+ * client-workflow "kilo-content-integration" (Commit 5; alcance de
+ * cliente añadido en "kilo-content-integration-completion") —
+ * controlador fino: no contiene ninguna lógica de sincronización de
+ * perfil propia, delega exclusivamente en `ProfileSyncService` (que a
+ * su vez reutiliza `ContentSyncService`, sin motor nuevo). El origen
+ * real se resuelve vía `resolveContentRoot` (el mismo que ya usan
+ * `ContentSyncController`/`ContentGenerationController`), a partir del
+ * `sourceClientId` que el propio perfil ya guarda — nunca un mecanismo
+ * de resolución nuevo.
  */
 export class ProfileSyncController implements ApplicationController {
   readonly resource = "profile-sync";
@@ -36,20 +43,11 @@ export class ProfileSyncController implements ApplicationController {
     const service = () =>
       requireDependency(this.context.profileSyncService, "profile-sync-service");
 
-    const sourceRoot = (): string => {
-      const active = this.context.portableWorkspaceManager?.getActiveWorkspace();
-      if (!active) {
-        throw createApplicationError({
-          code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
-          message: "No hay ningún Sistema de Trabajo activo.",
-          origin: "validation",
-          category: "not-found",
-          retryable: false,
-          recoverable: true,
-        });
-      }
-      return active.root;
-    };
+    const sourceRoot = async (configuration: ProfileConfiguration): Promise<string> =>
+      resolveContentRoot(
+        this.context,
+        configuration.sourceClientId ? { clientId: configuration.sourceClientId } : {}
+      );
 
     const targetRoot = (projectId: string): string => {
       const project = this.context.projectManager?.getProject(projectId);
@@ -95,12 +93,14 @@ export class ProfileSyncController implements ApplicationController {
           targetProjectId: requireString(record, "targetProjectId"),
         };
       },
-      handler: async (payload) =>
-        service().previewProfile(
-          await profileConfiguration(payload.profileId),
-          sourceRoot(),
+      handler: async (payload) => {
+        const configuration = await profileConfiguration(payload.profileId);
+        return service().previewProfile(
+          configuration,
+          await sourceRoot(configuration),
           targetRoot(payload.targetProjectId)
-        ),
+        );
+      },
     });
 
     permissions.register("profile-sync.apply", ["write"]);
@@ -119,10 +119,11 @@ export class ProfileSyncController implements ApplicationController {
             : {}),
         };
       },
-      handler: async (payload) =>
-        service().applyProfile(
-          await profileConfiguration(payload.profileId),
-          sourceRoot(),
+      handler: async (payload) => {
+        const configuration = await profileConfiguration(payload.profileId);
+        return service().applyProfile(
+          configuration,
+          await sourceRoot(configuration),
           targetRoot(payload.targetProjectId),
           payload.targetProjectId,
           {
@@ -130,7 +131,8 @@ export class ProfileSyncController implements ApplicationController {
               ? { confirmOverwrite: payload.confirmOverwrite }
               : {}),
           }
-        ),
+        );
+      },
     });
   }
 }
