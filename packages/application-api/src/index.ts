@@ -113,6 +113,8 @@ export {
 } from "./controllers/ContentSyncController.js";
 export { ContentGenerationController } from "./controllers/ContentGenerationController.js";
 export { ProfileSyncController } from "./controllers/ProfileSyncController.js";
+export { ContentScopeController } from "./controllers/ContentScopeController.js";
+export { resolveContentRoot, type ContentScope } from "./resolveContentRoot.js";
 export { appendClientActivity, listClientActivity, type ActivityEntry } from "./ActivityLog.js";
 export { indexProjectDocuments, type ClientDocumentEntry } from "./ClientDocumentIndex.js";
 

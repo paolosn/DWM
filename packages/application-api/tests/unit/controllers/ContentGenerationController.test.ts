@@ -95,6 +95,7 @@ describe("ContentGenerationController", () => {
     );
 
     const api = new ApplicationAPI({
+      psnAdapter,
       agentManager,
       clientManager,
       contentGenerationService,
@@ -126,7 +127,7 @@ describe("ContentGenerationController", () => {
           kind: "agent",
           id: "experto-mysql",
           instructions: "Crea un agente experto en MySQL.",
-          existingClientId: "mci-finance",
+          clientId: "mci-finance",
         },
         { caller: admin }
       )
@@ -140,7 +141,7 @@ describe("ContentGenerationController", () => {
     expect(JSON.stringify(response.data)).not.toContain("clave-real-de-mci");
 
     const raw = await fs.readFile(
-      path.join(workspaceRoot, ".kilo", "agents", "experto-mysql.md"),
+      path.join(workspaceRoot, "CLIENTES", "mci-finance", ".kilo", "agents", "experto-mysql.md"),
       "utf-8"
     );
     expect(raw).toContain("# Experto en MySQL");
@@ -187,7 +188,7 @@ describe("ContentGenerationController", () => {
     const response = await api.execute(
       makeRequest(
         "content-generation.generate",
-        { kind: "agent", id: "x", instructions: "x", existingClientId: "c" },
+        { kind: "agent", id: "x", instructions: "x", clientId: "c" },
         { caller: admin }
       )
     );

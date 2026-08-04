@@ -43,6 +43,7 @@ export {
   type ProfileApplyResult,
   type ProfileSyncServiceOptions,
 } from "./ProfileSyncService.js";
+export { resolveClientContentRoot, ensureClientKiloSkeleton } from "./ClientContentPaths.js";
 
 export {
   ProjectProvisioningError,
