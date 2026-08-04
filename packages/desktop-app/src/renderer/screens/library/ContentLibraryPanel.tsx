@@ -34,24 +34,38 @@ interface ProjectOption {
 
 export interface ContentLibraryPanelProps {
   readonly kind: ContentKind;
+  /**
+   * Cuando se indica, el panel queda anclado a ese cliente o proyecto
+   * (sin selector de alcance visible): así lo usa la ficha del cliente
+   * y la ficha del proyecto, reutilizando exactamente el mismo panel
+   * en vez de construir una segunda implementación.
+   */
+  readonly lockedScope?: { readonly kind: "client" | "project"; readonly id: string };
 }
 
 /**
  * Biblioteca IA — implementación real única, parametrizada por `kind`,
- * reutilizada por las tres pestañas (Agentes/Skills/Reglas). Nunca
- * duplica lógica: cada acción llama a la operación real
+ * reutilizada por las tres pestañas (Agentes/Skills/Reglas), por la
+ * ficha del cliente y por la ficha del proyecto (vía `lockedScope`).
+ * Nunca duplica lógica: cada acción llama a la operación real
  * `agents.*`/`skills.*`/`rules.*` correspondiente (vía `opName`),
  * `content-generation.preview`/`content-scope.resolve-root` (ya
  * existentes) para "Crear con IA", y `content-sync.*` (ya existente)
  * para asignar/retirar.
  */
-export function ContentLibraryPanel({ kind }: ContentLibraryPanelProps): JSX.Element {
+export function ContentLibraryPanel({ kind, lockedScope }: ContentLibraryPanelProps): JSX.Element {
   const { showToast } = useToast();
   const label = KIND_LABEL[kind];
 
-  const [scope, setScope] = useState<LibraryScope>("global");
-  const [clientId, setClientId] = useState("");
-  const [projectId, setProjectId] = useState("");
+  const [scope, setScope] = useState<LibraryScope>(
+    lockedScope?.kind === "client"
+      ? "client"
+      : lockedScope?.kind === "project"
+        ? "project"
+        : "global"
+  );
+  const [clientId, setClientId] = useState(lockedScope?.kind === "client" ? lockedScope.id : "");
+  const [projectId, setProjectId] = useState(lockedScope?.kind === "project" ? lockedScope.id : "");
   const [clientOptions, setClientOptions] = useState<readonly ClientOption[]>([]);
   const [projectOptions, setProjectOptions] = useState<readonly ProjectOption[]>([]);
 
@@ -276,33 +290,37 @@ export function ContentLibraryPanel({ kind }: ContentLibraryPanelProps): JSX.Ele
   return (
     <div className="dwm-content-library-panel">
       <div className="dwm-content-library-panel__scope">
-        <Select
-          label="Alcance"
-          options={[
-            { value: "global", label: "Global" },
-            { value: "client", label: "Cliente" },
-            { value: "project", label: "Proyecto" },
-          ]}
-          value={scope}
-          onChange={(e) => setScope(e.target.value as LibraryScope)}
-        />
-        {scope === "client" && (
-          <Select
-            label="Cliente"
-            placeholder="Elige un cliente"
-            options={clientOptions.map((c) => ({ value: c.id, label: c.name }))}
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-          />
-        )}
-        {scope === "project" && (
-          <Select
-            label="Proyecto"
-            placeholder="Elige un proyecto"
-            options={projectOptions.map((p) => ({ value: p.id, label: p.name }))}
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-          />
+        {!lockedScope && (
+          <>
+            <Select
+              label="Alcance"
+              options={[
+                { value: "global", label: "Global" },
+                { value: "client", label: "Cliente" },
+                { value: "project", label: "Proyecto" },
+              ]}
+              value={scope}
+              onChange={(e) => setScope(e.target.value as LibraryScope)}
+            />
+            {scope === "client" && (
+              <Select
+                label="Cliente"
+                placeholder="Elige un cliente"
+                options={clientOptions.map((c) => ({ value: c.id, label: c.name }))}
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+              />
+            )}
+            {scope === "project" && (
+              <Select
+                label="Proyecto"
+                placeholder="Elige un proyecto"
+                options={projectOptions.map((p) => ({ value: p.id, label: p.name }))}
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+              />
+            )}
+          </>
         )}
         {root && <p className="dwm-content-library-panel__root">{root}</p>}
       </div>

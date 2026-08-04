@@ -74,7 +74,7 @@ describe("ClientFicha", () => {
     Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
   });
 
-  it("muestra las 6 pestañas reales", async () => {
+  it("muestra las 7 pestañas reales", async () => {
     setDwm({ "clients.get": () => success("clients.get", baseClient) });
     const { container, unmount } = mount(
       <ToastProvider>
@@ -86,12 +86,57 @@ describe("ClientFicha", () => {
     const tabs = Array.from(container.querySelectorAll('[role="tab"]')).map((t) => t.textContent);
     expect(tabs).toEqual([
       "Resumen",
+      "Biblioteca IA",
       "Proyectos",
       "Accesos y conexiones",
       "MCP e IA",
       "Documentos",
       "Actividad",
     ]);
+    unmount();
+  });
+
+  it("pestaña Biblioteca IA: reutiliza el mismo ContentLibraryPanel anclado a este cliente, sin selector de alcance visible", async () => {
+    const invoke = setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "content-scope.resolve-root": (payload) => {
+        const p = payload as { clientId?: string };
+        return success("content-scope.resolve-root", {
+          root: p.clientId ? `/workspace/CLIENTES/${p.clientId}` : "/workspace",
+        });
+      },
+      "agents.list": () => success("agents.list", [{ id: "coordinador", archived: false }]),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Biblioteca IA"
+      ) ?? null
+    );
+    await settle();
+
+    // Selector de alcance oculto: el panel ya está anclado a este cliente.
+    expect(container.textContent).not.toContain("Alcance");
+    expect(container.textContent).toContain("coordinador");
+
+    const resolveCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "content-scope.resolve-root"
+    );
+    expect((resolveCall?.[0] as { payload: { clientId: string } }).payload).toMatchObject({
+      clientId: "mci-finance",
+    });
+    const listCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "agents.list"
+    );
+    expect((listCall?.[0] as { payload: { root: string } }).payload.root).toBe(
+      "/workspace/CLIENTES/mci-finance"
+    );
     unmount();
   });
 

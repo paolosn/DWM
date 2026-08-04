@@ -13,6 +13,7 @@ import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ClientRelationsPanel } from "./ClientRelationsPanel.js";
 import { ClientConnectionsPanel } from "./ClientConnectionsPanel.js";
 import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/index.js";
+import { ContentLibraryPanel } from "../library/ContentLibraryPanel.js";
 import "./ClientFicha.css";
 
 export interface ClientFichaProps {
@@ -214,6 +215,44 @@ function AccesosTab({ client }: { readonly client: Client }): JSX.Element {
   return <ClientConnectionsPanel clientId={client.id} projects={projects} />;
 }
 
+/**
+ * Biblioteca IA de la ficha del cliente — reutiliza exactamente el
+ * mismo `ContentLibraryPanel` de la pantalla "Biblioteca IA" (nunca
+ * una segunda implementación), anclado a este cliente vía
+ * `lockedScope`: crear con IA/manual, editar, duplicar, archivar,
+ * ver contenido y asignar a proyecto quedan disponibles sin salir de
+ * la ficha del cliente.
+ */
+function BibliotecaIaTab({ client }: { readonly client: Client }): JSX.Element {
+  return (
+    <Tabs
+      items={[
+        {
+          id: "agent",
+          label: "Agentes",
+          content: (
+            <ContentLibraryPanel kind="agent" lockedScope={{ kind: "client", id: client.id }} />
+          ),
+        },
+        {
+          id: "skill",
+          label: "Skills",
+          content: (
+            <ContentLibraryPanel kind="skill" lockedScope={{ kind: "client", id: client.id }} />
+          ),
+        },
+        {
+          id: "rule",
+          label: "Reglas",
+          content: (
+            <ContentLibraryPanel kind="rule" lockedScope={{ kind: "client", id: client.id }} />
+          ),
+        },
+      ]}
+    />
+  );
+}
+
 function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
   return (
     <div className="dwm-client-ficha__mcp-ia">
@@ -374,6 +413,11 @@ export function ClientFicha({ clientId }: ClientFichaProps): JSX.Element {
     <Tabs
       items={[
         { id: "resumen", label: "Resumen", content: <ResumenTab client={client} /> },
+        {
+          id: "biblioteca-ia",
+          label: "Biblioteca IA",
+          content: <BibliotecaIaTab client={client} />,
+        },
         { id: "proyectos", label: "Proyectos", content: <ProyectosTab client={client} /> },
         { id: "accesos", label: "Accesos y conexiones", content: <AccesosTab client={client} /> },
         { id: "mcp-ia", label: "MCP e IA", content: <McpIaTab client={client} /> },
