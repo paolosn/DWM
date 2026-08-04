@@ -24,6 +24,7 @@ import { BackupsScreen } from "../screens/backups/BackupsScreen.js";
 import { StatusScreen } from "../screens/status/StatusScreen.js";
 import { LogsScreen } from "../screens/logs/LogsScreen.js";
 import { SettingsScreen } from "../screens/settings/SettingsScreen.js";
+import { ConfiguracionScreen } from "../screens/settings/ConfiguracionScreen.js";
 import { HelpScreen } from "../screens/help/HelpScreen.js";
 import { AboutScreen } from "../screens/about/AboutScreen.js";
 import type { DesktopNavigationSection } from "../../shared/types/DesktopConfig.js";
@@ -56,6 +57,7 @@ const IMPLEMENTED_SCREENS: Partial<Record<DesktopNavigationSection, () => JSX.El
   status: StatusScreen,
   logs: LogsScreen,
   settings: SettingsScreen,
+  configuration: ConfiguracionScreen,
   help: HelpScreen,
   about: AboutScreen,
 };

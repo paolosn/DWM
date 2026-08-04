@@ -6,9 +6,18 @@ import {
 import { isDesktopNavigationSection } from "../../../src/shared/types/DesktopConfig.js";
 
 describe("NAVIGATION_CATALOG", () => {
-  it("declara las 20 secciones reales del sidebar principal (kilo-content-integration-completion: Agentes/Skills/Reglas consolidados en 'Biblioteca IA'), todas válidas y sin duplicados", () => {
-    expect(NAVIGATION_CATALOG).toHaveLength(20);
+  it("declara exactamente las 7 secciones reales del sidebar principal definitivo (rediseño de producto v2: solo el flujo real de trabajo), todas válidas y sin duplicados", () => {
+    expect(NAVIGATION_CATALOG).toHaveLength(7);
     const sections = NAVIGATION_CATALOG.map((item) => item.section);
+    expect(sections).toEqual([
+      "dashboard",
+      "provisioning",
+      "clients",
+      "projects",
+      "aiLibrary",
+      "workspace",
+      "configuration",
+    ]);
     expect(new Set(sections).size).toBe(sections.length);
     for (const section of sections) {
       expect(isDesktopNavigationSection(section)).toBe(true);
@@ -28,25 +37,26 @@ describe("NAVIGATION_CATALOG", () => {
     expect(NAVIGATION_CATALOG[0]?.label).toBe("Inicio");
   });
 
-  it("incluye las secciones nuevas del Módulo 33B", () => {
+  it("las secciones técnicas/avanzadas ya no están en el sidebar principal (siguen siendo navegables desde 'Configuración', ver ConfiguracionScreen)", () => {
     const sections = NAVIGATION_CATALOG.map((item) => item.section);
-    expect(sections).toEqual(
-      expect.arrayContaining([
-        "profiles",
-        "workspaces",
-        "aiCreator",
-        "ai",
-        "tools",
-        "plugins",
-        "packages",
-        "backups",
-        "status",
-        "logs",
-        "settings",
-        "help",
-        "about",
-      ])
-    );
+    for (const advanced of [
+      "profiles",
+      "workspaces",
+      "aiCreator",
+      "ai",
+      "tools",
+      "plugins",
+      "packages",
+      "backups",
+      "status",
+      "logs",
+      "settings",
+      "help",
+      "about",
+    ]) {
+      expect(sections).not.toContain(advanced);
+      expect(isDesktopNavigationSection(advanced)).toBe(true);
+    }
   });
 
   it("cada sección lleva un icono real (componente lucide-react), sin repetir el mismo icono dos veces", () => {

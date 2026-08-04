@@ -23,6 +23,7 @@ export type DesktopNavigationSection =
   | "rules"
   | "knowledge"
   | "clients"
+  | "configuration"
   | "profiles"
   | "workspaces"
   | "aiCreator"
@@ -86,6 +87,7 @@ const KNOWN_NAVIGATION_SECTIONS: readonly DesktopNavigationSection[] = [
   "rules",
   "knowledge",
   "clients",
+  "configuration",
   "profiles",
   "workspaces",
   "aiCreator",
