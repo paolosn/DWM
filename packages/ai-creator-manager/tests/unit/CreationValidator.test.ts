@@ -7,17 +7,26 @@ describe("CreationValidator", () => {
   const validator = new CreationValidator();
 
   it("acepta una petición de agente sin id", () => {
-    const request: CreationRequest = { kind: "agent", payload: { data: {} } };
+    const request: CreationRequest = {
+      kind: "agent",
+      payload: { content: "Contenido de agente de prueba." },
+    };
     expect(validator.validateRequest(request).valid).toBe(true);
   });
 
   it("acepta una petición de agente con id válido", () => {
-    const request: CreationRequest = { kind: "agent", payload: { id: "mi-agente", data: {} } };
+    const request: CreationRequest = {
+      kind: "agent",
+      payload: { id: "mi-agente", content: "Contenido de agente de prueba." },
+    };
     expect(validator.validateRequest(request).valid).toBe(true);
   });
 
   it("rechaza un id de agente inválido", () => {
-    const request: CreationRequest = { kind: "agent", payload: { id: "../evil", data: {} } };
+    const request: CreationRequest = {
+      kind: "agent",
+      payload: { id: "../evil", content: "Contenido de agente de prueba." },
+    };
     const result = validator.validateRequest(request);
     expect(result.valid).toBe(false);
     expect(result.issues[0]?.field).toBe("id");
@@ -137,13 +146,19 @@ describe("CreationValidator", () => {
 
   it("assertValidRequest lanza CreationError cuando la petición es inválida", () => {
     expect(() =>
-      validator.assertValidRequest({ kind: "agent", payload: { id: "..", data: {} } })
+      validator.assertValidRequest({
+        kind: "agent",
+        payload: { id: "..", content: "Contenido de agente de prueba." },
+      })
     ).toThrow(CreationError);
   });
 
   it("assertValidRequest no lanza cuando la petición es válida", () => {
     expect(() =>
-      validator.assertValidRequest({ kind: "agent", payload: { id: "ok", data: {} } })
+      validator.assertValidRequest({
+        kind: "agent",
+        payload: { id: "ok", content: "Contenido de agente de prueba." },
+      })
     ).not.toThrow();
   });
 

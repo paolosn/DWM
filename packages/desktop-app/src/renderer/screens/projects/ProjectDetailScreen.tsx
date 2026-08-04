@@ -13,6 +13,7 @@ import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/inde
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { DeliveriesPanel } from "./deliveries/DeliveriesPanel.js";
 import { ConnectionsPanel } from "./connections/ConnectionsPanel.js";
+import { KiloContentPanel } from "./KiloContentPanel.js";
 import "./ProjectDetailScreen.css";
 
 const stateTone: Record<ProjectState, StatusTone> = {
@@ -131,7 +132,11 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
         ),
     },
     { id: "ai", label: "IA", content: <NotAvailable label="IA activa del proyecto" /> },
-    { id: "plugins", label: "Plugins", content: <NotAvailable label="Plugins del proyecto" /> },
+    {
+      id: "plugins",
+      label: "Extensiones de DWM",
+      content: <NotAvailable label="Extensiones de DWM del proyecto" />,
+    },
     {
       id: "settings",
       label: "Variables y referencias",
@@ -157,6 +162,11 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
       id: "connections",
       label: "Conexiones",
       content: <ConnectionsPanel projectId={project.id} />,
+    },
+    {
+      id: "kilo-content",
+      label: "Agentes, Skills y Reglas",
+      content: <KiloContentPanel projectId={project.id} />,
     },
   ];
 

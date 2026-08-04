@@ -83,7 +83,7 @@ describe("Integración real: independencia del origen tras import.execute", () =
       operation: "agents.create",
       payload: {
         id: "agente-sistema-anterior",
-        data: { name: "Agente del SISTEMA-DE-TRABAJO anterior" },
+        content: "# Agente del SISTEMA-DE-TRABAJO anterior\n",
       },
       caller: admin,
     });
@@ -92,7 +92,7 @@ describe("Integración real: independencia del origen tras import.execute", () =
     // Confirma que el fichero físico existe de verdad en el origen antes
     // de importarlo — condición previa del test, no parte de lo que se
     // valida.
-    const sourceAgentFile = path.join(sourceDir, ".kilo", "agents", "agente-sistema-anterior.json");
+    const sourceAgentFile = path.join(sourceDir, ".kilo", "agents", "agente-sistema-anterior.md");
     await expect(fs.access(sourceAgentFile)).resolves.toBeUndefined();
 
     // Fichero oculto adicional en el origen, para comprobar que la
@@ -138,7 +138,7 @@ describe("Integración real: independencia del origen tras import.execute", () =
 
     // El destino interno existe físicamente y conserva el fichero oculto.
     await expect(
-      fs.access(path.join(destinationPath, ".kilo", "agents", "agente-sistema-anterior.json"))
+      fs.access(path.join(destinationPath, ".kilo", "agents", "agente-sistema-anterior.md"))
     ).resolves.toBeUndefined();
     await expect(fs.access(path.join(destinationPath, ".env-legacy"))).resolves.toBeUndefined();
 
@@ -202,14 +202,14 @@ describe("Integración real: independencia del origen tras import.execute", () =
     });
     expect(getAfterDelete.success).toBe(true);
     if (getAfterDelete.success) {
-      const agent = getAfterDelete.data as { id: string; data: { name: string } };
+      const agent = getAfterDelete.data as { id: string; content: string };
       expect(agent.id).toBe("agente-sistema-anterior");
-      expect(agent.data.name).toBe("Agente del SISTEMA-DE-TRABAJO anterior");
+      expect(agent.content).toContain("Agente del SISTEMA-DE-TRABAJO anterior");
     }
 
     // El fichero físico leído sigue siendo el de la copia interna.
     await expect(
-      fs.access(path.join(destinationPath, ".kilo", "agents", "agente-sistema-anterior.json"))
+      fs.access(path.join(destinationPath, ".kilo", "agents", "agente-sistema-anterior.md"))
     ).resolves.toBeUndefined();
   });
 });

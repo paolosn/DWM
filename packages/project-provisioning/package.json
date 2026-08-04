@@ -23,7 +23,12 @@
     "@dwm/project": "*",
     "@dwm/client-manager": "*",
     "@dwm/profile": "*",
-    "@dwm/ai-manager": "*"
+    "@dwm/ai-manager": "*",
+    "@dwm/skill-manager": "*",
+    "@dwm/rule-manager": "*",
+    "@dwm/agent-manager": "*",
+    "@dwm/psn-adapter": "*",
+    "@dwm/connections-manager": "*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

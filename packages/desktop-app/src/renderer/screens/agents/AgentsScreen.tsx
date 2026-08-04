@@ -60,7 +60,11 @@ export function AgentsScreen(): JSX.Element {
 
   const columns: readonly EntityColumn<AgentSummary>[] = [
     { key: "name", header: "Agente", render: (agent) => agent.name ?? agent.id },
-    { key: "tags", header: "Etiquetas", render: (agent) => (agent.tags ?? []).join(", ") || "—" },
+    {
+      key: "description",
+      header: "Descripción",
+      render: (agent) => agent.description ?? "—",
+    },
     {
       key: "status",
       header: "Estado",
@@ -79,7 +83,7 @@ export function AgentsScreen(): JSX.Element {
   ];
 
   async function handleCreate(values: AgentFormValues): Promise<void> {
-    await createMutation.mutate({ id: values.id, data: values.data });
+    await createMutation.mutate({ id: values.id, content: values.content });
     showToast({ title: `Agente «${values.id}» creado`, tone: "success" });
     setCreateOpen(false);
   }

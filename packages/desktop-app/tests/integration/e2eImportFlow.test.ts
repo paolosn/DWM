@@ -111,7 +111,7 @@ describe("E2E mínimo: selector nativo (IPC) → import.* → Workspace activo �
     const createAgent = await fixtureEngine2.execute({
       requestId: "fx-3",
       operation: "agents.create",
-      payload: { id: "agente-e2e", data: { name: "Agente E2E" } },
+      payload: { id: "agente-e2e", content: "# Agente E2E\n" },
       caller: admin,
     });
     expect(createAgent.success).toBe(true);

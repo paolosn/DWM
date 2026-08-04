@@ -9,8 +9,8 @@ import { Logger, LogLevel } from "@dwm/logger";
 import { WorkspacePaths } from "@dwm/portable-workspace";
 import { ImportManager } from "@dwm/import-manager";
 import { PSNAdapter } from "@dwm/psn-adapter";
-import type { VerificationManager } from "@dwm/verification";
 import { AgentManager } from "../../src/AgentManager.js";
+import type { VerificationManager } from "@dwm/verification";
 import { AgentErrorCode } from "../../src/errors/AgentErrorCode.js";
 import { makeTempDir } from "./support/tempDir.js";
 import { makeScannedPSNAdapter, makeWorkspaceWithAgents } from "./support/fixtures.js";
@@ -54,24 +54,32 @@ describe("AgentManager", () => {
   });
 
   describe("listAgents()", () => {
-    it("lista los agentes reales del Workspace, excluyendo archivados por defecto", async () => {
+    it("lista las agentes reales del Workspace, excluyendo archivadas por defecto", async () => {
       const root = tempDir();
       await makeWorkspaceWithAgents(root, {
-        activo: { name: "Activo" },
-        legado: {},
+        activa: "# Activa\n",
+        legada: "# Legada\n",
       });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
 
       const list = await manager.listAgents();
-      expect(list.map((s) => s.id).sort()).toEqual(["activo", "legado"]);
+      expect(list.map((s) => s.id).sort()).toEqual(["activa", "legada"]);
 
-      await manager.archiveAgent("activo");
-      const listaSinArchivados = await manager.listAgents();
-      expect(listaSinArchivados.map((s) => s.id)).toEqual(["legado"]);
+      await manager.archiveAgent("activa");
+      expect((await manager.listAgents()).map((s) => s.id)).toEqual(["legada"]);
+      expect((await manager.listAgents({ includeArchived: true })).map((s) => s.id).sort()).toEqual(
+        ["activa", "legada"]
+      );
+    });
 
-      const listaConArchivados = await manager.listAgents({ includeArchived: true });
-      expect(listaConArchivados.map((s) => s.id).sort()).toEqual(["activo", "legado"]);
+    it("extrae el nombre de cada agente para su resumen", async () => {
+      const root = tempDir();
+      await makeWorkspaceWithAgents(root, { "con-titulo": "# Mi Título\nCuerpo.\n" });
+      const psnAdapter = await makeScannedPSNAdapter(root);
+      const manager = new AgentManager({ psnAdapter });
+      const [summary] = await manager.listAgents();
+      expect(summary?.name).toBe("Mi Título");
     });
 
     it("devuelve [] si el directorio de agentes está vacío", async () => {
@@ -84,22 +92,21 @@ describe("AgentManager", () => {
   });
 
   describe("getAgent() / getAgentMetadata()", () => {
-    it("lee un agente existente con sus datos y metadatos", async () => {
+    it("lee una agente existente con su contenido y metadatos", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { soporte: { name: "Soporte" } });
+      await makeWorkspaceWithAgents(root, { soporte: "# Soporte\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
 
       const agent = await manager.getAgent("soporte");
       expect(agent.id).toBe("soporte");
-      expect(agent.data).toEqual({ name: "Soporte" });
+      expect(agent.content).toBe("# Soporte\n");
       expect(agent.metadata.archived).toBe(false);
 
-      const metadata = await manager.getAgentMetadata("soporte");
-      expect(metadata).toEqual(agent.metadata);
+      expect(await manager.getAgentMetadata("soporte")).toEqual(agent.metadata);
     });
 
-    it("lanza AGENT_NOT_FOUND si el agente no existe", async () => {
+    it("lanza AGENT_NOT_FOUND si la agente no existe", async () => {
       const root = tempDir();
       await makeWorkspaceWithAgents(root, {});
       const psnAdapter = await makeScannedPSNAdapter(root);
@@ -121,77 +128,77 @@ describe("AgentManager", () => {
   });
 
   describe("createAgent()", () => {
-    it("crea un agente nuevo con metadatos iniciales", async () => {
+    it("crea una agente nueva con metadatos iniciales", async () => {
       const root = tempDir();
       await makeWorkspaceWithAgents(root, {});
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
 
-      const agent = await manager.createAgent({ id: "nuevo", data: { name: "Nuevo" } });
+      const agent = await manager.createAgent({ id: "nueva", content: "# Nueva\n" });
       expect(agent.metadata.archived).toBe(false);
       expect(agent.metadata.createdAt).toBe(agent.metadata.updatedAt);
 
-      const releido = await manager.getAgent("nuevo");
-      expect(releido.data).toEqual({ name: "Nuevo" });
+      expect((await manager.getAgent("nueva")).content).toBe("# Nueva\n");
     });
 
     it("lanza AGENT_ALREADY_EXISTS si el id ya existe", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { existente: {} });
+      await makeWorkspaceWithAgents(root, { existente: "# X\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
-      await expect(manager.createAgent({ id: "existente", data: {} })).rejects.toMatchObject({
+      await expect(
+        manager.createAgent({ id: "existente", content: "# Y\n" })
+      ).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_ALREADY_EXISTS,
       });
     });
 
-    it("lanza AGENT_VALIDATION_FAILED si los datos incluyen la clave reservada", async () => {
+    it("lanza AGENT_VALIDATION_FAILED si el contenido ya usa el frontmatter reservado dwm:", async () => {
       const root = tempDir();
       await makeWorkspaceWithAgents(root, {});
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
-      await expect(manager.createAgent({ id: "malo", data: { __dwm: {} } })).rejects.toMatchObject({
-        code: AgentErrorCode.AGENT_VALIDATION_FAILED,
-      });
+      await expect(
+        manager.createAgent({ id: "mala", content: "---\ndwm:\n  archived: true\n---\nX\n" })
+      ).rejects.toMatchObject({ code: AgentErrorCode.AGENT_VALIDATION_FAILED });
     });
   });
 
   describe("updateAgent() / saveAgent()", () => {
-    it("actualiza los datos preservando createdAt y avanzando updatedAt", async () => {
+    it("actualiza el contenido preservando createdAt y avanzando updatedAt", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { agente: { name: "Original" } });
+      await makeWorkspaceWithAgents(root, { regla1: "# Original\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
-      const original = await manager.getAgent("agente");
+      const original = await manager.getAgent("regla1");
 
       await new Promise((resolve) => setTimeout(resolve, 5));
-      const actualizado = await manager.updateAgent("agente", { name: "Editado" });
-      expect(actualizado.data).toEqual({ name: "Editado" });
-      expect(actualizado.metadata.createdAt).toBe(original.metadata.createdAt);
-      expect(actualizado.metadata.updatedAt).not.toBe(original.metadata.createdAt);
+      const actualizada = await manager.updateAgent("regla1", "# Editada\n");
+      expect(actualizada.content).toBe("# Editada\n");
+      expect(actualizada.metadata.createdAt).toBe(original.metadata.createdAt);
+      expect(actualizada.metadata.updatedAt).not.toBe(original.metadata.createdAt);
     });
 
-    it("lanza AGENT_NOT_FOUND al actualizar un agente inexistente", async () => {
+    it("lanza AGENT_NOT_FOUND al actualizar una agente inexistente", async () => {
       const root = tempDir();
       await makeWorkspaceWithAgents(root, {});
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
-      await expect(manager.updateAgent("no-existe", {})).rejects.toMatchObject({
+      await expect(manager.updateAgent("no-existe", "# X\n")).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_NOT_FOUND,
       });
     });
 
     it("saveAgent() persiste un Agent completo ya materializado", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { agente: { name: "Original" } });
+      await makeWorkspaceWithAgents(root, { regla1: "# Original\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
-      const agent = await manager.getAgent("agente");
+      const agent = await manager.getAgent("regla1");
 
-      const saved = await manager.saveAgent({ ...agent, data: { name: "Guardado" } });
-      expect(saved.data).toEqual({ name: "Guardado" });
-      const releido = await manager.getAgent("agente");
-      expect(releido.data).toEqual({ name: "Guardado" });
+      const saved = await manager.saveAgent({ ...agent, content: "# Guardada\n" });
+      expect(saved.content).toBe("# Guardada\n");
+      expect((await manager.getAgent("regla1")).content).toBe("# Guardada\n");
     });
 
     it("saveAgent() rechaza una estructura inválida", async () => {
@@ -202,7 +209,7 @@ describe("AgentManager", () => {
       await expect(
         manager.saveAgent({
           id: "..",
-          data: {},
+          content: "# X\n",
           metadata: { archived: false, createdAt: "x", updatedAt: "x" },
         })
       ).rejects.toMatchObject({ code: AgentErrorCode.AGENT_INVALID_STRUCTURE });
@@ -210,19 +217,18 @@ describe("AgentManager", () => {
   });
 
   describe("duplicateAgent()", () => {
-    it("duplica un agente existente con un nuevo id y metadatos propios", async () => {
+    it("duplica una agente existente con un nuevo id y metadatos propios", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { original: { name: "Original" } });
+      await makeWorkspaceWithAgents(root, { original: "# Original\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
 
-      const duplicado = await manager.duplicateAgent("original", "copia");
-      expect(duplicado.id).toBe("copia");
-      expect(duplicado.data).toEqual({ name: "Original" });
-      expect(duplicado.metadata.archived).toBe(false);
+      const duplicada = await manager.duplicateAgent("original", "copia");
+      expect(duplicada.id).toBe("copia");
+      expect(duplicada.content).toBe("# Original\n");
+      expect(duplicada.metadata.archived).toBe(false);
 
-      const original = await manager.getAgent("original");
-      expect(original.data).toEqual({ name: "Original" });
+      expect((await manager.getAgent("original")).content).toBe("# Original\n");
     });
 
     it("lanza AGENT_NOT_FOUND si el origen no existe", async () => {
@@ -237,7 +243,7 @@ describe("AgentManager", () => {
 
     it("lanza AGENT_ALREADY_EXISTS si el destino ya existe", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { a: {}, b: {} });
+      await makeWorkspaceWithAgents(root, { a: "# A\n", b: "# B\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
       await expect(manager.duplicateAgent("a", "b")).rejects.toMatchObject({
@@ -247,14 +253,14 @@ describe("AgentManager", () => {
   });
 
   describe("deleteAgent()", () => {
-    it("elimina un agente existente y lo retira del índice", async () => {
+    it("elimina una agente existente", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { agente: {} });
+      await makeWorkspaceWithAgents(root, { regla1: "# X\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
 
-      await manager.deleteAgent("agente");
-      await expect(manager.getAgent("agente")).rejects.toMatchObject({
+      await manager.deleteAgent("regla1");
+      await expect(manager.getAgent("regla1")).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_NOT_FOUND,
       });
     });
@@ -271,42 +277,52 @@ describe("AgentManager", () => {
   });
 
   describe("archiveAgent() / restoreAgent()", () => {
-    it("archiva y restaura un agente sin mover ni renombrar su fichero", async () => {
+    it("archiva y restaura una agente sin mover ni renombrar su fichero", async () => {
       const root = tempDir();
-      const agentsDir = await makeWorkspaceWithAgents(root, { agente: { name: "x" } });
+      const rulesDir = await makeWorkspaceWithAgents(root, { regla1: "# X\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
 
-      const archivado = await manager.archiveAgent("agente");
-      expect(archivado.metadata.archived).toBe(true);
-      expect(typeof archivado.metadata.archivedAt).toBe("string");
+      const archivada = await manager.archiveAgent("regla1");
+      expect(archivada.metadata.archived).toBe(true);
+      expect(typeof archivada.metadata.archivedAt).toBe("string");
 
       const { promises: fs } = await import("node:fs");
-      expect(await fs.readdir(agentsDir)).toEqual(["agente.json"]);
+      expect(await fs.readdir(rulesDir)).toEqual(["regla1.md"]);
 
-      const restaurado = await manager.restoreAgent("agente");
-      expect(restaurado.metadata.archived).toBe(false);
-      expect(restaurado.metadata.archivedAt).toBeUndefined();
-      expect(restaurado.data).toEqual({ name: "x" });
+      const restaurada = await manager.restoreAgent("regla1");
+      expect(restaurada.metadata.archived).toBe(false);
+      expect(restaurada.metadata.archivedAt).toBeUndefined();
+      expect(restaurada.content).toBe("# X\n");
     });
 
-    it("lanza AGENT_ALREADY_ARCHIVED si ya está archivado", async () => {
+    it("preserva el frontmatter propio del autor al archivar", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { agente: {} });
+      await makeWorkspaceWithAgents(root, { regla1: "---\ntitle: Mi Agente\n---\n# X\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
-      await manager.archiveAgent("agente");
-      await expect(manager.archiveAgent("agente")).rejects.toMatchObject({
+
+      const archivada = await manager.archiveAgent("regla1");
+      expect(archivada.content).toContain("title: Mi Agente");
+    });
+
+    it("lanza AGENT_ALREADY_ARCHIVED si ya está archivada", async () => {
+      const root = tempDir();
+      await makeWorkspaceWithAgents(root, { regla1: "# X\n" });
+      const psnAdapter = await makeScannedPSNAdapter(root);
+      const manager = new AgentManager({ psnAdapter });
+      await manager.archiveAgent("regla1");
+      await expect(manager.archiveAgent("regla1")).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_ALREADY_ARCHIVED,
       });
     });
 
-    it("lanza AGENT_NOT_ARCHIVED si no está archivado", async () => {
+    it("lanza AGENT_NOT_ARCHIVED si no está archivada", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { agente: {} });
+      await makeWorkspaceWithAgents(root, { regla1: "# X\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
-      await expect(manager.restoreAgent("agente")).rejects.toMatchObject({
+      await expect(manager.restoreAgent("regla1")).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_NOT_ARCHIVED,
       });
     });
@@ -316,8 +332,8 @@ describe("AgentManager", () => {
     it("busca por texto libre sobre el índice reconstruido", async () => {
       const root = tempDir();
       await makeWorkspaceWithAgents(root, {
-        "agente-soporte": { name: "Soporte" },
-        "agente-ventas": { name: "Ventas" },
+        "agente-soporte": "# Soporte\n",
+        "agente-ventas": "# Ventas\n",
       });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
@@ -327,7 +343,7 @@ describe("AgentManager", () => {
 
     it("filtra por estado archivado", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { a: {}, b: {} });
+      await makeWorkspaceWithAgents(root, { a: "# A\n", b: "# B\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
       await manager.archiveAgent("a");
@@ -340,16 +356,16 @@ describe("AgentManager", () => {
   describe("validateAgentStructure()", () => {
     it("delega en AgentValidator", async () => {
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { agente: { name: "x" } });
+      await makeWorkspaceWithAgents(root, { regla1: "# X\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
       const manager = new AgentManager({ psnAdapter });
-      const agent = await manager.getAgent("agente");
+      const agent = await manager.getAgent("regla1");
       expect(manager.validateAgentStructure(agent).valid).toBe(true);
     });
   });
 
   describe("integraciones", () => {
-    it("listConnectedIntegrations() siempre incluye psn-adapter y refleja el resto de dependencias", async () => {
+    it("listConnectedIntegrations() siempre incluye psn-adapter y refleja el resto de dependencias, incluidas agent-manager y skill-manager", async () => {
       const configManager = new ConfigManager({ configDir: tempDir() });
       const workspacePaths = new WorkspacePaths(tempDir());
       const importManager = new ImportManager({ historyDir: tempDir() });
@@ -371,7 +387,7 @@ describe("AgentManager", () => {
       const configManager = new ConfigManager({ configDir: tempDir() });
       const manager = new AgentManager({ psnAdapter, configManager });
 
-      await manager.createAgent({ id: "agente", data: {} });
+      await manager.createAgent({ id: "regla1", content: "# X\n" });
       const section = await configManager.getSection<{ agents: number }>("agent-manager");
       expect(section?.agents).toBe(1);
     });
@@ -402,8 +418,8 @@ describe("AgentManager", () => {
         logger,
         verificationManager: fakeVerificationManager,
       });
-      const agent = await manager.createAgent({ id: "agente", data: {} });
-      expect(agent.id).toBe("agente");
+      const agent = await manager.createAgent({ id: "regla1", content: "# X\n" });
+      expect(agent.id).toBe("regla1");
       expect(logs.some((m) => m.includes("verificación"))).toBe(true);
     });
 
@@ -420,12 +436,12 @@ describe("AgentManager", () => {
       }
 
       const manager = new AgentManager({ psnAdapter, eventBus });
-      await manager.createAgent({ id: "agente", data: {} });
-      await manager.updateAgent("agente", { name: "x" });
-      await manager.duplicateAgent("agente", "copia");
-      await manager.archiveAgent("agente");
-      await manager.restoreAgent("agente");
-      await manager.deleteAgent("agente");
+      await manager.createAgent({ id: "regla1", content: "# X\n" });
+      await manager.updateAgent("regla1", "# Y\n");
+      await manager.duplicateAgent("regla1", "copia");
+      await manager.archiveAgent("regla1");
+      await manager.restoreAgent("regla1");
+      await manager.deleteAgent("regla1");
 
       expect(received).toEqual([
         "created",
@@ -445,11 +461,11 @@ describe("AgentManager", () => {
       expect(unknown.level).toBe("UNKNOWN");
 
       const root = tempDir();
-      await makeWorkspaceWithAgents(root, { a: {}, b: {} });
+      await makeWorkspaceWithAgents(root, { a: "# A\n", b: "# B\n" });
       const psnAdapter = await makeScannedPSNAdapter(root);
-      const managerConAgentes = new AgentManager({ psnAdapter });
-      await managerConAgentes.listAgents();
-      const ok = await managerConAgentes.toStatusProvider().getStatus();
+      const managerConReglas = new AgentManager({ psnAdapter });
+      await managerConReglas.listAgents();
+      const ok = await managerConReglas.toStatusProvider().getStatus();
       expect(ok.level).toBe("OK");
       expect(ok.detail?.["agents"]).toBe(2);
     });

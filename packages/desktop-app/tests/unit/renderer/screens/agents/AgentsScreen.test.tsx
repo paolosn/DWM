@@ -258,7 +258,7 @@ describe("AgentsScreen", () => {
     const createCall = invoke.mock.calls.find(
       (call) => (call[0] as { operation: string }).operation === "agents.create"
     );
-    expect(createCall?.[0].payload).toEqual({ id: "nuevo", data: { name: "Nuevo" } });
+    expect(createCall?.[0].payload).toEqual({ id: "nuevo", content: '{"name":"Nuevo"}' });
     unmount();
   });
 });

@@ -15,6 +15,11 @@ describe("AgentRepository", () => {
   }
 
   const repository = new AgentRepository();
+  const baseMetadata = {
+    archived: false,
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-02T00:00:00.000Z",
+  };
 
   describe("exists()", () => {
     it("es falso cuando el fichero no existe", async () => {
@@ -23,16 +28,7 @@ describe("AgentRepository", () => {
 
     it("es verdadero cuando el fichero existe", async () => {
       const dir = tempDir();
-      await repository.write(
-        dir,
-        "agente-1",
-        { name: "x" },
-        {
-          archived: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      );
+      await repository.write(dir, "agente-1", "# X\n", baseMetadata);
       expect(await repository.exists(dir, "agente-1")).toBe(true);
     });
   });
@@ -42,51 +38,34 @@ describe("AgentRepository", () => {
       expect(await repository.read(tempDir(), "no-existe")).toBeUndefined();
     });
 
-    it("lee un agente escrito por write(), separando datos y metadatos", async () => {
+    it("lee una agente escrita por write(), separando contenido y metadatos", async () => {
       const dir = tempDir();
-      const metadata = {
-        archived: false,
-        createdAt: "2024-01-01T00:00:00.000Z",
-        updatedAt: "2024-01-02T00:00:00.000Z",
-      };
-      await repository.write(dir, "agente-1", { name: "x" }, metadata);
-
+      await repository.write(dir, "agente-1", "---\ntitle: X\n---\n# Cuerpo\n", baseMetadata);
       const agent = await repository.read(dir, "agente-1");
-      expect(agent).toBeDefined();
       expect(agent?.id).toBe("agente-1");
-      expect(agent?.data).toEqual({ name: "x" });
-      expect(agent?.metadata).toEqual(metadata);
+      expect(agent?.content).toBe("---\ntitle: X\n---\n# Cuerpo\n");
+      expect(agent?.metadata).toEqual(baseMetadata);
     });
 
-    it("infiere metadatos a partir de fs.stat cuando el fichero es legado (sin bloque __dwm)", async () => {
+    it("infiere metadatos a partir de fs.stat cuando el fichero es legado (sin bloque dwm:)", async () => {
       const dir = tempDir();
       await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(path.join(dir, "legado.json"), "{}", "utf-8");
+      await fs.writeFile(path.join(dir, "legada.md"), "# Legada\n", "utf-8");
 
-      const agent = await repository.read(dir, "legado");
-      expect(agent?.data).toEqual({});
+      const agent = await repository.read(dir, "legada");
+      expect(agent?.content).toBe("# Legada\n");
       expect(agent?.metadata.archived).toBe(false);
       expect(typeof agent?.metadata.createdAt).toBe("string");
       expect(typeof agent?.metadata.updatedAt).toBe("string");
       expect(agent?.metadata.archivedAt).toBeUndefined();
     });
 
-    it("lanza AGENT_INVALID_STRUCTURE si el JSON es inválido", async () => {
+    it("lanza AGENT_INVALID_STRUCTURE si el frontmatter está mal formado", async () => {
       const dir = tempDir();
       await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(path.join(dir, "roto.json"), "{ esto no es json", "utf-8");
+      await fs.writeFile(path.join(dir, "rota.md"), "---\ntitle: X\nnunca se cierra\n", "utf-8");
 
-      await expect(repository.read(dir, "roto")).rejects.toMatchObject({
-        code: AgentErrorCode.AGENT_INVALID_STRUCTURE,
-      });
-    });
-
-    it("lanza AGENT_INVALID_STRUCTURE si el JSON no es un objeto plano", async () => {
-      const dir = tempDir();
-      await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(path.join(dir, "array.json"), "[1,2,3]", "utf-8");
-
-      await expect(repository.read(dir, "array")).rejects.toMatchObject({
+      await expect(repository.read(dir, "rota")).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_INVALID_STRUCTURE,
       });
     });
@@ -95,38 +74,29 @@ describe("AgentRepository", () => {
   describe("write()", () => {
     it("crea el directorio si no existe", async () => {
       const dir = path.join(tempDir(), "no-existe-aun");
-      await repository.write(
-        dir,
-        "agente-1",
-        {},
-        {
-          archived: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      );
+      await repository.write(dir, "agente-1", "# X\n", baseMetadata);
       expect(await repository.exists(dir, "agente-1")).toBe(true);
+    });
+
+    it("preserva el frontmatter propio del autor junto al bloque dwm: reservado", async () => {
+      const dir = tempDir();
+      await repository.write(dir, "agente-1", "---\ntitle: X\n---\n# Cuerpo\n", baseMetadata);
+      const raw = await fs.readFile(path.join(dir, "agente-1.md"), "utf-8");
+      expect(raw).toContain("title: X");
+      expect(raw).toContain("dwm:");
+      expect(raw).toContain("# Cuerpo");
     });
   });
 
   describe("delete()", () => {
-    it("elimina un agente existente", async () => {
+    it("elimina una agente existente", async () => {
       const dir = tempDir();
-      await repository.write(
-        dir,
-        "agente-1",
-        {},
-        {
-          archived: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      );
+      await repository.write(dir, "agente-1", "# X\n", baseMetadata);
       await repository.delete(dir, "agente-1");
       expect(await repository.exists(dir, "agente-1")).toBe(false);
     });
 
-    it("lanza AGENT_NOT_FOUND si el agente no existe", async () => {
+    it("lanza AGENT_NOT_FOUND si la agente no existe", async () => {
       await expect(repository.delete(tempDir(), "no-existe")).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_NOT_FOUND,
       });
@@ -138,12 +108,12 @@ describe("AgentRepository", () => {
       expect(await repository.listIds(path.join(tempDir(), "no-existe"))).toEqual([]);
     });
 
-    it("lista solo los ficheros .json, ordenados y sin extensión", async () => {
+    it("lista solo los ficheros .md, ordenados y sin extensión", async () => {
       const dir = tempDir();
       await fs.mkdir(dir, { recursive: true });
-      await fs.writeFile(path.join(dir, "b.json"), "{}", "utf-8");
-      await fs.writeFile(path.join(dir, "a.json"), "{}", "utf-8");
-      await fs.writeFile(path.join(dir, "notas.txt"), "no es un agente", "utf-8");
+      await fs.writeFile(path.join(dir, "b.md"), "# B\n", "utf-8");
+      await fs.writeFile(path.join(dir, "a.md"), "# A\n", "utf-8");
+      await fs.writeFile(path.join(dir, "notas.txt"), "no es una agente", "utf-8");
 
       expect(await repository.listIds(dir)).toEqual(["a", "b"]);
     });
@@ -155,7 +125,7 @@ describe("AgentRepository", () => {
       await fs.rm(fileAsDir, { recursive: true, force: true });
       await fs.writeFile(fileAsDir, "no es un directorio", "utf-8");
 
-      await expect(repository.exists(fileAsDir, "agente")).rejects.toMatchObject({
+      await expect(repository.exists(fileAsDir, "agente-1")).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_READ_FAILED,
       });
     });
@@ -166,17 +136,10 @@ describe("AgentRepository", () => {
       await fs.writeFile(fileAsDir, "no es un directorio", "utf-8");
 
       await expect(
-        repository.write(
-          fileAsDir,
-          "agente",
-          {},
-          {
-            archived: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }
-        )
-      ).rejects.toMatchObject({ code: AgentErrorCode.AGENT_WRITE_FAILED });
+        repository.write(fileAsDir, "agente-1", "# X\n", baseMetadata)
+      ).rejects.toMatchObject({
+        code: AgentErrorCode.AGENT_WRITE_FAILED,
+      });
     });
 
     it("listIds() envuelve un fallo inesperado como AGENT_LIST_FAILED", async () => {
@@ -191,9 +154,9 @@ describe("AgentRepository", () => {
 
     it("delete() envuelve un fallo inesperado (no ENOENT) como AGENT_DELETE_FAILED", async () => {
       const dir = tempDir();
-      await fs.mkdir(path.join(dir, "agente.json"), { recursive: true });
+      await fs.mkdir(path.join(dir, "agente-1.md"), { recursive: true });
 
-      await expect(repository.delete(dir, "agente")).rejects.toMatchObject({
+      await expect(repository.delete(dir, "agente-1")).rejects.toMatchObject({
         code: AgentErrorCode.AGENT_DELETE_FAILED,
       });
     });

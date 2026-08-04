@@ -1,5 +1,6 @@
-import { AGENT_MANAGED_METADATA_KEY, isAgentData, isSafeAgentId } from "./AgentTypes.js";
-import type { Agent, AgentData } from "./AgentTypes.js";
+import { hasDwmBlock, splitFrontmatter } from "./AgentFrontmatter.js";
+import { isSafeAgentId, AGENT_DWM_FRONTMATTER_KEY } from "./AgentTypes.js";
+import type { Agent } from "./AgentTypes.js";
 import { AgentErrorCode } from "./errors/AgentErrorCode.js";
 import { createAgentError } from "./errors/AgentError.js";
 
@@ -14,10 +15,10 @@ export interface AgentValidationResult {
 }
 
 /**
- * Valida la forma de los identificadores y de los datos de un agente,
- * antes de que `AgentRepository` toque el sistema de ficheros. No conoce
- * ninguna herramienta concreta (Kilo Code o similares): solo exige que un
- * agente sea un identificador seguro más un objeto JSON plano.
+ * Valida la forma de los identificadores y del contenido de un agente,
+ * antes de que `AgentRepository` toque el sistema de ficheros. Nunca
+ * asume que un agente es JSON: su fuente es siempre texto Markdown (con
+ * o sin frontmatter propio del autor, compatible con Kilo Code).
  */
 export class AgentValidator {
   validateId(id: unknown): AgentValidationResult {
@@ -48,41 +49,47 @@ export class AgentValidator {
     }
   }
 
-  validateData(data: unknown): AgentValidationResult {
+  validateContent(content: unknown): AgentValidationResult {
     const issues: AgentValidationIssue[] = [];
-    if (!isAgentData(data)) {
-      issues.push({
-        field: "data",
-        message: "data debe ser un objeto JSON plano (no un array, ni null, ni un primitivo).",
-      });
+    if (typeof content !== "string") {
+      issues.push({ field: "content", message: "content debe ser una cadena de texto Markdown." });
       return { valid: false, issues };
     }
-    if (AGENT_MANAGED_METADATA_KEY in data) {
+    const { frontmatter, malformed } = splitFrontmatter(content);
+    if (malformed) {
       issues.push({
-        field: `data.${AGENT_MANAGED_METADATA_KEY}`,
-        message: `"${AGENT_MANAGED_METADATA_KEY}" es una clave reservada para los metadatos gestionados por @dwm/agent-manager y no puede formar parte de los datos del agente.`,
+        field: "content",
+        message:
+          'El contenido empieza con un delimitador de frontmatter ("---") pero nunca lo cierra.',
+      });
+    } else if (hasDwmBlock(frontmatter)) {
+      issues.push({
+        field: "content",
+        message: `"${AGENT_DWM_FRONTMATTER_KEY}:" es una clave de frontmatter reservada para los metadatos gestionados por @dwm/agent-manager y no puede formar parte del contenido del agente.`,
       });
     }
     return { valid: issues.length === 0, issues };
   }
 
-  assertValidData(data: unknown): asserts data is AgentData {
-    const result = this.validateData(data);
+  assertValidContent(content: unknown): asserts content is string {
+    const result = this.validateContent(content);
     if (!result.valid) {
       throw createAgentError({
         code: AgentErrorCode.AGENT_VALIDATION_FAILED,
-        message: `Datos de agente inválidos: ${result.issues.map((i) => `[${i.field}] ${i.message}`).join("; ")}`,
+        message: `Contenido de agente inválido: ${result.issues.map((i) => `[${i.field}] ${i.message}`).join("; ")}`,
         origin: "validation",
         recoverable: true,
       });
     }
   }
 
-  /** Validación estructural completa de un agente ya materializado (id + datos + metadatos). */
+  /** Validación estructural completa de un agente ya materializado (id + contenido + metadatos). */
   validateStructure(agent: Agent): AgentValidationResult {
     const issues: AgentValidationIssue[] = [...this.validateId(agent.id).issues];
-    const dataResult = this.validateData(agent.data);
-    issues.push(...dataResult.issues);
+
+    if (typeof agent.content !== "string") {
+      issues.push({ field: "content", message: "content debe ser una cadena de texto Markdown." });
+    }
 
     if (
       typeof agent.metadata.createdAt !== "string" ||

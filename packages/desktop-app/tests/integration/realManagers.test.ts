@@ -108,7 +108,7 @@ describe("Integración real: EngineBootstrap con managers conectados", () => {
     const createResponse = await engine2.execute({
       requestId: "r4",
       operation: "agents.create",
-      payload: { id: "agente-integracion", data: { name: "Agente de integración" } },
+      payload: { id: "agente-integracion", content: "# Agente de integración\n" },
       caller: admin,
     });
     expect(createResponse.success).toBe(true);
@@ -302,7 +302,7 @@ describe("Integración real: seguridad (§4)", () => {
     await engine.execute({
       requestId: "sec3c",
       operation: "agents.create",
-      payload: { id: "agente-seguridad", data: {} },
+      payload: { id: "agente-seguridad", content: "# Agente de seguridad\n" },
       caller: admin,
     });
 

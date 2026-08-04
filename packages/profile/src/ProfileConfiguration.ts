@@ -10,6 +10,12 @@ export interface ProfileConfiguration {
   /** Claves de @dwm/secrets referenciadas por este perfil; nunca el valor del secreto. */
   readonly secretRefs: readonly string[];
   readonly preferences?: Readonly<Record<string, unknown>>;
+  /** Composición real del perfil (encargo, item 5 "kilo-content-integration"): ids reales de agentes/skills/reglas a materializar en el .kilo del proyecto al asignar este perfil. */
+  readonly agentIds?: readonly string[];
+  readonly skillIds?: readonly string[];
+  readonly ruleIds?: readonly string[];
+  /** Servidores MCP opcionales: ids de conexiones de tipo mcp-stdio/mcp-remote (@dwm/connections-manager) a asignar explícitamente al proyecto. */
+  readonly mcpConnectionIds?: readonly string[];
 }
 
 export function defaultProfileConfiguration(): ProfileConfiguration {
@@ -68,5 +74,16 @@ export function validateProfileConfiguration(config: ProfileConfiguration): void
       origin: "configuration",
       recoverable: false,
     });
+  }
+  for (const field of ["agentIds", "skillIds", "ruleIds", "mcpConnectionIds"] as const) {
+    const value = config[field];
+    if (value !== undefined && !isStringArray(value)) {
+      throw createProfileError({
+        code: ProfileErrorCode.PROFILE_INVALID_CONFIGURATION,
+        message: `ProfileConfiguration.${field} debe ser un array de cadenas si se indica.`,
+        origin: "configuration",
+        recoverable: false,
+      });
+    }
   }
 }

@@ -1,20 +1,18 @@
 /**
- * Un agente real del Workspace es, físicamente, un fichero JSON dentro del
- * recurso `agents` que reconoce `@dwm/psn-adapter` (p. ej.
- * `.kilo/agents/mi-agente.json`). `AgentManager` no impone ni reinterpreta
- * el formato interno de ese JSON —heredado del antiguo SISTEMA-DE-TRABAJO
- * y de las herramientas que lo generan (Kilo Code y similares)—: lo trata
- * como datos de agente de forma abierta.
+ * Un agente real del Workspace es, físicamente, un fichero Markdown
+ * individual dentro del recurso `agents` que reconoce `@dwm/psn-adapter`
+ * (p. ej. `.kilo/agents/mi-agente.md`), con frontmatter YAML compatible
+ * con el PSN-BASE real y con Kilo Code: `description`, `mode`, `color`
+ * en el frontmatter, y el cuerpo empezando por un encabezado `# Nombre`.
+ * `content` es el texto completo de ese fichero tal como lo vería
+ * cualquier otra herramienta —incluido el frontmatter propio del
+ * autor—, sin el bloque `dwm:` reservado, que vive por separado en
+ * `metadata`.
  */
-export type AgentData = Record<string, unknown>;
+export const AGENT_FILE_EXTENSION = ".md";
 
-/**
- * Clave reservada dentro del propio fichero del agente para los metadatos
- * que gestiona `@dwm/agent-manager` (archivado, fechas). Vive dentro del
- * mismo fichero para no crear una base de datos ni duplicar información
- * en otro sitio, y para no tener que mover ni renombrar nada al archivar.
- */
-export const AGENT_MANAGED_METADATA_KEY = "__dwm" as const;
+/** Clave reservada de nivel superior dentro del frontmatter de un agente para los metadatos gestionados por DWM. */
+export const AGENT_DWM_FRONTMATTER_KEY = "dwm";
 
 export interface AgentMetadata {
   readonly archived: boolean;
@@ -23,18 +21,20 @@ export interface AgentMetadata {
   readonly updatedAt: string;
 }
 
-/** Un agente completo: su identificador, sus datos libres y sus metadatos gestionados. */
+/** Un agente completo: su identificador, su contenido Markdown real y sus metadatos gestionados. */
 export interface Agent {
   readonly id: string;
-  readonly data: AgentData;
+  readonly content: string;
   readonly metadata: AgentMetadata;
 }
 
-/** Vista ligera de un agente, suficiente para listar, buscar y filtrar sin leer el fichero completo repetidamente. */
+/** Vista ligera de un agente, suficiente para listar, buscar y filtrar sin releer su fichero completo repetidamente. */
 export interface AgentSummary {
   readonly id: string;
   readonly name?: string;
-  readonly tags?: readonly string[];
+  readonly description?: string;
+  readonly mode?: string;
+  readonly color?: string;
   readonly archived: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -42,12 +42,11 @@ export interface AgentSummary {
 
 export interface AgentCreateRequest {
   readonly id: string;
-  readonly data: AgentData;
+  readonly content: string;
 }
 
 export interface AgentFilter {
   readonly archived?: boolean;
-  readonly tags?: readonly string[];
 }
 
 export interface AgentListOptions {
@@ -62,22 +61,7 @@ export function isSafeAgentId(value: unknown): value is string {
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(value);
 }
 
-/** Verdadero si `value` es un objeto de datos de agente válido: un objeto JSON plano (nunca `null`, un array o un primitivo). */
-export function isAgentData(value: unknown): value is AgentData {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-/** Extrae, de forma heurística y sin validarlos, un nombre y unas etiquetas legibles de unos datos de agente, para construir su `AgentSummary`. */
-export function extractAgentDisplayFields(data: AgentData): {
-  readonly name?: string;
-  readonly tags?: readonly string[];
-} {
-  const name = typeof data["name"] === "string" ? (data["name"] as string) : undefined;
-  const tags = Array.isArray(data["tags"])
-    ? (data["tags"] as unknown[]).filter((tag): tag is string => typeof tag === "string")
-    : undefined;
-  return {
-    ...(name ? { name } : {}),
-    ...(tags ? { tags } : {}),
-  };
+/** Verdadero si `content` es un contenido de agente válido: una cadena de texto Markdown. */
+export function isAgentContent(value: unknown): value is string {
+  return typeof value === "string";
 }

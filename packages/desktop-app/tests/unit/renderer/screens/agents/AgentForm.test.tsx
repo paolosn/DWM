@@ -32,7 +32,7 @@ describe("AgentForm", () => {
     unmount();
   });
 
-  it("valida JSON inválido en los datos y no llama a onSubmit", () => {
+  it("acepta cualquier contenido Markdown (no exige una estructura JSON)", () => {
     const onSubmit = vi.fn();
     const { container, unmount } = mount(
       <AgentForm submitting={false} onSubmit={onSubmit} onCancel={vi.fn()} />
@@ -40,19 +40,21 @@ describe("AgentForm", () => {
     const input = container.querySelector("input") as HTMLInputElement;
     setValue(input, "mi-agente");
     const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
-    setValue(textarea, "{ invalido");
+    setValue(textarea, "---\ndescription: Prueba\nmode: all\n---\n\n# Mi Agente\n");
 
     click(
       Array.from(container.querySelectorAll("button")).find(
         (b) => b.textContent === "Crear agente"
       ) ?? null
     );
-    expect(container.textContent).toContain("El JSON no es válido.");
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledWith({
+      id: "mi-agente",
+      content: "---\ndescription: Prueba\nmode: all\n---\n\n# Mi Agente\n",
+    });
     unmount();
   });
 
-  it("llama a onSubmit con id y data parseada cuando el formulario es válido", () => {
+  it("llama a onSubmit con id y content cuando el formulario es válido", () => {
     const onSubmit = vi.fn();
     const { container, unmount } = mount(
       <AgentForm submitting={false} onSubmit={onSubmit} onCancel={vi.fn()} />
@@ -67,7 +69,7 @@ describe("AgentForm", () => {
         (b) => b.textContent === "Crear agente"
       ) ?? null
     );
-    expect(onSubmit).toHaveBeenCalledWith({ id: "mi-agente", data: { name: "Mi agente" } });
+    expect(onSubmit).toHaveBeenCalledWith({ id: "mi-agente", content: '{"name":"Mi agente"}' });
     unmount();
   });
 

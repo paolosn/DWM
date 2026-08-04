@@ -28,7 +28,13 @@ import { ImportManager } from "@dwm/import-manager";
 import { DeliveryManager } from "@dwm/delivery-manager";
 import { SecretsManager } from "@dwm/secrets";
 import { ConnectionsManager } from "@dwm/connections-manager";
-import { ProjectProvisioningService, ViabilityAnalysisService } from "@dwm/project-provisioning";
+import {
+  ProjectProvisioningService,
+  ViabilityAnalysisService,
+  ContentSyncService,
+  ContentGenerationService,
+  ProfileSyncService,
+} from "@dwm/project-provisioning";
 import { AIManager } from "@dwm/ai-manager";
 
 export interface ManagerCompositionOptions {
@@ -155,6 +161,16 @@ export async function composeManagers(
   const knowledgeManager = new KnowledgeManager({ psnAdapter });
   const clientManager = new ClientManager({ psnAdapter });
   const projectManager = new ProjectManager({ projectsDir: path.join(dataDir, "projects") });
+
+  // kilo-content-integration (Commit 3) — reutiliza tal cual psnAdapter/
+  // agentManager/skillManager/ruleManager ya compuestos arriba; ningún
+  // motor de sincronización nuevo ni instancia duplicada.
+  const contentSyncService = new ContentSyncService({
+    psnAdapter,
+    agentManager,
+    skillManager,
+    ruleManager,
+  });
 
   const environmentManager = new EnvironmentManager(base({ configManager, workspaceManager }));
   const profileManager = new ProfileManager(
@@ -295,6 +311,26 @@ export async function composeManagers(
   );
   const viabilityAnalysisService = new ViabilityAnalysisService(aiManager);
 
+  // kilo-content-integration (Commit 4) — reutiliza tal cual el mismo
+  // aiManager (HttpAIProvider/SecretsManager ya resueltos ahí) y los
+  // mismos agentManager/skillManager/ruleManager ya compuestos arriba;
+  // ningún proveedor de IA ni manager de contenido nuevo.
+  const contentGenerationService = new ContentGenerationService(
+    aiManager,
+    agentManager,
+    skillManager,
+    ruleManager
+  );
+
+  // kilo-content-integration (Commit 5) — reutiliza tal cual
+  // contentSyncService/projectManager/connectionsManager ya compuestos;
+  // ningún motor de sincronización ni manager de proyecto nuevo.
+  const profileSyncService = new ProfileSyncService({
+    contentSyncService,
+    projectManager,
+    connectionsManager,
+  });
+
   return {
     workspaceLocated,
     context: {
@@ -309,6 +345,9 @@ export async function composeManagers(
       projectProvisioningService,
       aiManager,
       viabilityAnalysisService,
+      contentSyncService,
+      contentGenerationService,
+      profileSyncService,
       psnAdapter,
       agentManager,
       skillManager,

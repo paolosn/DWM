@@ -1,5 +1,4 @@
 import { useState } from "react";
-import type { AgentData } from "@dwm/agent-manager";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { TextArea } from "../../design-system/primitives/TextArea/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
@@ -7,7 +6,7 @@ import "./AgentForm.css";
 
 export interface AgentFormValues {
   readonly id: string;
-  readonly data: AgentData;
+  readonly content: string;
 }
 
 export interface AgentFormProps {
@@ -17,35 +16,25 @@ export interface AgentFormProps {
 }
 
 /**
- * Módulo 33A — Formulario específico de Agentes. `Agent.data` es un
- * `Record<string, unknown>` libre (no un esquema fijo — así lo define
- * `@dwm/agent-manager`), así que se edita como JSON explícito en vez de
- * inventar campos que el backend no reconoce.
+ * Módulo 33A — Formulario específico de Agentes. Un agente real es un
+ * fichero Markdown (`.kilo/agents/<id>.md`) con frontmatter YAML
+ * (`description`/`mode`/`color`) compatible con Kilo Code y el
+ * PSN-BASE real, tal como lo define `@dwm/agent-manager` — nunca JSON.
  */
 export function AgentForm({ submitting, onSubmit, onCancel }: AgentFormProps): JSX.Element {
   const [id, setId] = useState("");
-  const [dataText, setDataText] = useState('{\n  "name": ""\n}');
+  const [content, setContent] = useState(
+    '---\ndescription: ""\nmode: all\n---\n\n# Nombre del agente\n'
+  );
   const [idError, setIdError] = useState<string | undefined>(undefined);
-  const [dataError, setDataError] = useState<string | undefined>(undefined);
 
   function handleSubmit(): void {
-    let hasError = false;
     if (!id.trim()) {
       setIdError("El identificador es obligatorio.");
-      hasError = true;
-    } else {
-      setIdError(undefined);
+      return;
     }
-    let parsed: AgentData | undefined;
-    try {
-      parsed = JSON.parse(dataText) as AgentData;
-      setDataError(undefined);
-    } catch {
-      setDataError("El JSON no es válido.");
-      hasError = true;
-    }
-    if (hasError || !parsed) return;
-    void onSubmit({ id: id.trim(), data: parsed });
+    setIdError(undefined);
+    void onSubmit({ id: id.trim(), content });
   }
 
   return (
@@ -58,13 +47,11 @@ export function AgentForm({ submitting, onSubmit, onCancel }: AgentFormProps): J
         required
       />
       <TextArea
-        label="Datos (JSON)"
-        rows={10}
-        value={dataText}
-        onChange={(e) => setDataText(e.target.value)}
-        {...(dataError
-          ? { error: dataError }
-          : { hint: "Estructura libre: la interpreta el propio agente." })}
+        label="Contenido (Markdown)"
+        rows={14}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        hint='Fichero real compatible con Kilo Code: frontmatter "description"/"mode"/"color" seguido de un encabezado "# Nombre".'
       />
       <div className="dwm-agent-form__footer">
         <Button variant="secondary" onClick={onCancel} disabled={submitting}>

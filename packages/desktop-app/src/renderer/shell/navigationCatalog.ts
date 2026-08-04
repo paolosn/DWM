@@ -56,7 +56,7 @@ export const NAVIGATION_CATALOG: readonly NavigationItem[] = [
   { section: "aiCreator", label: "AI Creator", icon: Wand2 },
   { section: "ai", label: "IA", icon: BrainCircuit },
   { section: "tools", label: "Herramientas", icon: Wrench },
-  { section: "plugins", label: "Plugins", icon: Plug },
+  { section: "plugins", label: "Extensiones de DWM", icon: Plug },
   { section: "packages", label: "Paquetes", icon: Package },
   { section: "backups", label: "Backups", icon: Archive },
   { section: "status", label: "Estado", icon: Activity },

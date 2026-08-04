@@ -22,7 +22,7 @@ describe("AgentRegistry", () => {
     expect(registry.get("agente-1")).toEqual(summary());
   });
 
-  it("require() lanza AGENT_NOT_FOUND si no está indexado", () => {
+  it("require() lanza AGENT_NOT_FOUND si no está indexada", () => {
     const registry = new AgentRegistry();
     expect(() => registry.require("no-existe")).toThrowError(
       expect.objectContaining({ code: AgentErrorCode.AGENT_NOT_FOUND })
@@ -44,10 +44,10 @@ describe("AgentRegistry", () => {
 
   it("replaceAll() sustituye por completo el contenido del índice", () => {
     const registry = new AgentRegistry();
-    registry.set(summary({ id: "viejo" }));
-    registry.replaceAll([summary({ id: "nuevo" })]);
-    expect(registry.has("viejo")).toBe(false);
-    expect(registry.has("nuevo")).toBe(true);
+    registry.set(summary({ id: "vieja" }));
+    registry.replaceAll([summary({ id: "nueva" })]);
+    expect(registry.has("vieja")).toBe(false);
+    expect(registry.has("nueva")).toBe(true);
   });
 
   it("list() devuelve las entradas ordenadas por id", () => {
@@ -65,13 +65,6 @@ describe("AgentRegistry", () => {
       expect(registry.filter({ archived: true }).map((s) => s.id)).toEqual(["a"]);
     });
 
-    it("filtra por tags (deben estar todas presentes)", () => {
-      const registry = new AgentRegistry();
-      registry.set(summary({ id: "a", tags: ["x", "y"] }));
-      registry.set(summary({ id: "b", tags: ["x"] }));
-      expect(registry.filter({ tags: ["x", "y"] }).map((s) => s.id)).toEqual(["a"]);
-    });
-
     it("sin criterios, devuelve todo", () => {
       const registry = new AgentRegistry();
       registry.set(summary({ id: "a" }));
@@ -80,18 +73,12 @@ describe("AgentRegistry", () => {
   });
 
   describe("search()", () => {
-    it("busca por id, nombre y tags sin distinguir mayúsculas", () => {
+    it("busca por id y nombre sin distinguir mayúsculas", () => {
       const registry = new AgentRegistry();
-      registry.set(summary({ id: "agente-soporte", name: "Soporte Nivel 1", tags: ["ventas"] }));
-      registry.set(summary({ id: "agente-ventas", name: "Otro", tags: ["Ventas"] }));
+      registry.set(summary({ id: "agente-soporte", name: "Soporte Nivel 1" }));
+      registry.set(summary({ id: "agente-ventas", name: "Otro" }));
 
       expect(registry.search("SOPORTE").map((s) => s.id)).toEqual(["agente-soporte"]);
-      expect(
-        registry
-          .search("ventas")
-          .map((s) => s.id)
-          .sort()
-      ).toEqual(["agente-soporte", "agente-ventas"]);
       expect(registry.search("no-coincide")).toEqual([]);
     });
 
@@ -99,6 +86,12 @@ describe("AgentRegistry", () => {
       const registry = new AgentRegistry();
       registry.set(summary({ id: "a" }));
       expect(registry.search("   ").map((s) => s.id)).toEqual(["a"]);
+    });
+
+    it("no falla si una entrada no tiene título", () => {
+      const registry = new AgentRegistry();
+      registry.set(summary({ id: "sin-titulo" }));
+      expect(registry.search("cualquier-cosa")).toEqual([]);
     });
   });
 

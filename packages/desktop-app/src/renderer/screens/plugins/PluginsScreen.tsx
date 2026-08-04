@@ -8,6 +8,7 @@ import { StatusBadge, type StatusTone } from "../../design-system/primitives/Sta
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
+import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js";
 import { Skeleton } from "../../design-system/composites/Skeleton/index.js";
 import { Drawer } from "../../design-system/composites/Drawer/index.js";
 import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/index.js";
@@ -22,7 +23,15 @@ const healthTone: Record<PluginHealth["status"], StatusTone> = {
   failed: "danger",
 };
 
-/** Módulo 33B — Plugins (documento §7). Sin instalar/activar/actualizar: no existe operación pública para ello. */
+/**
+ * Módulo 33B — Extensiones de DWM (documento §7; renombrado en
+ * "kilo-content-integration" Commit 6 para eliminar la ambigüedad
+ * detectada en la auditoría: @dwm/plugin es, tal como confirma su
+ * propio código fuente, una arquitectura interna de extensibilidad de
+ * DWM — no instala extensiones de VS Code ni componentes de Kilo Code;
+ * hoy no hay ningún plugin real construido sobre ella). Sin instalar/
+ * activar/actualizar: no existe operación pública para ello.
+ */
 export function PluginsScreen(): JSX.Element {
   const [search, setSearch] = useState("");
   const [detailId, setDetailId] = useState<string | undefined>(undefined);
@@ -58,8 +67,12 @@ export function PluginsScreen(): JSX.Element {
 
   return (
     <div className="dwm-plugins-screen">
-      <PageHeader title="Plugins" description="Plugins registrados en el Workspace activo." />
-      <FilterBar searchValue={search} onSearchChange={setSearch} searchLabel="Buscar plugins" />
+      <PageHeader title="Extensiones de DWM" description="Arquitectura interna para ampliar DWM." />
+      <InlineAlert tone="info" title="Qué es esto">
+        Arquitectura interna para ampliar DWM. No instala extensiones de VS Code ni componentes de
+        Kilo.
+      </InlineAlert>
+      <FilterBar searchValue={search} onSearchChange={setSearch} searchLabel="Buscar extensiones" />
 
       {(listQuery.status === "idle" || listQuery.status === "loading") && (
         <Skeleton variant="block" height="160px" />

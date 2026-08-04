@@ -8,7 +8,6 @@ import {
   assertSafeOptionalPath,
   optionalBoolean,
   optionalString,
-  requireRecord,
   requireString,
 } from "../payloadHelpers.js";
 import type { Agent, AgentCreateRequest, AgentSummary } from "@dwm/agent-manager";
@@ -22,7 +21,7 @@ declare module "../ApplicationRequest.js" {
     "agents.get": { payload: { id: string; root?: string }; result: Agent };
     "agents.create": { payload: AgentCreateRequest & { root?: string }; result: Agent };
     "agents.update": {
-      payload: { id: string; data: Record<string, unknown>; root?: string };
+      payload: { id: string; content: string; root?: string };
       result: Agent;
     };
     "agents.duplicate": { payload: { id: string; newId: string; root?: string }; result: Agent };
@@ -81,12 +80,12 @@ export class AgentController implements ApplicationController {
       validatePayload: (payload) => {
         const record = asRecord(payload);
         const id = requireString(record, "id");
-        const data = requireRecord(record, "data");
+        const content = requireString(record, "content");
         assertSafeOptionalPath(record, "root", { allowAbsolute: true });
-        return { id, data, root: optionalString(record, "root") };
+        return { id, content, root: optionalString(record, "root") };
       },
       handler: async (payload) =>
-        manager().createAgent({ id: payload.id, data: payload.data }, payload.root),
+        manager().createAgent({ id: payload.id, content: payload.content }, payload.root),
     });
 
     permissions.register("agents.update", ["write"]);
@@ -97,11 +96,11 @@ export class AgentController implements ApplicationController {
       validatePayload: (payload) => {
         const record = asRecord(payload);
         const id = requireString(record, "id");
-        const data = requireRecord(record, "data");
+        const content = requireString(record, "content");
         assertSafeOptionalPath(record, "root", { allowAbsolute: true });
-        return { id, data, root: optionalString(record, "root") };
+        return { id, content, root: optionalString(record, "root") };
       },
-      handler: async (payload) => manager().updateAgent(payload.id, payload.data, payload.root),
+      handler: async (payload) => manager().updateAgent(payload.id, payload.content, payload.root),
     });
 
     permissions.register("agents.duplicate", ["write"]);
