@@ -99,3 +99,15 @@
   font-size: var(--dwm-font-size-meta);
   color: var(--dwm-color-text-secondary);
 }
+
+.dwm-client-ficha__biblioteca-ia {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-client-ficha__biblioteca-ia-open {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-md);
+  margin-top: var(--dwm-space-xs);
+}

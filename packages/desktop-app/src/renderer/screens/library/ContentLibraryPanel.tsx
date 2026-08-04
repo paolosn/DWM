@@ -13,7 +13,7 @@ import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/inde
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ContentForm, type ContentFormValues } from "./ContentForm.js";
 import { CreateWithAiDialog, type LibraryScope } from "./CreateWithAiDialog.js";
-import { type ContentKind, KIND_LABEL, opName } from "./ContentKind.js";
+import { type ContentKind, KIND_LABEL, opName, realFilePath } from "./ContentKind.js";
 import "./ContentLibraryPanel.css";
 
 interface Summary {
@@ -41,6 +41,8 @@ export interface ContentLibraryPanelProps {
    * en vez de construir una segunda implementación.
    */
   readonly lockedScope?: { readonly kind: "client" | "project"; readonly id: string };
+  /** Se invoca tras una asignación real correcta — la ficha del cliente lo usa para ofrecer "Abrir proyecto". */
+  readonly onAssignSuccess?: (targetProjectId: string, id: string) => void;
 }
 
 /**
@@ -51,9 +53,13 @@ export interface ContentLibraryPanelProps {
  * `agents.*`/`skills.*`/`rules.*` correspondiente (vía `opName`),
  * `content-generation.preview`/`content-scope.resolve-root` (ya
  * existentes) para "Crear con IA", y `content-sync.*` (ya existente)
- * para asignar/retirar.
+ * para asignar/retirar/resincronizar.
  */
-export function ContentLibraryPanel({ kind, lockedScope }: ContentLibraryPanelProps): JSX.Element {
+export function ContentLibraryPanel({
+  kind,
+  lockedScope,
+  onAssignSuccess,
+}: ContentLibraryPanelProps): JSX.Element {
   const { showToast } = useToast();
   const label = KIND_LABEL[kind];
 
@@ -84,6 +90,16 @@ export function ContentLibraryPanel({ kind, lockedScope }: ContentLibraryPanelPr
   const [pendingArchive, setPendingArchive] = useState<Summary | undefined>(undefined);
   const [assigning, setAssigning] = useState<Summary | undefined>(undefined);
   const [assignTargetProjectId, setAssignTargetProjectId] = useState("");
+
+  // Origen real (encargo: distinguir global/cliente/proyecto/desconocido en
+  // la ficha del proyecto) — solo se calcula cuando el panel está anclado a
+  // un proyecto, comparando el contenido real de cada elemento contra los
+  // catálogos real de origen vía content-sync.list-catalog ya existente.
+  const [originByItemId, setOriginByItemId] = useState<Record<string, "global" | "cliente">>({});
+  const [resyncConflict, setResyncConflict] = useState<
+    { item: Summary; source: "global" | "cliente"; reason?: string } | undefined
+  >(undefined);
+  const [withdrawing, setWithdrawing] = useState<Summary | undefined>(undefined);
 
   // Catálogos reales para los selectores (clientes/proyectos), cargados una vez.
   useEffect(() => {
@@ -163,6 +179,143 @@ export function ContentLibraryPanel({ kind, lockedScope }: ContentLibraryPanelPr
   useEffect(() => {
     void reload();
   }, [kind, scope, clientId, projectId, includeArchived]);
+
+  useEffect(() => {
+    if (lockedScope?.kind !== "project" || items === undefined) {
+      setOriginByItemId({});
+      return;
+    }
+    void (async () => {
+      const map: Record<string, "global" | "cliente"> = {};
+      try {
+        const globalCatalog = (await callOperation(
+          "content-sync.list-catalog" as never,
+          {
+            kind,
+            targetProjectId: lockedScope.id,
+          } as never
+        )) as { id: string; preview: { action: string } }[];
+        for (const entry of globalCatalog) {
+          if (entry.preview.action === "unchanged") map[entry.id] = "global";
+        }
+      } catch {
+        // El catálogo global puede no estar disponible: el origen queda simplemente sin determinar.
+      }
+      try {
+        const project = (await callOperation(
+          "projects.get" as never,
+          {
+            id: lockedScope.id,
+          } as never
+        )) as { configuration: { clientId?: string } };
+        if (project.configuration.clientId) {
+          const clientCatalog = (await callOperation(
+            "content-sync.list-catalog" as never,
+            {
+              kind,
+              targetProjectId: lockedScope.id,
+              sourceClientId: project.configuration.clientId,
+            } as never
+          )) as { id: string; preview: { action: string } }[];
+          for (const entry of clientCatalog) {
+            if (entry.preview.action === "unchanged") map[entry.id] = "cliente";
+          }
+        }
+      } catch {
+        // Proyecto sin cliente asignado, o cliente sin catálogo propio: origen "cliente" no aplica.
+      }
+      setOriginByItemId(map);
+    })();
+  }, [lockedScope?.kind, lockedScope?.id, kind, items]);
+
+  async function handleOpenFile(item: Summary): Promise<void> {
+    if (!root) return;
+    try {
+      const result = await window.dwm.openFolder(`${root}/${realFilePath(kind, item.id)}`);
+      showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo abrir el archivo",
+        tone: "danger",
+      });
+    }
+  }
+
+  async function handleWithdraw(): Promise<void> {
+    if (!withdrawing || !lockedScope || lockedScope.kind !== "project") return;
+    try {
+      const result = (await callOperation(
+        "content-sync.withdraw" as never,
+        {
+          kind,
+          id: withdrawing.id,
+          targetProjectId: lockedScope.id,
+        } as never
+      )) as { withdrawn: boolean; reason?: string };
+      showToast({
+        title: result.withdrawn
+          ? `${label.singular} retirado del proyecto`
+          : (result.reason ?? "No se pudo retirar"),
+        tone: result.withdrawn ? "success" : "info",
+      });
+      setWithdrawing(undefined);
+      await reload();
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo retirar",
+        tone: "danger",
+      });
+    }
+  }
+
+  async function runResync(
+    item: Summary,
+    source: "global" | "cliente",
+    confirmOverwrite: boolean
+  ): Promise<void> {
+    if (!lockedScope || lockedScope.kind !== "project") return;
+    try {
+      const payload: Record<string, unknown> = {
+        kind,
+        id: item.id,
+        targetProjectId: lockedScope.id,
+        ...(confirmOverwrite ? { confirmOverwrite: true } : {}),
+      };
+      if (source === "cliente") {
+        const project = (await callOperation(
+          "projects.get" as never,
+          {
+            id: lockedScope.id,
+          } as never
+        )) as { configuration: { clientId?: string } };
+        if (project.configuration.clientId)
+          payload["sourceClientId"] = project.configuration.clientId;
+      }
+      const result = (await callOperation("content-sync.assign" as never, payload as never)) as {
+        applied: boolean;
+        preview: { action: string; reason?: string };
+      };
+      if (!result.applied && result.preview.action === "conflict") {
+        setResyncConflict({
+          item,
+          source,
+          ...(result.preview.reason ? { reason: result.preview.reason } : {}),
+        });
+        return;
+      }
+      showToast({
+        title: result.applied ? `${label.singular} resincronizado` : "Ya estaba sincronizado",
+        tone: "success",
+      });
+      setResyncConflict(undefined);
+      await reload();
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo resincronizar",
+        tone: "danger",
+      });
+    }
+  }
 
   const filtered = (items ?? []).filter((item) => {
     const needle = search.trim().toLowerCase();
@@ -275,10 +428,14 @@ export function ContentLibraryPanel({ kind, lockedScope }: ContentLibraryPanelPr
         targetProjectId: assignTargetProjectId,
       };
       if (scope === "client" && clientId) payload["sourceClientId"] = clientId;
-      await callOperation("content-sync.assign" as never, payload as never);
+      const result = (await callOperation("content-sync.assign" as never, payload as never)) as {
+        applied: boolean;
+      };
       showToast({ title: `${label.singular} asignado al proyecto`, tone: "success" });
       setAssigning(undefined);
+      const assignedProjectId = assignTargetProjectId;
       setAssignTargetProjectId("");
+      if (result.applied) onAssignSuccess?.(assignedProjectId, assigning.id);
     } catch (err) {
       showToast({
         title: err instanceof DwmOperationError ? err.message : "No se pudo asignar",
@@ -370,6 +527,18 @@ export function ContentLibraryPanel({ kind, lockedScope }: ContentLibraryPanelPr
                 label={item.archived ? "Archivado" : "Activo"}
                 tone={item.archived ? "neutral" : "success"}
               />
+              {lockedScope?.kind === "project" && (
+                <StatusBadge
+                  label={
+                    originByItemId[item.id] === "global"
+                      ? "Origen: Global"
+                      : originByItemId[item.id] === "cliente"
+                        ? "Origen: Cliente"
+                        : "Origen: Proyecto / desconocido"
+                  }
+                  tone={originByItemId[item.id] ? "accent" : "neutral"}
+                />
+              )}
               <div className="dwm-content-library-panel__actions">
                 <Button variant="secondary" onClick={() => void openView(item)}>
                   Ver contenido
@@ -385,9 +554,30 @@ export function ContentLibraryPanel({ kind, lockedScope }: ContentLibraryPanelPr
                     Archivar
                   </Button>
                 )}
-                <Button variant="secondary" onClick={() => setAssigning(item)}>
-                  Asignar a proyecto
-                </Button>
+                {root && (
+                  <Button variant="secondary" onClick={() => void handleOpenFile(item)}>
+                    Abrir archivo real
+                  </Button>
+                )}
+                {lockedScope?.kind === "project" ? (
+                  <>
+                    {originByItemId[item.id] && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => void runResync(item, originByItemId[item.id]!, false)}
+                      >
+                        Resincronizar
+                      </Button>
+                    )}
+                    <Button variant="secondary" onClick={() => setWithdrawing(item)}>
+                      Retirar
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="secondary" onClick={() => setAssigning(item)}>
+                    Asignar a proyecto
+                  </Button>
+                )}
               </div>
             </li>
           ))}
@@ -503,6 +693,29 @@ export function ContentLibraryPanel({ kind, lockedScope }: ContentLibraryPanelPr
           onChange={(e) => setAssignTargetProjectId(e.target.value)}
         />
       </ConfirmDialog>
+
+      <ConfirmDialog
+        open={withdrawing !== undefined}
+        title={withdrawing ? `Retirar «${withdrawing.id}» de este proyecto` : ""}
+        description="Se retira su materialización real del .kilo de este proyecto. No afecta al origen (global/cliente) ni a otros proyectos."
+        confirmLabel="Retirar"
+        onCancel={() => setWithdrawing(undefined)}
+        onConfirm={() => void handleWithdraw()}
+      />
+
+      <ConfirmDialog
+        open={resyncConflict !== undefined}
+        title={resyncConflict ? `Conflicto real al resincronizar «${resyncConflict.item.id}»` : ""}
+        description={
+          resyncConflict?.reason ??
+          "El contenido real de este proyecto ya no coincide con el origen. Sobrescribirlo requiere confirmación explícita."
+        }
+        confirmLabel="Sobrescribir"
+        onCancel={() => setResyncConflict(undefined)}
+        onConfirm={() => {
+          if (resyncConflict) void runResync(resyncConflict.item, resyncConflict.source, true);
+        }}
+      />
     </div>
   );
 }

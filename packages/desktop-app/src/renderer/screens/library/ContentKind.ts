@@ -26,6 +26,13 @@ export const DEFAULT_TEMPLATE: Readonly<Record<ContentKind, string>> = {
   rule: "# Nombre de la regla\n",
 };
 
+/** Ruta real (relativa a `root`) del fichero físico de un elemento — usada para "Abrir archivo real". */
+export function realFilePath(kind: ContentKind, id: string): string {
+  if (kind === "agent") return `.kilo/agents/${id}.md`;
+  if (kind === "rule") return `.kilo/rules/${id}.md`;
+  return `.kilo/skills/${id}/SKILL.md`;
+}
+
 /**
  * client-workflow "kilo-content-integration-completion" (Biblioteca
  * IA) — único punto que traduce un `kind` (`agent`/`skill`/`rule`) al

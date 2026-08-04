@@ -223,33 +223,89 @@ function AccesosTab({ client }: { readonly client: Client }): JSX.Element {
  * ver contenido y asignar a proyecto quedan disponibles sin salir de
  * la ficha del cliente.
  */
+/**
+ * Biblioteca IA de la ficha del cliente — reutiliza exactamente el
+ * mismo `ContentLibraryPanel` de la pantalla "Biblioteca IA" (nunca
+ * una segunda implementación), anclado a este cliente vía
+ * `lockedScope`: crear con IA/manual, editar, duplicar, archivar,
+ * ver contenido y asignar a proyecto quedan disponibles sin salir de
+ * la ficha del cliente. Tras asignar con éxito, ofrece "Abrir
+ * proyecto" reutilizando `projects.open-in-vscode` ya existente.
+ */
 function BibliotecaIaTab({ client }: { readonly client: Client }): JSX.Element {
+  const { showToast } = useToast();
+  const [justAssigned, setJustAssigned] = useState<
+    { readonly targetProjectId: string; readonly id: string } | undefined
+  >(undefined);
+
+  async function handleOpenProject(projectId: string): Promise<void> {
+    try {
+      const result = await callOperation("projects.open-in-vscode", { id: projectId });
+      showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo abrir el proyecto",
+        tone: "danger",
+      });
+    } finally {
+      setJustAssigned(undefined);
+    }
+  }
+
+  const handleAssignSuccess = (targetProjectId: string, id: string): void => {
+    setJustAssigned({ targetProjectId, id });
+  };
+
   return (
-    <Tabs
-      items={[
-        {
-          id: "agent",
-          label: "Agentes",
-          content: (
-            <ContentLibraryPanel kind="agent" lockedScope={{ kind: "client", id: client.id }} />
-          ),
-        },
-        {
-          id: "skill",
-          label: "Skills",
-          content: (
-            <ContentLibraryPanel kind="skill" lockedScope={{ kind: "client", id: client.id }} />
-          ),
-        },
-        {
-          id: "rule",
-          label: "Reglas",
-          content: (
-            <ContentLibraryPanel kind="rule" lockedScope={{ kind: "client", id: client.id }} />
-          ),
-        },
-      ]}
-    />
+    <div className="dwm-client-ficha__biblioteca-ia">
+      {justAssigned && (
+        <InlineAlert tone="success" title={`«${justAssigned.id}» asignado correctamente`}>
+          <div className="dwm-client-ficha__biblioteca-ia-open">
+            <span>El proyecto ya tiene el contenido real materializado en su .kilo.</span>
+            <Button onClick={() => void handleOpenProject(justAssigned.targetProjectId)}>
+              Abrir proyecto
+            </Button>
+          </div>
+        </InlineAlert>
+      )}
+      <Tabs
+        items={[
+          {
+            id: "agent",
+            label: "Agentes",
+            content: (
+              <ContentLibraryPanel
+                kind="agent"
+                lockedScope={{ kind: "client", id: client.id }}
+                onAssignSuccess={handleAssignSuccess}
+              />
+            ),
+          },
+          {
+            id: "skill",
+            label: "Skills",
+            content: (
+              <ContentLibraryPanel
+                kind="skill"
+                lockedScope={{ kind: "client", id: client.id }}
+                onAssignSuccess={handleAssignSuccess}
+              />
+            ),
+          },
+          {
+            id: "rule",
+            label: "Reglas",
+            content: (
+              <ContentLibraryPanel
+                kind="rule"
+                lockedScope={{ kind: "client", id: client.id }}
+                onAssignSuccess={handleAssignSuccess}
+              />
+            ),
+          },
+        ]}
+      />
+    </div>
   );
 }
 

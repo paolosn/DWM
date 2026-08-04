@@ -437,4 +437,69 @@ describe("ClientFicha", () => {
     expect(container.textContent).toContain("Este cliente todavía no tiene proyectos");
     unmount();
   });
+
+  it("tras asignar desde Biblioteca IA del cliente, ofrece 'Abrir proyecto' y reutiliza projects.open-in-vscode", async () => {
+    const invoke = setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "content-scope.resolve-root": () =>
+        success("content-scope.resolve-root", { root: "/workspace/CLIENTES/mci-finance" }),
+      "agents.list": () => success("agents.list", [{ id: "coordinador", archived: false }]),
+      "projects.list": () => success("projects.list", ["p1"]),
+      "projects.get": () => success("projects.get", baseProject),
+      "content-sync.assign": () =>
+        success("content-sync.assign", { applied: true, preview: { action: "create" } }),
+      "projects.open-in-vscode": () =>
+        success("projects.open-in-vscode", { opened: true, message: "VS Code abierto." }),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ClientFicha clientId="mci-finance" />
+      </ToastProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Biblioteca IA"
+      ) ?? null
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Asignar a proyecto"
+      ) ?? null
+    );
+    await settle();
+    const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
+    const select = dialog.querySelector("select") as HTMLSelectElement;
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLSelectElement.prototype,
+      "value"
+    )?.set;
+    act(() => {
+      setter?.call(select, "p1");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+    click(
+      Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === "Asignar") ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("asignado correctamente");
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    const openCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+    );
+    expect(openCall).toBeDefined();
+    expect((openCall?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
+    unmount();
+  });
 });

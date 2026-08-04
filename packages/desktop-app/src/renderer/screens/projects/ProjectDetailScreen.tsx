@@ -13,7 +13,7 @@ import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/inde
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { DeliveriesPanel } from "./deliveries/DeliveriesPanel.js";
 import { ConnectionsPanel } from "./connections/ConnectionsPanel.js";
-import { KiloContentPanel } from "./KiloContentPanel.js";
+import { ContentLibraryPanel } from "../library/ContentLibraryPanel.js";
 import "./ProjectDetailScreen.css";
 
 const stateTone: Record<ProjectState, StatusTone> = {
@@ -48,6 +48,45 @@ export interface ProjectDetailScreenProps {
  * La eliminación solo ofrece borrar el registro de DWM (`projects.delete`):
  * no hay operación explícita y segura para borrar los archivos físicos.
  */
+/**
+ * Ficha del proyecto — Biblioteca IA anclada a este proyecto. Reutiliza
+ * exactamente el mismo `ContentLibraryPanel` que la pantalla Biblioteca
+ * IA y la ficha del cliente (vía `lockedScope`) — nunca una segunda
+ * implementación. Muestra lo que existe físicamente en el `.kilo` real
+ * del proyecto, distinguiendo el origen (global/cliente/proyecto), con
+ * abrir archivo real, retirar, resincronizar y confirmación de
+ * conflictos ya integrados en el propio panel.
+ */
+function ProjectContentTab({ projectId }: { readonly projectId: string }): JSX.Element {
+  return (
+    <Tabs
+      items={[
+        {
+          id: "agent",
+          label: "Agentes",
+          content: (
+            <ContentLibraryPanel kind="agent" lockedScope={{ kind: "project", id: projectId }} />
+          ),
+        },
+        {
+          id: "skill",
+          label: "Skills",
+          content: (
+            <ContentLibraryPanel kind="skill" lockedScope={{ kind: "project", id: projectId }} />
+          ),
+        },
+        {
+          id: "rule",
+          label: "Reglas",
+          content: (
+            <ContentLibraryPanel kind="rule" lockedScope={{ kind: "project", id: projectId }} />
+          ),
+        },
+      ]}
+    />
+  );
+}
+
 export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenProps): JSX.Element {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const { showToast } = useToast();
@@ -166,7 +205,7 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
     {
       id: "kilo-content",
       label: "Agentes, Skills y Reglas",
-      content: <KiloContentPanel projectId={project.id} />,
+      content: <ProjectContentTab projectId={project.id} />,
     },
   ];
 
