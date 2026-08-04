@@ -79,7 +79,7 @@ describe("Sidebar", () => {
       "AI Creator",
       "IA",
       "Herramientas",
-      "Plugins",
+      "Extensiones de DWM",
       "Paquetes",
       "Backups",
       "Estado",

@@ -132,7 +132,11 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
         ),
     },
     { id: "ai", label: "IA", content: <NotAvailable label="IA activa del proyecto" /> },
-    { id: "plugins", label: "Plugins", content: <NotAvailable label="Plugins del proyecto" /> },
+    {
+      id: "plugins",
+      label: "Extensiones de DWM",
+      content: <NotAvailable label="Extensiones de DWM del proyecto" />,
+    },
     {
       id: "settings",
       label: "Variables y referencias",
