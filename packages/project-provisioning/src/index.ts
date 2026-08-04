@@ -30,6 +30,12 @@ export {
   type WithdrawResult,
   type ContentSyncServiceOptions,
 } from "./ContentSyncService.js";
+export {
+  ContentGenerationService,
+  type GenerationKind,
+  type GenerationRequest,
+  type GenerationResult,
+} from "./ContentGenerationService.js";
 
 export {
   ProjectProvisioningError,

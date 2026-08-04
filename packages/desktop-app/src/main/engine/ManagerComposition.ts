@@ -32,6 +32,7 @@ import {
   ProjectProvisioningService,
   ViabilityAnalysisService,
   ContentSyncService,
+  ContentGenerationService,
 } from "@dwm/project-provisioning";
 import { AIManager } from "@dwm/ai-manager";
 
@@ -309,6 +310,17 @@ export async function composeManagers(
   );
   const viabilityAnalysisService = new ViabilityAnalysisService(aiManager);
 
+  // kilo-content-integration (Commit 4) — reutiliza tal cual el mismo
+  // aiManager (HttpAIProvider/SecretsManager ya resueltos ahí) y los
+  // mismos agentManager/skillManager/ruleManager ya compuestos arriba;
+  // ningún proveedor de IA ni manager de contenido nuevo.
+  const contentGenerationService = new ContentGenerationService(
+    aiManager,
+    agentManager,
+    skillManager,
+    ruleManager
+  );
+
   return {
     workspaceLocated,
     context: {
@@ -324,6 +336,7 @@ export async function composeManagers(
       aiManager,
       viabilityAnalysisService,
       contentSyncService,
+      contentGenerationService,
       psnAdapter,
       agentManager,
       skillManager,
