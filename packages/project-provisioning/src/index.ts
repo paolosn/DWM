@@ -36,6 +36,13 @@ export {
   type GenerationRequest,
   type GenerationResult,
 } from "./ContentGenerationService.js";
+export {
+  ProfileSyncService,
+  type ProfileSyncItem,
+  type ProfilePreview,
+  type ProfileApplyResult,
+  type ProfileSyncServiceOptions,
+} from "./ProfileSyncService.js";
 
 export {
   ProjectProvisioningError,

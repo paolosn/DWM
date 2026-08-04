@@ -58,6 +58,24 @@ describe("validateProfileConfiguration", () => {
       })
     ).toThrow(expect.objectContaining({ code: ProfileErrorCode.PROFILE_INVALID_CONFIGURATION }));
   });
+
+  it("acepta agentIds/skillIds/ruleIds/mcpConnectionIds reales (encargo item 5: perfil como paquete)", () => {
+    expect(() =>
+      validateProfileConfiguration({
+        ...defaultProfileConfiguration(),
+        agentIds: ["coordinador"],
+        skillIds: ["checklist-produccion"],
+        ruleIds: ["seguridad-codigo"],
+        mcpConnectionIds: ["mcp-github"],
+      })
+    ).not.toThrow();
+  });
+
+  it("lanza PROFILE_INVALID_CONFIGURATION si agentIds no es un array de cadenas", () => {
+    expect(() =>
+      validateProfileConfiguration({ ...defaultProfileConfiguration(), agentIds: [1] as never })
+    ).toThrow(expect.objectContaining({ code: ProfileErrorCode.PROFILE_INVALID_CONFIGURATION }));
+  });
 });
 
 describe("ProfileMetadata", () => {

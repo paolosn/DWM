@@ -112,6 +112,7 @@ export {
   type ContentSyncCatalogEntry,
 } from "./controllers/ContentSyncController.js";
 export { ContentGenerationController } from "./controllers/ContentGenerationController.js";
+export { ProfileSyncController } from "./controllers/ProfileSyncController.js";
 export { appendClientActivity, listClientActivity, type ActivityEntry } from "./ActivityLog.js";
 export { indexProjectDocuments, type ClientDocumentEntry } from "./ClientDocumentIndex.js";
 

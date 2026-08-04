@@ -27,7 +27,8 @@
     "@dwm/skill-manager": "*",
     "@dwm/rule-manager": "*",
     "@dwm/agent-manager": "*",
-    "@dwm/psn-adapter": "*"
+    "@dwm/psn-adapter": "*",
+    "@dwm/connections-manager": "*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

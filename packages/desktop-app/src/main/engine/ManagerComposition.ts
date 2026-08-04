@@ -33,6 +33,7 @@ import {
   ViabilityAnalysisService,
   ContentSyncService,
   ContentGenerationService,
+  ProfileSyncService,
 } from "@dwm/project-provisioning";
 import { AIManager } from "@dwm/ai-manager";
 
@@ -321,6 +322,15 @@ export async function composeManagers(
     ruleManager
   );
 
+  // kilo-content-integration (Commit 5) — reutiliza tal cual
+  // contentSyncService/projectManager/connectionsManager ya compuestos;
+  // ningún motor de sincronización ni manager de proyecto nuevo.
+  const profileSyncService = new ProfileSyncService({
+    contentSyncService,
+    projectManager,
+    connectionsManager,
+  });
+
   return {
     workspaceLocated,
     context: {
@@ -337,6 +347,7 @@ export async function composeManagers(
       viabilityAnalysisService,
       contentSyncService,
       contentGenerationService,
+      profileSyncService,
       psnAdapter,
       agentManager,
       skillManager,
