@@ -14,6 +14,7 @@ import { ClientRelationsPanel } from "./ClientRelationsPanel.js";
 import { ClientConnectionsPanel } from "./ClientConnectionsPanel.js";
 import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/index.js";
 import { ContentLibraryPanel } from "../library/ContentLibraryPanel.js";
+import { useNavigation } from "../../shell/NavigationContext.js";
 import "./ClientFicha.css";
 
 export interface ClientFichaProps {
@@ -24,9 +25,62 @@ function formatDate(iso: string | undefined): string {
   return iso ? new Date(iso).toLocaleString() : "—";
 }
 
-function ResumenTab({ client }: { readonly client: Client }): JSX.Element {
+function ResumenTab({
+  client,
+  onGoToTab,
+}: {
+  readonly client: Client;
+  readonly onGoToTab: (tabId: string) => void;
+}): JSX.Element {
+  const { showToast } = useToast();
+  const { navigateToProvisioning } = useNavigation();
+  const [mainProject, setMainProject] = useState<Project | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const firstId = client.references.projects[0];
+      if (!firstId) {
+        setMainProject(undefined);
+        return;
+      }
+      const project = await callOperation("projects.get", { id: firstId }).catch(() => undefined);
+      if (!cancelled) setMainProject(project);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client.references.projects]);
+
+  async function openMainProject(): Promise<void> {
+    if (!mainProject) return;
+    try {
+      const result = await callOperation("projects.open-in-vscode", { id: mainProject.id });
+      showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo abrir el proyecto",
+        tone: "danger",
+      });
+    }
+  }
+
   return (
     <div className="dwm-client-ficha__resumen">
+      <div className="dwm-client-ficha__primary-actions">
+        <Button onClick={() => navigateToProvisioning(client.name)}>Nuevo trabajo</Button>
+        <Button variant="secondary" onClick={() => navigateToProvisioning(client.name)}>
+          Crear proyecto
+        </Button>
+        <Button variant="secondary" onClick={() => onGoToTab("biblioteca-ia")}>
+          Crear con IA
+        </Button>
+        {mainProject && (
+          <Button variant="secondary" onClick={() => void openMainProject()}>
+            Abrir proyecto principal
+          </Button>
+        )}
+      </div>
       <dl>
         <dt>Nombre / empresa</dt>
         <dd>{client.name}</dd>
@@ -309,6 +363,73 @@ function BibliotecaIaTab({ client }: { readonly client: Client }): JSX.Element {
   );
 }
 
+function PerfilesTab({ client }: { readonly client: Client }): JSX.Element {
+  const { setActiveSection } = useNavigation();
+  const [profiles, setProfiles] = useState<
+    | readonly { readonly id: string; readonly name: string; readonly description: string }[]
+    | undefined
+  >(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const ids = (await callOperation("profiles.list", {})) as string[];
+        const details = await Promise.all(
+          ids.map((id) => callOperation("profiles.get", { id }).catch(() => undefined))
+        );
+        if (cancelled) return;
+        setProfiles(
+          (
+            details.filter(Boolean) as {
+              id: string;
+              metadata: { name: string; description: string };
+              configuration: { sourceClientId?: string };
+            }[]
+          )
+            .filter((p) => p.configuration.sourceClientId === client.id)
+            .map((p) => ({ id: p.id, name: p.metadata.name, description: p.metadata.description }))
+        );
+      } catch {
+        if (!cancelled) setProfiles([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id]);
+
+  if (profiles === undefined) return <Spinner label="Cargando perfiles…" />;
+
+  return (
+    <div className="dwm-client-ficha__perfiles">
+      <p className="dwm-client-ficha__perfiles-hint">
+        Kits de trabajo cuyo catálogo real (agentes/skills/reglas/MCP) sale de este cliente.
+      </p>
+      {profiles.length === 0 ? (
+        <EmptyState title="Este cliente todavía no tiene ningún kit de perfil propio." />
+      ) : (
+        <ul className="dwm-client-ficha__perfiles-list">
+          {profiles.map((profile) => (
+            <li key={profile.id} className="dwm-client-ficha__perfiles-row">
+              <div>
+                <strong>{profile.name}</strong>
+                <p>{profile.description || "—"}</p>
+              </div>
+              <Button variant="secondary" onClick={() => setActiveSection("profiles")}>
+                Gestionar en Perfiles
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Button variant="secondary" onClick={() => setActiveSection("profiles")}>
+        Crear un kit para este cliente
+      </Button>
+    </div>
+  );
+}
+
 function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
   return (
     <div className="dwm-client-ficha__mcp-ia">
@@ -450,6 +571,7 @@ function ActividadTab({ client }: { readonly client: Client }): JSX.Element {
  */
 export function ClientFicha({ clientId }: ClientFichaProps): JSX.Element {
   const query = useDwmQuery("clients.get", { id: clientId });
+  const [activeTab, setActiveTab] = useState("resumen");
 
   if (query.status === "loading" || query.status === "idle") {
     return <Spinner label="Cargando cliente…" />;
@@ -467,14 +589,21 @@ export function ClientFicha({ clientId }: ClientFichaProps): JSX.Element {
 
   return (
     <Tabs
+      activeId={activeTab}
+      onChange={setActiveTab}
       items={[
-        { id: "resumen", label: "Resumen", content: <ResumenTab client={client} /> },
+        {
+          id: "resumen",
+          label: "Resumen",
+          content: <ResumenTab client={client} onGoToTab={setActiveTab} />,
+        },
+        { id: "proyectos", label: "Proyectos", content: <ProyectosTab client={client} /> },
         {
           id: "biblioteca-ia",
           label: "Biblioteca IA",
           content: <BibliotecaIaTab client={client} />,
         },
-        { id: "proyectos", label: "Proyectos", content: <ProyectosTab client={client} /> },
+        { id: "perfiles", label: "Perfiles", content: <PerfilesTab client={client} /> },
         { id: "accesos", label: "Accesos y conexiones", content: <AccesosTab client={client} /> },
         { id: "mcp-ia", label: "MCP e IA", content: <McpIaTab client={client} /> },
         { id: "documentos", label: "Documentos", content: <DocumentosTab client={client} /> },

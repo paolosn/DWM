@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { useEffect, type JSX } from "react";
 import { NAVIGATION_CATALOG } from "./navigationCatalog.js";
 import { useNavigation } from "./NavigationContext.js";
 import { PageHeader } from "../design-system/composites/PageHeader/index.js";
@@ -61,8 +61,27 @@ const IMPLEMENTED_SCREENS: Partial<Record<DesktopNavigationSection, () => JSX.El
 };
 
 export function ContentArea(): JSX.Element {
-  const { activeSection } = useNavigation();
+  const { activeSection, pendingProvisioningClientName, clearPendingProvisioningClientName } =
+    useNavigation();
   const Screen = IMPLEMENTED_SCREENS[activeSection];
+
+  useEffect(() => {
+    if (activeSection === "provisioning" && pendingProvisioningClientName !== undefined) {
+      clearPendingProvisioningClientName();
+    }
+  }, [activeSection]);
+
+  if (activeSection === "provisioning") {
+    return (
+      <section aria-label="Contenido" data-testid="content-area" className="dwm-content-area">
+        <ProvisioningScreen
+          {...(pendingProvisioningClientName
+            ? { initialClientName: pendingProvisioningClientName }
+            : {})}
+        />
+      </section>
+    );
+  }
 
   if (Screen) {
     return (

@@ -3,6 +3,7 @@ import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClientsScreen } from "../../../../../src/renderer/screens/clients/ClientsScreen.js";
 import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import { NavigationProvider } from "../../../../../src/renderer/shell/NavigationContext.js";
 import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
 
@@ -25,9 +26,11 @@ async function settle(times = 3): Promise<void> {
 
 function mountScreen() {
   return mount(
-    <ToastProvider>
-      <ClientsScreen />
-    </ToastProvider>
+    <NavigationProvider>
+      <ToastProvider>
+        <ClientsScreen />
+      </ToastProvider>
+    </NavigationProvider>
   );
 }
 
