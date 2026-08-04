@@ -22,6 +22,17 @@ declare module "../ApplicationRequest.js" {
       };
       result: GenerationResult;
     };
+    /** Genera el Markdown real con IA para previsualizar y editar SIN escribir ningún fichero todavía — mismo motor real que content-generation.generate, solo sin el paso de escritura. */
+    "content-generation.preview": {
+      payload: {
+        kind: GenerationKind;
+        id: string;
+        instructions: string;
+        clientId?: string;
+        projectId?: string;
+      };
+      result: GenerationResult;
+    };
   }
 }
 
@@ -45,37 +56,39 @@ export class ContentGenerationController implements ApplicationController {
     const service = () =>
       requireDependency(this.context.contentGenerationService, "content-generation-service");
 
+    const validateGeneratePayload = (payload: unknown) => {
+      const record = asRecord(payload);
+      const kind = requireString(record, "kind");
+      if (kind !== "agent" && kind !== "skill" && kind !== "rule") {
+        throw createApplicationError({
+          code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+          message: '"kind" debe ser "agent", "skill" o "rule".',
+          origin: "validation",
+          category: "validation",
+          retryable: false,
+          recoverable: true,
+        });
+      }
+      return {
+        kind: kind as GenerationKind,
+        id: requireString(record, "id"),
+        instructions: requireString(record, "instructions"),
+        ...(optionalString(record, "clientId") !== undefined
+          ? { clientId: optionalString(record, "clientId")! }
+          : {}),
+        ...(optionalString(record, "projectId") !== undefined
+          ? { projectId: optionalString(record, "projectId")! }
+          : {}),
+      };
+    };
+
     permissions.register("content-generation.generate", ["execute"]);
     operations.register({
       name: "content-generation.generate",
       version: "1.0.0",
       capabilities: ["execute"],
       long: true,
-      validatePayload: (payload) => {
-        const record = asRecord(payload);
-        const kind = requireString(record, "kind");
-        if (kind !== "agent" && kind !== "skill" && kind !== "rule") {
-          throw createApplicationError({
-            code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
-            message: '"kind" debe ser "agent", "skill" o "rule".',
-            origin: "validation",
-            category: "validation",
-            retryable: false,
-            recoverable: true,
-          });
-        }
-        return {
-          kind: kind as GenerationKind,
-          id: requireString(record, "id"),
-          instructions: requireString(record, "instructions"),
-          ...(optionalString(record, "clientId") !== undefined
-            ? { clientId: optionalString(record, "clientId")! }
-            : {}),
-          ...(optionalString(record, "projectId") !== undefined
-            ? { projectId: optionalString(record, "projectId")! }
-            : {}),
-        };
-      },
+      validatePayload: validateGeneratePayload,
       handler: async (payload) => {
         const aiConfig = await this.resolveAiConfig(payload.projectId, payload.clientId);
         const writeRoot = await resolveContentRoot(this.context, {
@@ -88,6 +101,22 @@ export class ContentGenerationController implements ApplicationController {
           { id: payload.id, instructions: payload.instructions },
           writeRoot
         );
+      },
+    });
+
+    permissions.register("content-generation.preview", ["execute"]);
+    operations.register({
+      name: "content-generation.preview",
+      version: "1.0.0",
+      capabilities: ["execute"],
+      long: true,
+      validatePayload: validateGeneratePayload,
+      handler: async (payload) => {
+        const aiConfig = await this.resolveAiConfig(payload.projectId, payload.clientId);
+        return service().generate(payload.kind, aiConfig, {
+          id: payload.id,
+          instructions: payload.instructions,
+        });
       },
     });
   }

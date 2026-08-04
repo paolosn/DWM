@@ -194,4 +194,73 @@ describe("ContentGenerationController", () => {
     );
     expect(JSON.stringify(response)).not.toContain("clave-ultra-secreta-content-gen");
   });
+
+  describe("content-generation.preview", () => {
+    it("genera el contenido real con IA sin escribir ningún fichero", async () => {
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, { choices: [{ message: { content: REAL_AGENT_MARKDOWN } }] })
+        );
+      const { api, clientManager, secretsManager, workspaceRoot } = await buildApi(fetchImpl);
+      await secretsManager.createSecret("ai.mci-finance.openai", "clave-real-de-mci");
+      await clientManager.createClient({
+        id: "mci-finance",
+        name: "MCI Finance",
+        slug: "mci-finance",
+        defaultAi: {
+          provider: "openai",
+          model: "gpt-4o",
+          secretReference: "ai.mci-finance.openai",
+        },
+      });
+
+      const response = await api.execute(
+        makeRequest(
+          "content-generation.preview",
+          {
+            kind: "agent",
+            id: "experto-mysql",
+            instructions: "Crea un agente experto en MySQL.",
+            clientId: "mci-finance",
+          },
+          { caller: admin }
+        )
+      );
+
+      expect(response.success).toBe(true);
+      if (!response.success) return;
+      const data = response.data as { content: string; providerId: string };
+      expect(data.content).toContain("# Experto en MySQL");
+      expect(data.providerId).toBe("openai");
+      expect(JSON.stringify(response.data)).not.toContain("clave-real-de-mci");
+
+      await expect(
+        fs.access(
+          path.join(workspaceRoot, "CLIENTES", "mci-finance", ".kilo", "agents", "experto-mysql.md")
+        )
+      ).rejects.toThrow();
+    });
+
+    it("nunca expone secretos ni contenido sensible en la respuesta de preview", async () => {
+      const fetchImpl = vi.fn().mockResolvedValue(jsonResponse(401, { error: "no autorizado" }));
+      const { api, clientManager, secretsManager } = await buildApi(fetchImpl);
+      await secretsManager.createSecret("ai.c.openai", "clave-ultra-secreta-preview");
+      await clientManager.createClient({
+        id: "c",
+        name: "C",
+        slug: "c",
+        defaultAi: { provider: "openai", secretReference: "ai.c.openai" },
+      });
+
+      const response = await api.execute(
+        makeRequest(
+          "content-generation.preview",
+          { kind: "agent", id: "x", instructions: "x", clientId: "c" },
+          { caller: admin }
+        )
+      );
+      expect(JSON.stringify(response)).not.toContain("clave-ultra-secreta-preview");
+    });
+  });
 });

@@ -13,6 +13,10 @@ export interface AgentFormProps {
   readonly submitting: boolean;
   readonly onSubmit: (values: AgentFormValues) => void | Promise<void>;
   readonly onCancel: () => void;
+  /** Cuando se indica, el formulario edita ese agente real en vez de crear uno nuevo: el id queda fijo y el contenido se precarga tal cual. */
+  readonly initial?: AgentFormValues;
+  /** Solo lectura: muestra el contenido real sin permitir editarlo (para "Ver contenido"). */
+  readonly readOnly?: boolean;
 }
 
 /**
@@ -21,10 +25,17 @@ export interface AgentFormProps {
  * (`description`/`mode`/`color`) compatible con Kilo Code y el
  * PSN-BASE real, tal como lo define `@dwm/agent-manager` — nunca JSON.
  */
-export function AgentForm({ submitting, onSubmit, onCancel }: AgentFormProps): JSX.Element {
-  const [id, setId] = useState("");
+export function AgentForm({
+  submitting,
+  onSubmit,
+  onCancel,
+  initial,
+  readOnly,
+}: AgentFormProps): JSX.Element {
+  const isEdit = initial !== undefined;
+  const [id, setId] = useState(initial?.id ?? "");
   const [content, setContent] = useState(
-    '---\ndescription: ""\nmode: all\n---\n\n# Nombre del agente\n'
+    initial?.content ?? '---\ndescription: ""\nmode: all\n---\n\n# Nombre del agente\n'
   );
   const [idError, setIdError] = useState<string | undefined>(undefined);
 
@@ -44,6 +55,7 @@ export function AgentForm({ submitting, onSubmit, onCancel }: AgentFormProps): J
         value={id}
         onChange={(e) => setId(e.target.value)}
         {...(idError ? { error: idError } : {})}
+        disabled={isEdit || readOnly}
         required
       />
       <TextArea
@@ -51,16 +63,26 @@ export function AgentForm({ submitting, onSubmit, onCancel }: AgentFormProps): J
         rows={14}
         value={content}
         onChange={(e) => setContent(e.target.value)}
+        disabled={readOnly}
         hint='Fichero real compatible con Kilo Code: frontmatter "description"/"mode"/"color" seguido de un encabezado "# Nombre".'
       />
-      <div className="dwm-agent-form__footer">
-        <Button variant="secondary" onClick={onCancel} disabled={submitting}>
-          Cancelar
-        </Button>
-        <Button onClick={handleSubmit} loading={submitting}>
-          Crear agente
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="dwm-agent-form__footer">
+          <Button variant="secondary" onClick={onCancel} disabled={submitting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} loading={submitting}>
+            {isEdit ? "Guardar cambios" : "Crear agente"}
+          </Button>
+        </div>
+      )}
+      {readOnly && (
+        <div className="dwm-agent-form__footer">
+          <Button variant="secondary" onClick={onCancel}>
+            Cerrar
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -97,12 +97,11 @@ export class ContentGenerationService {
     private readonly fetchImpl?: typeof fetch
   ) {}
 
-  /** Genera el contenido real con IA y lo escribe directamente en el `.kilo` real de `root` — nunca JSON intermedio. */
-  async generateAndWrite(
+  /** Genera el contenido real con IA (Markdown real de Kilo, nunca JSON) SIN escribirlo — para previsualizar y permitir editarlo antes de guardar. */
+  async generate(
     kind: GenerationKind,
     config: ResolvedAiConfig,
-    request: GenerationRequest,
-    root?: string
+    request: GenerationRequest
   ): Promise<GenerationResult> {
     const providerId = config.provider ? this.ensureProviderRegistered(config) : undefined;
     const prompt = buildPrompt(kind, request.id, request.instructions);
@@ -130,14 +129,24 @@ export class ContentGenerationService {
     }
 
     const content = this.extractContent(response.content);
-    await this.write(kind, request.id, content, root);
-
     return {
       id: request.id,
       content,
       providerId: response.providerId,
       ...(response.model ? { model: response.model } : {}),
     };
+  }
+
+  /** Genera el contenido real con IA y lo escribe directamente en el `.kilo` real de `root` — nunca JSON intermedio. Combina `generate()` + `write()`; se conserva para quien no necesite el paso de previsualización. */
+  async generateAndWrite(
+    kind: GenerationKind,
+    config: ResolvedAiConfig,
+    request: GenerationRequest,
+    root?: string
+  ): Promise<GenerationResult> {
+    const result = await this.generate(kind, config, request);
+    await this.write(kind, request.id, result.content, root);
+    return result;
   }
 
   private extractContent(raw: string): string {
