@@ -17,6 +17,7 @@ export type DesktopNavigationSection =
   | "provisioning"
   | "workspace"
   | "projects"
+  | "aiLibrary"
   | "agents"
   | "skills"
   | "rules"
@@ -79,6 +80,7 @@ const KNOWN_NAVIGATION_SECTIONS: readonly DesktopNavigationSection[] = [
   "provisioning",
   "workspace",
   "projects",
+  "aiLibrary",
   "agents",
   "skills",
   "rules",

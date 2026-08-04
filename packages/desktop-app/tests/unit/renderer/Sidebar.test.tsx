@@ -41,10 +41,10 @@ describe("Sidebar", () => {
       </NavigationProvider>
     );
     const buttons = Array.from(container.querySelectorAll(".dwm-sidebar__list button"));
-    const agentsButton = buttons.find((b) => b.textContent === "Agentes");
-    click(agentsButton ?? null);
+    const libraryButton = buttons.find((b) => b.textContent === "Biblioteca IA");
+    click(libraryButton ?? null);
     const active = container.querySelector('button[data-active="true"]');
-    expect(active?.textContent).toBe("Agentes");
+    expect(active?.textContent).toBe("Biblioteca IA");
     expect(active?.getAttribute("aria-current")).toBe("page");
     unmount();
   });
@@ -62,14 +62,14 @@ describe("Sidebar", () => {
     unmount();
   });
 
-  it("las 21 secciones del Módulo 33A+33B son navegables, ninguna deshabilitada", () => {
+  it("las 20 secciones del sidebar principal son navegables, ninguna deshabilitada", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <Sidebar />
       </NavigationProvider>
     );
     const navButtons = container.querySelectorAll(".dwm-sidebar__list button");
-    expect(navButtons).toHaveLength(22);
+    expect(navButtons).toHaveLength(20);
     expect(container.querySelectorAll(".dwm-sidebar__item--reserved")).toHaveLength(0);
 
     const labels = Array.from(navButtons).map((b) => b.textContent);

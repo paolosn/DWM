@@ -6,13 +6,21 @@ import {
 import { isDesktopNavigationSection } from "../../../src/shared/types/DesktopConfig.js";
 
 describe("NAVIGATION_CATALOG", () => {
-  it("declara las 21 secciones reales (Módulo 33A + 33B), todas válidas y sin duplicados", () => {
-    expect(NAVIGATION_CATALOG).toHaveLength(22);
+  it("declara las 20 secciones reales del sidebar principal (kilo-content-integration-completion: Agentes/Skills/Reglas consolidados en 'Biblioteca IA'), todas válidas y sin duplicados", () => {
+    expect(NAVIGATION_CATALOG).toHaveLength(20);
     const sections = NAVIGATION_CATALOG.map((item) => item.section);
     expect(new Set(sections).size).toBe(sections.length);
     for (const section of sections) {
       expect(isDesktopNavigationSection(section)).toBe(true);
     }
+  });
+
+  it("muestra 'Biblioteca IA' en el sidebar principal, y ya no 'Agentes'/'Skills'/'Reglas' por separado (siguen navegables por compatibilidad, ver ContentArea)", () => {
+    const sections = NAVIGATION_CATALOG.map((item) => item.section);
+    expect(sections).toContain("aiLibrary");
+    expect(sections).not.toContain("agents");
+    expect(sections).not.toContain("skills");
+    expect(sections).not.toContain("rules");
   });
 
   it("incluye 'dashboard' como primera sección, con la etiqueta 'Inicio'", () => {

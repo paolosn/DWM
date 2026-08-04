@@ -6,6 +6,7 @@ import { EmptyState } from "../design-system/composites/EmptyState/index.js";
 import { AgentsScreen } from "../screens/agents/AgentsScreen.js";
 import { SkillsScreen } from "../screens/skills/SkillsScreen.js";
 import { RulesScreen } from "../screens/rules/RulesScreen.js";
+import { BibliotecaIAScreen } from "../screens/library/BibliotecaIAScreen.js";
 import { KnowledgeScreen } from "../screens/knowledge/KnowledgeScreen.js";
 import { ClientsScreen } from "../screens/clients/ClientsScreen.js";
 import { DashboardScreen } from "../screens/dashboard/DashboardScreen.js";
@@ -38,6 +39,7 @@ const IMPLEMENTED_SCREENS: Partial<Record<DesktopNavigationSection, () => JSX.El
   provisioning: ProvisioningScreen,
   workspace: WorkspaceScreen,
   projects: ProjectsScreen,
+  aiLibrary: BibliotecaIAScreen,
   agents: AgentsScreen,
   skills: SkillsScreen,
   rules: RulesScreen,
