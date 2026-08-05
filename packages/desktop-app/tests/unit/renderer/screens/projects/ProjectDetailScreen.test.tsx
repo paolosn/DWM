@@ -261,4 +261,127 @@ describe("ProjectDetailScreen", () => {
     expect(container.textContent).toContain("Servidores MCP");
     unmount();
   });
+
+  it("Resumen muestra el perfil aplicado por su nombre real (nunca el UUID) y el estado de sincronización real", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+      "profiles.get": {
+        success: true,
+        requestId: "x",
+        operation: "profiles.get",
+        data: {
+          id: "default",
+          metadata: { name: "Kit Backend", description: "desc" },
+          configuration: {},
+        },
+      },
+      "content-sync.list-catalog": {
+        success: true,
+        requestId: "x",
+        operation: "content-sync.list-catalog",
+        data: [
+          { id: "coordinador", preview: { action: "unchanged" } },
+          { id: "otro-agente", preview: { action: "conflict" } },
+        ],
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle(8);
+
+    expect(container.textContent).toContain("Kit Backend");
+    expect(container.textContent).not.toContain("default");
+    expect(container.textContent).toContain("Conflictos pendientes");
+    unmount();
+  });
+
+  it("'Abrir en VS Code' reutiliza projects.open-in-vscode real", async () => {
+    const invoke = setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+      "profiles.get": { success: true, requestId: "x", operation: "profiles.get", data: undefined },
+      "content-sync.list-catalog": {
+        success: true,
+        requestId: "x",
+        operation: "content-sync.list-catalog",
+        data: [],
+      },
+      "projects.open-in-vscode": {
+        success: true,
+        requestId: "x",
+        operation: "projects.open-in-vscode",
+        data: { opened: true, message: "VS Code abierto." },
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle(8);
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir en VS Code"
+      ) ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+    );
+    expect(call).toBeDefined();
+    expect((call?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
+    unmount();
+  });
+
+  it("con conflictos reales, ofrece 'Resolver N conflicto(s)' y navega a la pestaña Biblioteca IA", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+      "profiles.get": { success: true, requestId: "x", operation: "profiles.get", data: undefined },
+      "content-sync.list-catalog": {
+        success: true,
+        requestId: "x",
+        operation: "content-sync.list-catalog",
+        data: [{ id: "coordinador", preview: { action: "conflict" } }],
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle(8);
+
+    const resolveButton = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.startsWith("Resolver")
+    );
+    expect(resolveButton).toBeDefined();
+    expect(container.textContent).toContain("Hay conflictos reales en este proyecto");
+
+    click(resolveButton ?? null);
+    await settle();
+
+    expect(container.querySelector('[role="tab"][aria-selected="true"]')?.textContent).toBe(
+      "Biblioteca IA"
+    );
+    unmount();
+  });
 });

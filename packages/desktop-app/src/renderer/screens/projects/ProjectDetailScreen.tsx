@@ -1,10 +1,16 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { Project, ProjectState } from "@dwm/project";
-import { useDwmMutation, useDwmQuery } from "../../api-client/index.js";
+import {
+  useDwmMutation,
+  useDwmQuery,
+  callOperation,
+  DwmOperationError,
+} from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { Tabs, type TabItem } from "../../design-system/composites/Tabs/index.js";
 import { StatusBadge, type StatusTone } from "../../design-system/primitives/StatusBadge/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
+import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
@@ -57,6 +63,172 @@ export interface ProjectDetailScreenProps {
  * abrir archivo real, retirar, resincronizar y confirmación de
  * conflictos ya integrados en el propio panel.
  */
+const CONTENT_KINDS = ["agent", "skill", "rule"] as const;
+
+interface SyncSummary {
+  readonly conflicts: number;
+  readonly unchanged: number;
+  readonly pending: number;
+}
+
+/**
+ * Ficha del proyecto — bloque de Resumen real: perfil aplicado (por
+ * nombre real, nunca UUID, reutilizando `profiles.get` ya existente),
+ * estado de sincronización agregado y conflictos pendientes
+ * (reutilizando exclusivamente `content-sync.list-catalog`, el mismo
+ * motor ya usado en `ContentLibraryPanel` — ningún sistema de
+ * sincronización nuevo), y accesos rápidos reales (VS Code, carpeta,
+ * resincronizar/resolver conflictos → misma pestaña Biblioteca IA).
+ */
+function ProjectSummaryPanel({
+  project,
+  onGoToTab,
+}: {
+  readonly project: Project;
+  readonly onGoToTab: (tabId: string) => void;
+}): JSX.Element {
+  const { showToast } = useToast();
+  const [profileName, setProfileName] = useState<string | undefined>(undefined);
+  const [syncSummary, setSyncSummary] = useState<SyncSummary | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    void callOperation("profiles.get", { id: project.configuration.profileId })
+      .then((profile) => {
+        if (!cancelled) setProfileName(profile?.metadata.name);
+      })
+      .catch(() => {
+        if (!cancelled) setProfileName(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [project.configuration.profileId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      let conflicts = 0;
+      let unchanged = 0;
+      let pending = 0;
+      for (const kind of CONTENT_KINDS) {
+        try {
+          const entries = (await callOperation("content-sync.list-catalog", {
+            kind,
+            targetProjectId: project.id,
+          })) as { readonly preview: { readonly action: string } }[];
+          for (const entry of entries) {
+            if (entry.preview.action === "conflict") conflicts += 1;
+            else if (entry.preview.action === "unchanged") unchanged += 1;
+            else pending += 1;
+          }
+        } catch {
+          // El catálogo global puede no estar disponible: ese tipo simplemente no aporta al resumen.
+        }
+      }
+      if (!cancelled) setSyncSummary({ conflicts, unchanged, pending });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id]);
+
+  async function openVSCode(): Promise<void> {
+    try {
+      const result = await callOperation("projects.open-in-vscode", { id: project.id });
+      showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo abrir VS Code",
+        tone: "danger",
+      });
+    }
+  }
+
+  async function openFolder(): Promise<void> {
+    try {
+      const result = await window.dwm.openFolder(project.configuration.projectPath);
+      showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo abrir la carpeta",
+        tone: "danger",
+      });
+    }
+  }
+
+  return (
+    <div className="dwm-project-detail__summary">
+      <div className="dwm-project-detail__quick-actions">
+        <Button onClick={() => void openVSCode()}>Abrir en VS Code</Button>
+        <Button variant="secondary" onClick={() => void openFolder()}>
+          Abrir carpeta
+        </Button>
+        <Button variant="secondary" onClick={() => onGoToTab("kilo-content")}>
+          Resincronizar
+        </Button>
+        {syncSummary && syncSummary.conflicts > 0 && (
+          <Button variant="destructive" onClick={() => onGoToTab("kilo-content")}>
+            Resolver {syncSummary.conflicts} conflicto(s)
+          </Button>
+        )}
+      </div>
+
+      <div className="dwm-project-detail__sync-stats">
+        <ResourceCard
+          title={syncSummary ? String(syncSummary.conflicts) : "—"}
+          description="Conflictos pendientes"
+        />
+        <ResourceCard
+          title={syncSummary ? String(syncSummary.unchanged) : "—"}
+          description="Sincronizados"
+        />
+        <ResourceCard title={profileName ?? "Sin perfil aplicado"} description="Perfil aplicado" />
+      </div>
+
+      {syncSummary?.conflicts ? (
+        <InlineAlert tone="warning" title="Hay conflictos reales en este proyecto">
+          Algún elemento de la Biblioteca IA de este proyecto ya no coincide con su origen. Revísalo
+          desde la pestaña Biblioteca IA.
+        </InlineAlert>
+      ) : null}
+
+      <dl className="dwm-project-detail__facts">
+        <dt>Descripción</dt>
+        <dd>{project.metadata.description}</dd>
+        <dt>Ruta</dt>
+        <dd>{project.configuration.projectPath}</dd>
+        <dt>Cliente</dt>
+        <dd>{project.configuration.clientId ?? "Sin cliente asignado"}</dd>
+        <dt>Creado</dt>
+        <dd>{new Date(project.metadata.createdAt).toLocaleString()}</dd>
+        <dt>Actualizado</dt>
+        <dd>{new Date(project.metadata.updatedAt).toLocaleString()}</dd>
+      </dl>
+    </div>
+  );
+}
+
+function ProjectProfileTab({ profileId }: { readonly profileId: string }): JSX.Element {
+  const query = useDwmQuery("profiles.get", { id: profileId });
+
+  if (query.status === "idle" || query.status === "loading") {
+    return <Skeleton variant="block" height="60px" />;
+  }
+  if (query.status === "error" || !query.data) {
+    return <EmptyState title="No se pudo resolver el perfil aplicado" />;
+  }
+
+  return (
+    <dl className="dwm-project-detail__facts">
+      <dt>Nombre</dt>
+      <dd>{query.data.metadata.name}</dd>
+      <dt>Descripción</dt>
+      <dd>{query.data.metadata.description || "—"}</dd>
+    </dl>
+  );
+}
+
 function ProjectContentTab({ projectId }: { readonly projectId: string }): JSX.Element {
   return (
     <Tabs
@@ -89,6 +261,7 @@ function ProjectContentTab({ projectId }: { readonly projectId: string }): JSX.E
 
 export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenProps): JSX.Element {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("summary");
   const { showToast } = useToast();
   const query = useDwmQuery("projects.get", { id: projectId });
   const deleteMutation = useDwmMutation("projects.delete", { invalidates: ["projects.list"] });
@@ -133,18 +306,7 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
     {
       id: "summary",
       label: "Resumen",
-      content: (
-        <dl className="dwm-project-detail__facts">
-          <dt>Descripción</dt>
-          <dd>{project.metadata.description}</dd>
-          <dt>Ruta</dt>
-          <dd>{project.configuration.projectPath}</dd>
-          <dt>Creado</dt>
-          <dd>{new Date(project.metadata.createdAt).toLocaleString()}</dd>
-          <dt>Actualizado</dt>
-          <dd>{new Date(project.metadata.updatedAt).toLocaleString()}</dd>
-        </dl>
-      ),
+      content: <ProjectSummaryPanel project={project} onGoToTab={setActiveTab} />,
     },
     {
       id: "workspace",
@@ -155,7 +317,11 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
         <EmptyState title="Sin workspace vinculado" />
       ),
     },
-    { id: "profile", label: "Perfil", content: <p>{project.configuration.profileId}</p> },
+    {
+      id: "profile",
+      label: "Perfil",
+      content: <ProjectProfileTab profileId={project.configuration.profileId} />,
+    },
     {
       id: "tools",
       label: "Herramientas",
@@ -223,7 +389,7 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
           </>
         }
       />
-      <Tabs items={tabs} />
+      <Tabs items={tabs} activeId={activeTab} onChange={setActiveTab} />
 
       <ConfirmDialog
         open={confirmDeleteOpen}
