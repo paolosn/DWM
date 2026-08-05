@@ -84,6 +84,74 @@ describe("ContentGenerationService", () => {
     return { aiManager, agentManager, skillManager, ruleManager, psnAdapter };
   }
 
+  it("generate() genera el contenido real con IA sin escribir ningún fichero", async () => {
+    const { aiManager, agentManager, skillManager, ruleManager, psnAdapter } = await buildEnv({
+      "ai.secret": "clave-real",
+    });
+    const root = await makeRoot();
+    await psnAdapter.scanWorkspace(root);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { choices: [{ message: { content: REAL_AGENT_MARKDOWN } }] })
+      );
+    const service = new ContentGenerationService(
+      aiManager,
+      agentManager,
+      skillManager,
+      ruleManager,
+      fetchImpl
+    );
+
+    const result = await service.generate(
+      "agent",
+      { provider: "openai", model: "gpt-4o", secretReference: "ai.secret" },
+      { id: "experto-mysql", instructions: "Crea un agente experto en MySQL." }
+    );
+
+    expect(result.content).toContain("# Experto en MySQL");
+    expect(result.providerId).toBe("openai");
+    await expect(
+      fs.access(path.join(root, ".kilo", "agents", "experto-mysql.md"))
+    ).rejects.toThrow();
+  });
+
+  it("generateAndWrite() reutiliza generate() y después escribe: mismo resultado que llamar a ambos por separado", async () => {
+    const { aiManager, agentManager, skillManager, ruleManager, psnAdapter } = await buildEnv({
+      "ai.secret": "clave-real",
+    });
+    const root = await makeRoot();
+    await psnAdapter.scanWorkspace(root);
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { choices: [{ message: { content: REAL_AGENT_MARKDOWN } }] })
+      );
+    const service = new ContentGenerationService(
+      aiManager,
+      agentManager,
+      skillManager,
+      ruleManager,
+      fetchImpl
+    );
+
+    const generated = await service.generate(
+      "agent",
+      { provider: "openai", secretReference: "ai.secret" },
+      { id: "experto-mysql", instructions: "x" }
+    );
+    const written = await service.generateAndWrite(
+      "agent",
+      { provider: "openai", secretReference: "ai.secret" },
+      { id: "experto-mysql", instructions: "x" },
+      root
+    );
+
+    expect(written.content).toBe(generated.content);
+    const raw = await fs.readFile(path.join(root, ".kilo", "agents", "experto-mysql.md"), "utf-8");
+    expect(raw).toContain("# Experto en MySQL");
+  });
+
   it("genera un agente real con IA y lo escribe directamente como .kilo/agents/<id>.md, sin JSON intermedio", async () => {
     const { aiManager, agentManager, skillManager, ruleManager, psnAdapter } = await buildEnv({
       "ai.secret": "clave-real",

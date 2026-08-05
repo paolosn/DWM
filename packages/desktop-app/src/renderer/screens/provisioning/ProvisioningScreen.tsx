@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { callOperation, DwmOperationError } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
@@ -10,6 +10,27 @@ import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import "./ProvisioningScreen.css";
+
+interface ProfileOption {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  readonly agentCount: number;
+  readonly skillCount: number;
+  readonly ruleCount: number;
+  readonly hasAi: boolean;
+  readonly mcpCount: number;
+}
+
+interface ProfileSyncItem {
+  readonly kind: "agent" | "skill" | "rule";
+  readonly id: string;
+  readonly preview: { readonly action: "create" | "update" | "unchanged" | "conflict" };
+}
+interface ProfilePreview {
+  readonly items: readonly ProfileSyncItem[];
+  readonly hasConflicts: boolean;
+}
 
 type Category = "viabilidad" | "auditoria" | "seguridad" | "directo";
 
@@ -85,21 +106,37 @@ interface ViabilityReport {
 }
 
 /**
- * client-workflow-v2 — punto de entrada humano principal (README
- * secciones 1-3): Nueva viabilidad / Nueva auditoría / Nueva revisión de
- * seguridad / Nuevo proyecto directo. Las cuatro llaman a la misma
- * operación real `provisioning.create-project` (discriminada por
- * categoría) — nunca piden ruta, perfil, Workspace ni configuración
- * técnica: el motor resuelve todo eso automáticamente (Workspace activo,
- * perfil activo/único, ubicación por categoría, duplicado de PSN-BASE).
+ * client-workflow-v2 — punto de entrada humano único para crear un
+ * proyecto (documento §1 "kilo-content-integration-completion-v2":
+ * Cliente → Trabajo/Proyecto → Biblioteca IA → Perfil → VS Code).
+ * Nueva viabilidad / Nueva auditoría / Nueva revisión de seguridad /
+ * Nuevo proyecto directo llaman todas a la misma operación real
+ * `provisioning.create-project` — nunca piden ruta ni exponen ningún
+ * identificador técnico: el motor resuelve la ubicación real
+ * automáticamente (Workspace activo, duplicado de PSN-BASE). El perfil
+ * se elige por su nombre visible (nunca su id) y, si se elige uno, se
+ * aplica automáticamente tras crear el proyecto reutilizando
+ * exclusivamente `profile-sync.preview`/`profile-sync.apply` (mismo
+ * `ProfileSyncService` ya construido — ningún mecanismo nuevo), con
+ * conflictos reales y confirmación explícita antes de sobrescribir.
  * Tras crear el proyecto: se abre VS Code automáticamente (reutilizando
  * `EnvironmentManager.openInVSCode`, ya probado), el proyecto queda
- * activo, y se muestra una confirmación clara con ambos resultados.
+ * activo, y se muestra una confirmación clara con todos los resultados.
  */
-export function ProvisioningScreen(): JSX.Element {
+export interface ProvisioningScreenProps {
+  /** Prerrellena "Cliente o empresa" cuando se abre desde la ficha de un cliente real ya existente. */
+  readonly initialClientName?: string;
+}
+
+export function ProvisioningScreen({
+  initialClientName,
+}: ProvisioningScreenProps = {}): JSX.Element {
   const { showToast } = useToast();
   const [category, setCategory] = useState<Category | null>(null);
-  const [fields, setFields] = useState<FormFields>(EMPTY_FIELDS);
+  const [fields, setFields] = useState<FormFields>({
+    ...EMPTY_FIELDS,
+    ...(initialClientName ? { cliente: initialClientName } : {}),
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<CreateResult | undefined>(undefined);
@@ -107,6 +144,54 @@ export function ProvisioningScreen(): JSX.Element {
   const [analysis, setAnalysis] = useState<ViabilityReport | undefined>(undefined);
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | undefined>(undefined);
+
+  // Perfil elegido por su nombre real (nunca su id) — encargo: "el
+  // usuario no debe crear el proyecto y después navegar a Perfiles".
+  const [profileOptions, setProfileOptions] = useState<readonly ProfileOption[]>([]);
+  const [profileId, setProfileId] = useState("");
+  const [profilePreview, setProfilePreview] = useState<ProfilePreview | undefined>(undefined);
+  const [profileApplying, setProfileApplying] = useState(false);
+  const [profileError, setProfileError] = useState<string | undefined>(undefined);
+  const [profileApplied, setProfileApplied] = useState(false);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const ids = (await callOperation("profiles.list", {})) as string[];
+        const details = await Promise.all(
+          ids.map((id) => callOperation("profiles.get", { id }).catch(() => undefined))
+        );
+        setProfileOptions(
+          (
+            details.filter(Boolean) as {
+              id: string;
+              metadata: { name: string; description: string };
+              configuration: {
+                agentIds?: readonly string[];
+                skillIds?: readonly string[];
+                ruleIds?: readonly string[];
+                defaultAIProviderId?: string;
+                mcpConnectionIds?: readonly string[];
+              };
+            }[]
+          ).map((p) => ({
+            id: p.id,
+            name: p.metadata.name,
+            description: p.metadata.description,
+            agentCount: (p.configuration.agentIds ?? []).length,
+            skillCount: (p.configuration.skillIds ?? []).length,
+            ruleCount: (p.configuration.ruleIds ?? []).length,
+            hasAi: Boolean(p.configuration.defaultAIProviderId),
+            mcpCount: (p.configuration.mcpConnectionIds ?? []).length,
+          }))
+        );
+      } catch {
+        setProfileOptions([]);
+      }
+    })();
+  }, []);
+
+  const selectedProfile = profileOptions.find((p) => p.id === profileId);
 
   async function handleAnalyze(): Promise<void> {
     if (!fields.descripcion.trim() || !fields.nombreProyecto.trim()) return;
@@ -141,11 +226,15 @@ export function ProvisioningScreen(): JSX.Element {
 
   function reset(): void {
     setCategory(null);
-    setFields(EMPTY_FIELDS);
+    setFields({ ...EMPTY_FIELDS, ...(initialClientName ? { cliente: initialClientName } : {}) });
     setError(undefined);
     setResult(undefined);
     setAnalysis(undefined);
     setAnalysisError(undefined);
+    setProfileId("");
+    setProfilePreview(undefined);
+    setProfileError(undefined);
+    setProfileApplied(false);
   }
 
   function buildDescription(): string {
@@ -220,10 +309,58 @@ export function ProvisioningScreen(): JSX.Element {
         title: `Proyecto «${fields.nombreProyecto.trim()}» creado y activado`,
         tone: "success",
       });
+
+      if (profileId) {
+        await applyProfile(created.projectId, false);
+      }
     } catch (err) {
       setError(err instanceof DwmOperationError ? err.message : "Error desconocido.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  /**
+   * Aplica el perfil elegido al proyecto recién creado — reutiliza
+   * exclusivamente `profile-sync.preview`/`profile-sync.apply` (mismo
+   * `ProfileSyncService` ya probado). Si hay conflictos reales, se
+   * detiene y muestra el preview para que el usuario confirme
+   * explícitamente antes de sobrescribir nada.
+   */
+  async function applyProfile(targetProjectId: string, confirmOverwrite: boolean): Promise<void> {
+    if (!profileId) return;
+    setProfileApplying(true);
+    setProfileError(undefined);
+    try {
+      if (!confirmOverwrite) {
+        const preview = (await callOperation("profile-sync.preview", {
+          profileId,
+          targetProjectId,
+        })) as ProfilePreview;
+        setProfilePreview(preview);
+        if (preview.hasConflicts) {
+          setProfileApplying(false);
+          return;
+        }
+      }
+      await callOperation("profile-sync.apply", {
+        profileId,
+        targetProjectId,
+        ...(confirmOverwrite ? { confirmOverwrite: true } : {}),
+      });
+      setProfileApplied(true);
+      showToast({
+        title: `Perfil «${selectedProfile?.name ?? profileId}» aplicado`,
+        tone: "success",
+      });
+    } catch (err) {
+      setProfileError(
+        err instanceof DwmOperationError
+          ? err.message
+          : "No se pudo aplicar el perfil (se revirtió)."
+      );
+    } finally {
+      setProfileApplying(false);
     }
   }
 
@@ -239,6 +376,49 @@ export function ProvisioningScreen(): JSX.Element {
           <InlineAlert tone={result.vsCodeOpened ? "success" : "warning"} title="VS Code">
             {result.vsCodeMessage}
           </InlineAlert>
+
+          {profileId && (
+            <div className="dwm-provisioning-screen__profile-result">
+              {profileApplied && (
+                <InlineAlert
+                  tone="success"
+                  title={`Perfil «${selectedProfile?.name ?? profileId}» aplicado`}
+                >
+                  Agentes, skills, reglas, IA y MCP del kit ya están en este proyecto.
+                </InlineAlert>
+              )}
+              {profileError && (
+                <ErrorState title="No se pudo aplicar el perfil" technicalDetail={profileError} />
+              )}
+              {profilePreview?.hasConflicts && !profileApplied && (
+                <div className="dwm-provisioning-screen__profile-conflict">
+                  <InlineAlert
+                    tone="warning"
+                    title="El perfil tiene conflictos reales en este proyecto"
+                  >
+                    Algún elemento del kit ya existe con contenido distinto. Sobrescribirlo requiere
+                    confirmación explícita.
+                  </InlineAlert>
+                  <ul>
+                    {profilePreview.items
+                      .filter((item) => item.preview.action === "conflict")
+                      .map((item) => (
+                        <li key={`${item.kind}-${item.id}`}>
+                          {item.kind}: {item.id}
+                        </li>
+                      ))}
+                  </ul>
+                  <Button
+                    onClick={() => void applyProfile(result.projectId, true)}
+                    loading={profileApplying}
+                  >
+                    Confirmar y sobrescribir
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           <Button onClick={reset}>Crear otro</Button>
         </Card>
       </div>
@@ -282,6 +462,23 @@ export function ProvisioningScreen(): JSX.Element {
             value={fields.nombreProyecto}
             onChange={(e) => setField("nombreProyecto", e.target.value)}
           />
+
+          <Select
+            label="Perfil (opcional)"
+            placeholder="Sin perfil — crear vacío"
+            options={profileOptions.map((p) => ({ value: p.id, label: p.name }))}
+            value={profileId}
+            onChange={(e) => setProfileId(e.target.value)}
+            hint="El kit elegido (agentes, skills, reglas, IA y MCP) se aplica automáticamente al crear el proyecto."
+          />
+          {selectedProfile && (
+            <InlineAlert tone="info" title={selectedProfile.name}>
+              {selectedProfile.description || "Sin descripción."} — {selectedProfile.agentCount}{" "}
+              agentes · {selectedProfile.skillCount} skills · {selectedProfile.ruleCount} reglas ·{" "}
+              {selectedProfile.hasAi ? "IA configurada" : "sin IA configurada"} ·{" "}
+              {selectedProfile.mcpCount} MCP configurados
+            </InlineAlert>
+          )}
 
           {(category === "viabilidad" || category === "auditoria") && (
             <TextArea

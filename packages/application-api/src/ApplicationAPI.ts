@@ -39,6 +39,7 @@ import { ProvisioningController } from "./controllers/ProvisioningController.js"
 import { ContentSyncController } from "./controllers/ContentSyncController.js";
 import { ContentGenerationController } from "./controllers/ContentGenerationController.js";
 import { ProfileSyncController } from "./controllers/ProfileSyncController.js";
+import { ContentScopeController } from "./controllers/ContentScopeController.js";
 
 export interface ApplicationAPIOptions extends ApplicationContextOptions {
   readonly logger?: Logger;
@@ -117,6 +118,7 @@ export class ApplicationAPI implements IModule {
     this.registry.add(new ContentSyncController(this.context));
     this.registry.add(new ContentGenerationController(this.context));
     this.registry.add(new ProfileSyncController(this.context));
+    this.registry.add(new ContentScopeController(this.context));
   }
 
   // ---------------------------------------------------------------------

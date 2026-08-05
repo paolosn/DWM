@@ -175,4 +175,74 @@ describe("ProfileSyncController", () => {
     );
     expect(response.success).toBe(false);
   });
+
+  it("perfil con sourceClientId real: resuelve el origen a CLIENTES/<clientId> real, no al Workspace global", async () => {
+    const workspaceRoot = await makeKiloRoot();
+    const projectPath = await makeKiloRoot();
+    const psnAdapter = new PSNAdapter();
+    await psnAdapter.scanWorkspace(workspaceRoot);
+    await psnAdapter.scanWorkspace(projectPath);
+
+    const agentManager = new AgentManager({ psnAdapter });
+    const skillManager = new SkillManager({ psnAdapter });
+    const ruleManager = new RuleManager({ psnAdapter });
+    const contentSyncService = new ContentSyncService({
+      psnAdapter,
+      agentManager,
+      skillManager,
+      ruleManager,
+    });
+    const projectManager = new ProjectManager({
+      projectsDir: tempDir("dwm-profile-sync-ctrl-client-projects-"),
+    });
+    const project = await projectManager.createProject("Proyecto de prueba", "", {
+      profileId: "perfil-cliente",
+      projectPath,
+      usedTools: [],
+      usedAdapters: [],
+    });
+    const profileManager = new ProfileManager({
+      profilesDir: tempDir("dwm-profile-sync-ctrl-client-profiles-"),
+    });
+    const profile = await profileManager.createProfile("Perfil Cliente", "desc", {
+      enabledTools: [],
+      enabledAdapters: [],
+      secretRefs: [],
+      agentIds: ["coordinador"],
+      skillIds: [],
+      ruleIds: [],
+      sourceClientId: "mci-finance",
+    });
+    const profileSyncService = new ProfileSyncService({ contentSyncService, projectManager });
+    const api = new ApplicationAPI({
+      psnAdapter,
+      projectManager,
+      profileManager,
+      profileSyncService,
+      portableWorkspaceManager: fakeWorkspaceManager(workspaceRoot),
+    });
+
+    const clientRoot = path.join(workspaceRoot, "CLIENTES", "mci-finance");
+    await fs.mkdir(path.join(clientRoot, ".kilo", "agents"), { recursive: true });
+    await psnAdapter.scanWorkspace(clientRoot);
+    await agentManager.createAgent(
+      { id: "coordinador", content: "# Coordinador real del cliente\n" },
+      clientRoot
+    );
+
+    const response = await api.execute(
+      makeRequest(
+        "profile-sync.apply",
+        { profileId: profile.id, targetProjectId: project.id },
+        { caller: admin }
+      )
+    );
+
+    expect(response.success).toBe(true);
+    const raw = await fs.readFile(
+      path.join(projectPath, ".kilo", "agents", "coordinador.md"),
+      "utf-8"
+    );
+    expect(raw).toContain("Coordinador real del cliente");
+  });
 });

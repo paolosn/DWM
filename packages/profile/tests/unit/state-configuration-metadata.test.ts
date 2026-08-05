@@ -76,6 +76,22 @@ describe("validateProfileConfiguration", () => {
       validateProfileConfiguration({ ...defaultProfileConfiguration(), agentIds: [1] as never })
     ).toThrow(expect.objectContaining({ code: ProfileErrorCode.PROFILE_INVALID_CONFIGURATION }));
   });
+
+  it("acepta color y sourceClientId reales (kit de trabajo visual de Perfiles)", () => {
+    expect(() =>
+      validateProfileConfiguration({
+        ...defaultProfileConfiguration(),
+        color: "#4f46e5",
+        sourceClientId: "mci-finance",
+      })
+    ).not.toThrow();
+  });
+
+  it("lanza PROFILE_INVALID_CONFIGURATION si color no es una cadena", () => {
+    expect(() =>
+      validateProfileConfiguration({ ...defaultProfileConfiguration(), color: 1 as never })
+    ).toThrow(expect.objectContaining({ code: ProfileErrorCode.PROFILE_INVALID_CONFIGURATION }));
+  });
 });
 
 describe("ProfileMetadata", () => {

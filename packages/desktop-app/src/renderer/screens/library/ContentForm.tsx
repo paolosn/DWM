@@ -2,41 +2,45 @@ import { useState } from "react";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { TextArea } from "../../design-system/primitives/TextArea/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
-import "./AgentForm.css";
+import { type ContentKind, DEFAULT_TEMPLATE, KIND_ROUTE_HINT } from "./ContentKind.js";
+import "./ContentForm.css";
 
-export interface AgentFormValues {
+export interface ContentFormValues {
   readonly id: string;
   readonly content: string;
 }
 
-export interface AgentFormProps {
+export interface ContentFormProps {
+  readonly kind: ContentKind;
   readonly submitting: boolean;
-  readonly onSubmit: (values: AgentFormValues) => void | Promise<void>;
+  readonly onSubmit: (values: ContentFormValues) => void | Promise<void>;
   readonly onCancel: () => void;
-  /** Cuando se indica, el formulario edita ese agente real en vez de crear uno nuevo: el id queda fijo y el contenido se precarga tal cual. */
-  readonly initial?: AgentFormValues;
+  /** Cuando se indica, el formulario edita ese elemento real en vez de crear uno nuevo: el id queda fijo y el contenido se precarga tal cual. */
+  readonly initial?: ContentFormValues;
   /** Solo lectura: muestra el contenido real sin permitir editarlo (para "Ver contenido"). */
   readonly readOnly?: boolean;
+  readonly submitLabel?: string;
 }
 
 /**
- * Módulo 33A — Formulario específico de Agentes. Un agente real es un
- * fichero Markdown (`.kilo/agents/<id>.md`) con frontmatter YAML
- * (`description`/`mode`/`color`) compatible con Kilo Code y el
- * PSN-BASE real, tal como lo define `@dwm/agent-manager` — nunca JSON.
+ * Biblioteca IA — formulario real único para Agentes/Skills/Reglas,
+ * parametrizado por `kind`. El contenido siempre es el Markdown real
+ * que espera Kilo Code (frontmatter YAML + cuerpo) — nunca JSON. No es
+ * una copia por tipo: es el mismo componente con la plantilla por
+ * defecto y el texto de ayuda ajustados según `kind`.
  */
-export function AgentForm({
+export function ContentForm({
+  kind,
   submitting,
   onSubmit,
   onCancel,
   initial,
   readOnly,
-}: AgentFormProps): JSX.Element {
+  submitLabel,
+}: ContentFormProps): JSX.Element {
   const isEdit = initial !== undefined;
   const [id, setId] = useState(initial?.id ?? "");
-  const [content, setContent] = useState(
-    initial?.content ?? '---\ndescription: ""\nmode: all\n---\n\n# Nombre del agente\n'
-  );
+  const [content, setContent] = useState(initial?.content ?? DEFAULT_TEMPLATE[kind]);
   const [idError, setIdError] = useState<string | undefined>(undefined);
 
   function handleSubmit(): void {
@@ -49,7 +53,7 @@ export function AgentForm({
   }
 
   return (
-    <div className="dwm-agent-form">
+    <div className="dwm-content-form">
       <TextField
         label="Identificador"
         value={id}
@@ -64,20 +68,20 @@ export function AgentForm({
         value={content}
         onChange={(e) => setContent(e.target.value)}
         disabled={readOnly}
-        hint='Fichero real compatible con Kilo Code: frontmatter "description"/"mode"/"color" seguido de un encabezado "# Nombre".'
+        hint={`Fichero real compatible con Kilo Code: ${KIND_ROUTE_HINT[kind]}`}
       />
       {!readOnly && (
-        <div className="dwm-agent-form__footer">
+        <div className="dwm-content-form__footer">
           <Button variant="secondary" onClick={onCancel} disabled={submitting}>
             Cancelar
           </Button>
           <Button onClick={handleSubmit} loading={submitting}>
-            {isEdit ? "Guardar cambios" : "Crear agente"}
+            {submitLabel ?? (isEdit ? "Guardar cambios" : "Crear")}
           </Button>
         </div>
       )}
       {readOnly && (
-        <div className="dwm-agent-form__footer">
+        <div className="dwm-content-form__footer">
           <Button variant="secondary" onClick={onCancel}>
             Cerrar
           </Button>

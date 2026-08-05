@@ -3,9 +3,10 @@ import type { ApplicationOperationRegistry } from "../ApplicationOperationRegist
 import type { ApplicationPermissions } from "../ApplicationPermissions.js";
 import type { ApplicationContext } from "../ApplicationContext.js";
 import { requireDependency } from "../requireDependency.js";
-import { asRecord, optionalBoolean, requireString } from "../payloadHelpers.js";
+import { asRecord, optionalBoolean, optionalString, requireString } from "../payloadHelpers.js";
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
+import { resolveContentRoot } from "../resolveContentRoot.js";
 import type {
   SyncKind,
   SyncPreview,
@@ -21,13 +22,19 @@ export interface ContentSyncCatalogEntry {
 
 declare module "../ApplicationRequest.js" {
   interface ApplicationOperationMap {
-    /** Catálogo global real (Agentes/Skills/Reglas) con el estado de sincronización real frente a un proyecto — reutiliza exclusivamente ContentSyncService.previewAssign(). */
+    /** Catálogo real (Agentes/Skills/Reglas) con el estado de sincronización real frente a un proyecto — reutiliza exclusivamente ContentSyncService.previewAssign(). Origen: global (por defecto) o de un cliente concreto (`sourceClientId`). */
     "content-sync.list-catalog": {
-      payload: { kind: SyncKind; targetProjectId: string };
+      payload: { kind: SyncKind; targetProjectId: string; sourceClientId?: string };
       result: ContentSyncCatalogEntry[];
     };
     "content-sync.assign": {
-      payload: { kind: SyncKind; id: string; targetProjectId: string; confirmOverwrite?: boolean };
+      payload: {
+        kind: SyncKind;
+        id: string;
+        targetProjectId: string;
+        sourceClientId?: string;
+        confirmOverwrite?: boolean;
+      };
       result: AssignResult;
     };
     "content-sync.withdraw": {
@@ -38,10 +45,13 @@ declare module "../ApplicationRequest.js" {
 }
 
 /**
- * client-workflow "kilo-content-integration" (Commit 3) — controlador
- * fino: no contiene ninguna lógica de sincronización propia, delega
- * exclusivamente en `ContentSyncService` (Commit 2, ya probado). El
- * origen es siempre el catálogo global del Workspace activo; el
+ * client-workflow "kilo-content-integration" (Commit 3; alcance de
+ * cliente ampliado en "kilo-content-integration-completion") —
+ * controlador fino: no contiene ninguna lógica de sincronización
+ * propia, delega exclusivamente en `ContentSyncService`. El origen es
+ * el catálogo global del Workspace activo, o el catálogo real de un
+ * cliente concreto (`CLIENTES/<clientId>/.kilo/...`, vía el mismo
+ * `resolveContentRoot` que ya usa `ContentScopeController`); el
  * destino, la carpeta real de un proyecto ya registrado.
  */
 export class ContentSyncController implements ApplicationController {
@@ -53,20 +63,8 @@ export class ContentSyncController implements ApplicationController {
     const service = () =>
       requireDependency(this.context.contentSyncService, "content-sync-service");
 
-    const sourceRoot = (): string => {
-      const active = this.context.portableWorkspaceManager?.getActiveWorkspace();
-      if (!active) {
-        throw createApplicationError({
-          code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
-          message: "No hay ningún Sistema de Trabajo activo.",
-          origin: "validation",
-          category: "not-found",
-          retryable: false,
-          recoverable: true,
-        });
-      }
-      return active.root;
-    };
+    const sourceRoot = async (sourceClientId?: string): Promise<string> =>
+      resolveContentRoot(this.context, sourceClientId ? { clientId: sourceClientId } : {});
 
     const targetRoot = (projectId: string): string => {
       const project = this.context.projectManager?.getProject(projectId);
@@ -109,10 +107,13 @@ export class ContentSyncController implements ApplicationController {
         return {
           kind: assertValidKind(record),
           targetProjectId: requireString(record, "targetProjectId"),
+          ...(optionalString(record, "sourceClientId") !== undefined
+            ? { sourceClientId: optionalString(record, "sourceClientId")! }
+            : {}),
         };
       },
       handler: async (payload) => {
-        const root = sourceRoot();
+        const root = await sourceRoot(payload.sourceClientId);
         const target = targetRoot(payload.targetProjectId);
         const summaries =
           payload.kind === "agent"
@@ -155,6 +156,9 @@ export class ContentSyncController implements ApplicationController {
           kind: assertValidKind(record),
           id: requireString(record, "id"),
           targetProjectId: requireString(record, "targetProjectId"),
+          ...(optionalString(record, "sourceClientId") !== undefined
+            ? { sourceClientId: optionalString(record, "sourceClientId")! }
+            : {}),
           ...(optionalBoolean(record, "confirmOverwrite") !== undefined
             ? { confirmOverwrite: optionalBoolean(record, "confirmOverwrite")! }
             : {}),
@@ -164,7 +168,7 @@ export class ContentSyncController implements ApplicationController {
         service().assign(
           payload.kind,
           payload.id,
-          sourceRoot(),
+          await sourceRoot(payload.sourceClientId),
           targetRoot(payload.targetProjectId),
           {
             ...(payload.confirmOverwrite !== undefined

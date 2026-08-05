@@ -61,7 +61,7 @@ describe("CommandPalette", () => {
       <CommandPalette open onClose={vi.fn()} onNavigate={vi.fn()} />
     );
     expect(container.textContent).toContain("Acciones");
-    expect(container.textContent).toContain("Ir a Agentes");
+    expect(container.textContent).toContain("Ir a Biblioteca IA");
     unmount();
   });
 

@@ -65,10 +65,10 @@ const VALID_REPORT = {
   providerId: "openai",
 };
 
-function mountScreen() {
+function mountScreen(props: { readonly initialClientName?: string } = {}) {
   return mount(
     <ToastProvider>
-      <ProvisioningScreen />
+      <ProvisioningScreen {...props} />
     </ToastProvider>
   );
 }
@@ -246,6 +246,317 @@ describe("ProvisioningScreen — Viabilidad con IA", () => {
     ).payload;
     expect(payload.briefing?.veredicto).toBe("Viable");
     expect(payload.briefing?.riesgos).toEqual(["Plazo ajustado"]);
+    unmount();
+  });
+});
+
+describe("ProvisioningScreen — Perfil integrado en la creación", () => {
+  afterEach(() => {
+    __resetQueryCacheForTests();
+    Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
+  });
+
+  const PROFILE_LIST = ["a3f9e21c-real-uuid-perfil"];
+  const PROFILE_DETAIL = {
+    id: "a3f9e21c-real-uuid-perfil",
+    metadata: {
+      id: "a3f9e21c-real-uuid-perfil",
+      name: "Kit Backend",
+      description: "Backend real.",
+    },
+    configuration: {
+      enabledTools: [],
+      enabledAdapters: [],
+      secretRefs: [],
+      agentIds: ["coordinador"],
+      skillIds: ["checklist-produccion"],
+      ruleIds: [],
+      defaultAIProviderId: "openai",
+      mcpConnectionIds: ["mcp-github"],
+    },
+  };
+
+  async function openDirectoForm(container: HTMLElement) {
+    const heading = Array.from(container.querySelectorAll("h2")).find(
+      (h) => h.textContent === "Nuevo proyecto directo"
+    );
+    const card = heading?.closest(".dwm-card") ?? heading?.parentElement ?? container;
+    const button = Array.from(card.querySelectorAll("button")).find(
+      (b) => b.textContent === "Empezar"
+    );
+    click(button ?? null);
+    await settle();
+  }
+
+  function fillBaseFields(container: HTMLElement, cliente: string, nombreProyecto: string): void {
+    const inputs = Array.from(container.querySelectorAll("input"));
+    setValue(inputs[0] as HTMLInputElement, cliente);
+    setValue(inputs[1] as HTMLInputElement, nombreProyecto);
+  }
+
+  it("lista los perfiles reales por su nombre visible, nunca por su id/UUID", async () => {
+    setDwm({
+      "profiles.list": () => success("profiles.list", PROFILE_LIST),
+      "profiles.get": () => success("profiles.get", PROFILE_DETAIL),
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+
+    expect(container.textContent).toContain("Kit Backend");
+    expect(container.textContent).not.toContain("a3f9e21c-real-uuid-perfil");
+    unmount();
+  });
+
+  it("al elegir un perfil, muestra su resumen real (agentes/skills/reglas/IA/MCP)", async () => {
+    setDwm({
+      "profiles.list": () => success("profiles.list", PROFILE_LIST),
+      "profiles.get": () => success("profiles.get", PROFILE_DETAIL),
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+
+    const select = Array.from(container.querySelectorAll("select")).find((s) =>
+      Array.from(s.options).some((o) => o.textContent === "Kit Backend")
+    ) as HTMLSelectElement;
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLSelectElement.prototype,
+      "value"
+    )?.set;
+    act(() => {
+      setter?.call(select, "a3f9e21c-real-uuid-perfil");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+
+    expect(container.textContent).toContain("1 agentes");
+    expect(container.textContent).toContain("1 skills");
+    expect(container.textContent).toContain("0 reglas");
+    expect(container.textContent).toContain("IA configurada");
+    expect(container.textContent).toContain("1 MCP configurados");
+    unmount();
+  });
+
+  async function selectProfile(container: HTMLElement): Promise<void> {
+    const select = Array.from(container.querySelectorAll("select")).find((s) =>
+      Array.from(s.options).some((o) => o.textContent === "Kit Backend")
+    ) as HTMLSelectElement;
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLSelectElement.prototype,
+      "value"
+    )?.set;
+    act(() => {
+      setter?.call(select, "a3f9e21c-real-uuid-perfil");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+  }
+
+  it("con perfil elegido: tras crear el proyecto, llama a profile-sync.preview y, sin conflictos, aplica con profile-sync.apply", async () => {
+    const invoke = setDwm({
+      "profiles.list": () => success("profiles.list", PROFILE_LIST),
+      "profiles.get": () => success("profiles.get", PROFILE_DETAIL),
+      "provisioning.create-project": () =>
+        success("provisioning.create-project", {
+          projectId: "p1",
+          clientId: "c1",
+          clientCreated: true,
+          projectPath: "/workspace/PROYECTOS/x",
+          vsCodeOpened: true,
+          vsCodeMessage: "VS Code abierto.",
+        }),
+      "profile-sync.preview": () =>
+        success("profile-sync.preview", {
+          items: [{ kind: "agent", id: "coordinador", preview: { action: "create" } }],
+          hasConflicts: false,
+        }),
+      "profile-sync.apply": () =>
+        success("profile-sync.apply", { items: [], applied: [], aiApplied: true, mcpApplied: [] }),
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+    fillBaseFields(container, "MCI Finance", "Portal");
+    await selectProfile(container);
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Crear proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    const previewCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "profile-sync.preview"
+    );
+    expect(previewCall).toBeDefined();
+    expect(
+      (previewCall?.[0] as { payload: { targetProjectId: string } }).payload.targetProjectId
+    ).toBe("p1");
+
+    const applyCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "profile-sync.apply"
+    );
+    expect(applyCall).toBeDefined();
+    expect(container.textContent).toContain("aplicado");
+    unmount();
+  });
+
+  it("con conflictos reales: no aplica automáticamente, exige confirmación explícita antes de sobrescribir", async () => {
+    const invoke = setDwm({
+      "profiles.list": () => success("profiles.list", PROFILE_LIST),
+      "profiles.get": () => success("profiles.get", PROFILE_DETAIL),
+      "provisioning.create-project": () =>
+        success("provisioning.create-project", {
+          projectId: "p1",
+          clientId: "c1",
+          clientCreated: true,
+          projectPath: "/workspace/PROYECTOS/x",
+          vsCodeOpened: true,
+          vsCodeMessage: "VS Code abierto.",
+        }),
+      "profile-sync.preview": () =>
+        success("profile-sync.preview", {
+          items: [{ kind: "agent", id: "coordinador", preview: { action: "conflict" } }],
+          hasConflicts: true,
+        }),
+      "profile-sync.apply": (payload) => {
+        const p = payload as { confirmOverwrite?: boolean };
+        return success(
+          "profile-sync.apply",
+          p.confirmOverwrite
+            ? {
+                items: [],
+                applied: [{ kind: "agent", id: "coordinador" }],
+                aiApplied: false,
+                mcpApplied: [],
+              }
+            : { items: [], applied: [], aiApplied: false, mcpApplied: [] }
+        );
+      },
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+    fillBaseFields(container, "MCI Finance", "Portal");
+    await selectProfile(container);
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Crear proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    // No se aplica automáticamente ante un conflicto real.
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "profile-sync.apply"
+      )
+    ).toBe(false);
+    expect(container.textContent).toContain("conflictos reales");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Confirmar y sobrescribir"
+      ) ?? null
+    );
+    await settle();
+
+    const applyCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "profile-sync.apply"
+    );
+    expect(applyCall).toBeDefined();
+    expect(
+      (applyCall?.[0] as { payload: { confirmOverwrite: boolean } }).payload.confirmOverwrite
+    ).toBe(true);
+    unmount();
+  });
+
+  it("sin perfil elegido: crea el proyecto con normalidad y nunca llama a profile-sync.*", async () => {
+    const invoke = setDwm({
+      "profiles.list": () => success("profiles.list", PROFILE_LIST),
+      "profiles.get": () => success("profiles.get", PROFILE_DETAIL),
+      "provisioning.create-project": () =>
+        success("provisioning.create-project", {
+          projectId: "p1",
+          clientId: "c1",
+          clientCreated: true,
+          projectPath: "/workspace/PROYECTOS/x",
+          vsCodeOpened: true,
+          vsCodeMessage: "VS Code abierto.",
+        }),
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+    fillBaseFields(container, "MCI Finance", "Portal");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Crear proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("Proyecto creado y activado");
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "profile-sync.preview"
+      )
+    ).toBe(false);
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "profile-sync.apply"
+      )
+    ).toBe(false);
+    unmount();
+  });
+
+  it("si falla la aplicación del perfil, muestra un error claro y no oculta el fallo", async () => {
+    setDwm({
+      "profiles.list": () => success("profiles.list", PROFILE_LIST),
+      "profiles.get": () => success("profiles.get", PROFILE_DETAIL),
+      "provisioning.create-project": () =>
+        success("provisioning.create-project", {
+          projectId: "p1",
+          clientId: "c1",
+          clientCreated: true,
+          projectPath: "/workspace/PROYECTOS/x",
+          vsCodeOpened: true,
+          vsCodeMessage: "VS Code abierto.",
+        }),
+      "profile-sync.preview": () =>
+        failure("profile-sync.preview", "No se pudo previsualizar: fallo real del motor."),
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+    fillBaseFields(container, "MCI Finance", "Portal");
+    await selectProfile(container);
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Crear proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    // El proyecto igualmente se creó; el fallo del perfil se muestra, no se esconde.
+    expect(container.textContent).toContain("Proyecto creado y activado");
+    expect(container.textContent).toContain("No se pudo aplicar el perfil");
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Ver detalle técnico"
+      ) ?? null
+    );
+    await settle();
+    expect(container.textContent).toContain("No se pudo previsualizar: fallo real del motor.");
+    unmount();
+  });
+
+  it("initialClientName prerrellena 'Cliente o empresa' (preparado para el flujo desde la ficha del cliente)", async () => {
+    setDwm({ "profiles.list": () => success("profiles.list", []) });
+    const { container, unmount } = mountScreen({ initialClientName: "MCI Finance" });
+    await openDirectoForm(container);
+
+    const clienteInput = container.querySelector("input") as HTMLInputElement;
+    expect(clienteInput.value).toBe("MCI Finance");
     unmount();
   });
 });

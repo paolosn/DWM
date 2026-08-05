@@ -3,134 +3,250 @@ import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProfilesScreen } from "../../../../../src/renderer/screens/profiles/ProfilesScreen.js";
 import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
 
 const originalDwm = window.dwm;
-function setDwm(invoke: ReturnType<typeof vi.fn>): void {
+
+function success(operation: string, data: unknown) {
+  return Promise.resolve({ success: true, requestId: "x", operation, data });
+}
+
+const PROFILE_FIXTURE = {
+  id: "default",
+  metadata: { id: "default", name: "Kit Backend", description: "Agentes y skills reales." },
+  configuration: {
+    enabledTools: ["git"],
+    enabledAdapters: [],
+    defaultAIProviderId: "claude",
+    secretRefs: [],
+    agentIds: ["coordinador"],
+    skillIds: ["checklist-produccion"],
+    ruleIds: [],
+    mcpConnectionIds: [],
+  },
+};
+
+function setDwm(
+  overrides: Record<string, (payload: unknown) => Promise<unknown>> = {}
+): ReturnType<typeof vi.fn> {
+  const invoke = vi.fn().mockImplementation((request: { operation: string; payload: unknown }) => {
+    if (request.operation in overrides) return overrides[request.operation]!(request.payload);
+    if (request.operation === "profiles.list") return success("profiles.list", ["default"]);
+    if (request.operation === "profiles.get") return success("profiles.get", PROFILE_FIXTURE);
+    if (request.operation === "projects.list") return success("projects.list", []);
+    if (request.operation === "clients.list") return success("clients.list", []);
+    return success(request.operation, undefined);
+  });
   Object.defineProperty(window, "dwm", {
     value: { invoke, getVersionInfo: vi.fn() },
     configurable: true,
   });
+  return invoke;
 }
-async function settle(times = 3): Promise<void> {
+
+async function settle(times = 10): Promise<void> {
   await act(async () => {
     for (let i = 0; i < times; i += 1) await Promise.resolve();
   });
 }
 
+function mountScreen() {
+  return mount(
+    <ToastProvider>
+      <ProfilesScreen />
+    </ToastProvider>
+  );
+}
+
 describe("ProfilesScreen", () => {
   afterEach(() => {
+    __resetQueryCacheForTests();
     Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
   });
 
-  it("activar un perfil usa profiles.activate real y no ofrece crear/editar/clonar/eliminar", async () => {
-    const invoke = vi.fn().mockImplementation((request: { operation: string }) => {
-      if (request.operation === "profiles.list")
-        return Promise.resolve({
-          success: true,
-          requestId: "x",
-          operation: "profiles.list",
-          data: ["default"],
-        });
-      if (request.operation === "profiles.activate")
-        return Promise.resolve({
-          success: true,
-          requestId: "x",
-          operation: "profiles.activate",
-          data: { activated: true },
-        });
-      return Promise.reject(new Error("no mockeada"));
-    });
-    setDwm(invoke);
-    const { container, unmount } = mount(
-      <ToastProvider>
-        <ProfilesScreen />
-      </ToastProvider>
-    );
+  it("muestra estado vacío cuando no hay perfiles", async () => {
+    setDwm({ "profiles.list": () => success("profiles.list", []) });
+    const { container, unmount } = mountScreen();
     await settle();
-    expect(
-      Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "Crear")
-    ).toBe(false);
-    expect(
-      Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "Eliminar")
-    ).toBe(false);
-
-    click(
-      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Activar") ??
-        null
-    );
-    await settle();
-    const call = invoke.mock.calls.find(
-      (c) => (c[0] as { operation: string }).operation === "profiles.activate"
-    );
-    expect((call?.[0] as { payload: { id: string } }).payload).toEqual({ id: "default" });
-    expect(container.textContent).toContain("Perfil activado en esta sesión: default");
+    expect(container.textContent).toContain("Sin perfiles disponibles");
     unmount();
   });
-});
 
-describe("ProfilesScreen — detalle", () => {
-  afterEach(() => {
-    Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
-  });
-
-  it("ver detalle carga profiles.get real", async () => {
-    const invoke = vi.fn().mockImplementation((request: { operation: string }) => {
-      if (request.operation === "profiles.list")
-        return Promise.resolve({
-          success: true,
-          requestId: "x",
-          operation: "profiles.list",
-          data: ["default"],
-        });
-      if (request.operation === "profiles.get") {
-        return Promise.resolve({
-          success: true,
-          requestId: "x",
-          operation: "profiles.get",
-          data: {
-            id: "default",
-            configuration: {
-              enabledTools: ["git"],
-              enabledAdapters: [],
-              defaultAIProviderId: "claude",
-              secretRefs: [],
-            },
-          },
-        });
-      }
-      return Promise.reject(new Error("no mockeada"));
-    });
-    setDwm(invoke);
-    const { container, unmount } = mount(
-      <ToastProvider>
-        <ProfilesScreen />
-      </ToastProvider>
-    );
+  it("ver detalle carga profiles.get real y muestra el resumen real del kit", async () => {
+    const invoke = setDwm();
+    const { container, unmount } = mountScreen();
     await settle();
+
     click(
       Array.from(container.querySelectorAll("button")).find(
         (b) => b.textContent === "Ver detalle"
       ) ?? null
     );
     await settle();
-    expect(container.textContent).toContain("claude");
-    expect(container.textContent).toContain("git");
+
+    expect(container.textContent).toContain("Kit Backend");
+    expect(container.textContent).toContain("1 agentes");
+    expect(container.textContent).toContain("1 skills");
+    expect(container.textContent).toContain("IA configurada");
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "profiles.get"
+    );
+    expect(call).toBeDefined();
     unmount();
   });
 
-  it("muestra estado vacío cuando no hay perfiles", async () => {
-    const invoke = vi
-      .fn()
-      .mockResolvedValue({ success: true, requestId: "x", operation: "profiles.list", data: [] });
-    setDwm(invoke);
-    const { container, unmount } = mount(
-      <ToastProvider>
-        <ProfilesScreen />
-      </ToastProvider>
+  it("crear perfil: abre el formulario real y llama a profiles.create con el kit completo", async () => {
+    const invoke = setDwm({
+      "profiles.create": () => success("profiles.create", { id: "nuevo" }),
+    });
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Crear perfil"
+      ) ?? null
     );
     await settle();
-    expect(container.textContent).toContain("Sin perfiles disponibles");
+
+    const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
+    const nameInput = dialog.querySelector("input") as HTMLInputElement;
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    act(() => {
+      setter?.call(nameInput, "Kit Frontend");
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await settle();
+
+    click(
+      Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === "Crear perfil") ??
+        null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "profiles.create"
+    );
+    expect(call).toBeDefined();
+    expect((call?.[0] as { payload: { name: string } }).payload.name).toBe("Kit Frontend");
+    unmount();
+  });
+
+  it("aplicar perfil: preview real, conflicto detectado y confirmación explícita antes de sobrescribir", async () => {
+    const invoke = setDwm({
+      "projects.list": () => success("projects.list", ["p1"]),
+      "projects.get": () =>
+        success("projects.get", {
+          id: "p1",
+          metadata: { name: "Proyecto Uno" },
+          configuration: { profileId: "otro" },
+        }),
+      "profile-sync.preview": () =>
+        success("profile-sync.preview", {
+          items: [{ kind: "agent", id: "coordinador", preview: { action: "conflict" } }],
+          hasConflicts: true,
+        }),
+      "profile-sync.apply": () =>
+        success("profile-sync.apply", { items: [], applied: [], aiApplied: false, mcpApplied: [] }),
+    });
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Ver detalle"
+      ) ?? null
+    );
+    await settle();
+
+    const select = container.querySelector("select") as HTMLSelectElement;
+    const selectSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLSelectElement.prototype,
+      "value"
+    )?.set;
+    act(() => {
+      selectSetter?.call(select, "p1");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Previsualizar"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("Conflicto");
+    expect(container.textContent).toContain("Hay conflictos reales");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Confirmar y sobrescribir"
+      ) ?? null
+    );
+    await settle();
+
+    const applyCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "profile-sync.apply"
+    );
+    expect(applyCall).toBeDefined();
+    expect(
+      (applyCall?.[0] as { payload: { confirmOverwrite: boolean } }).payload.confirmOverwrite
+    ).toBe(true);
+    unmount();
+  });
+
+  it("'Aplicado actualmente en' muestra los proyectos reales que usan este perfil, y 'Abrir proyecto' reutiliza projects.open-in-vscode", async () => {
+    const invoke = setDwm({
+      "projects.list": () => success("projects.list", ["p1", "p2"]),
+      "projects.get": (payload) => {
+        const p = payload as { id: string };
+        if (p.id === "p1") {
+          return success("projects.get", {
+            id: "p1",
+            metadata: { name: "Proyecto Aplicado" },
+            configuration: { profileId: "default" },
+          });
+        }
+        return success("projects.get", {
+          id: "p2",
+          metadata: { name: "Otro Proyecto" },
+          configuration: { profileId: "otro-perfil" },
+        });
+      },
+      "projects.open-in-vscode": () =>
+        success("projects.open-in-vscode", { opened: true, message: "VS Code abierto." }),
+    });
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Ver detalle"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("Proyecto Aplicado");
+    const appliedSection = Array.from(container.querySelectorAll("section")).find((s) =>
+      s.textContent?.includes("Aplicado actualmente en")
+    ) as HTMLElement;
+    expect(appliedSection.textContent).toContain("Proyecto Aplicado");
+    expect(appliedSection.textContent).not.toContain("Otro Proyecto");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    const openCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+    );
+    expect((openCall?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
     unmount();
   });
 });

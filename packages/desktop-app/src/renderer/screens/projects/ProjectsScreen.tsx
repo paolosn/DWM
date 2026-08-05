@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { Project, ProjectState } from "@dwm/project";
-import { useDwmMutation, useDwmQuery } from "../../api-client/index.js";
+import { useDwmMutation } from "../../api-client/index.js";
 import {
   EntityPage,
   EntityToolbar,
@@ -14,11 +14,10 @@ import { StatusBadge, type StatusTone } from "../../design-system/primitives/Sta
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { IconButton } from "../../design-system/primitives/IconButton/index.js";
 import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/index.js";
-import { Drawer } from "../../design-system/composites/Drawer/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { useProjectsWithDetails } from "./useProjectsWithDetails.js";
-import { ProjectForm, type ProjectFormValues } from "./ProjectForm.js";
 import { ProjectDetailScreen } from "./ProjectDetailScreen.js";
+import { useNavigation } from "../../shell/NavigationContext.js";
 import "./projects.css";
 
 const stateTone: Record<ProjectState, StatusTone> = {
@@ -40,15 +39,13 @@ const stateTone: Record<ProjectState, StatusTone> = {
 export function ProjectsScreen(): JSX.Element {
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"table" | "list">("table");
-  const [createOpen, setCreateOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Project | undefined>(undefined);
   const [openProjectId, setOpenProjectId] = useState<string | undefined>(undefined);
   const { showToast } = useToast();
+  const { setActiveSection } = useNavigation();
 
   const { status, projects, error, refetch } = useProjectsWithDetails();
-  const profilesQuery = useDwmQuery("profiles.list", {});
 
-  const createMutation = useDwmMutation("projects.create", { invalidates: ["projects.list"] });
   const deleteMutation = useDwmMutation("projects.delete", { invalidates: ["projects.list"] });
 
   const filtered = useMemo(() => {
@@ -91,21 +88,6 @@ export function ProjectsScreen(): JSX.Element {
     },
   ];
 
-  async function handleCreate(values: ProjectFormValues): Promise<void> {
-    await createMutation.mutate({
-      name: values.name,
-      description: values.description,
-      configuration: {
-        projectPath: values.projectPath,
-        profileId: values.profileId,
-        usedTools: [],
-        usedAdapters: [],
-      },
-    });
-    showToast({ title: `Proyecto «${values.name}» creado`, tone: "success" });
-    setCreateOpen(false);
-  }
-
   if (openProjectId) {
     return (
       <ProjectDetailScreen projectId={openProjectId} onBack={() => setOpenProjectId(undefined)} />
@@ -124,7 +106,11 @@ export function ProjectsScreen(): JSX.Element {
         emptyTitle={
           search ? "Sin proyectos que coincidan con la búsqueda" : "Todavía no hay proyectos"
         }
-        emptyAction={!search && <Button onClick={() => setCreateOpen(true)}>Crear proyecto</Button>}
+        emptyAction={
+          !search && (
+            <Button onClick={() => setActiveSection("provisioning")}>Nuevo proyecto</Button>
+          )
+        }
         toolbar={
           <EntityToolbar
             searchValue={search}
@@ -146,7 +132,9 @@ export function ProjectsScreen(): JSX.Element {
                 />
               </div>
             }
-            primaryAction={<Button onClick={() => setCreateOpen(true)}>Crear proyecto</Button>}
+            primaryAction={
+              <Button onClick={() => setActiveSection("provisioning")}>Nuevo proyecto</Button>
+            }
           />
         }
       >
@@ -190,15 +178,6 @@ export function ProjectsScreen(): JSX.Element {
           />
         )}
       </EntityPage>
-
-      <Drawer open={createOpen} title="Crear proyecto" onClose={() => setCreateOpen(false)}>
-        <ProjectForm
-          profileOptions={profilesQuery.data ?? []}
-          submitting={createMutation.status === "loading"}
-          onSubmit={handleCreate}
-          onCancel={() => setCreateOpen(false)}
-        />
-      </Drawer>
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

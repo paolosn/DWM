@@ -45,3 +45,13 @@
 .dwm-provisioning-screen__report-grid dd {
   margin: 0;
 }
+
+.dwm-provisioning-screen__profile-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-provisioning-screen__profile-conflict ul {
+  margin: 0;
+  padding-left: var(--dwm-space-lg);
+}

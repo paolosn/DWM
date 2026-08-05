@@ -16,6 +16,10 @@ export interface ProfileConfiguration {
   readonly ruleIds?: readonly string[];
   /** Servidores MCP opcionales: ids de conexiones de tipo mcp-stdio/mcp-remote (@dwm/connections-manager) a asignar explícitamente al proyecto. */
   readonly mcpConnectionIds?: readonly string[];
+  /** Color real del perfil (kit de trabajo visual), solo presentación — sin efecto funcional. */
+  readonly color?: string;
+  /** Alcance de origen real de agentIds/skillIds/ruleIds/mcpConnectionIds: un cliente concreto, o ausente = global. Los usa ProfileSyncController para resolver el mismo sourceRoot ya usado por ContentSyncController/ContentGenerationController — nunca un mecanismo nuevo. */
+  readonly sourceClientId?: string;
 }
 
 export function defaultProfileConfiguration(): ProfileConfiguration {
@@ -81,6 +85,17 @@ export function validateProfileConfiguration(config: ProfileConfiguration): void
       throw createProfileError({
         code: ProfileErrorCode.PROFILE_INVALID_CONFIGURATION,
         message: `ProfileConfiguration.${field} debe ser un array de cadenas si se indica.`,
+        origin: "configuration",
+        recoverable: false,
+      });
+    }
+  }
+  for (const field of ["color", "sourceClientId"] as const) {
+    const value = config[field];
+    if (value !== undefined && typeof value !== "string") {
+      throw createProfileError({
+        code: ProfileErrorCode.PROFILE_INVALID_CONFIGURATION,
+        message: `ProfileConfiguration.${field} debe ser una cadena si se indica.`,
         origin: "configuration",
         recoverable: false,
       });

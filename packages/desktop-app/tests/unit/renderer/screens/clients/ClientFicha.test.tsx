@@ -3,6 +3,7 @@ import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClientFicha } from "../../../../../src/renderer/screens/clients/ClientFicha.js";
 import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import { NavigationProvider } from "../../../../../src/renderer/shell/NavigationContext.js";
 import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
 
@@ -74,12 +75,14 @@ describe("ClientFicha", () => {
     Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
   });
 
-  it("muestra las 6 pestañas reales", async () => {
+  it("muestra las 8 pestañas reales", async () => {
     setDwm({ "clients.get": () => success("clients.get", baseClient) });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -87,6 +90,8 @@ describe("ClientFicha", () => {
     expect(tabs).toEqual([
       "Resumen",
       "Proyectos",
+      "Biblioteca IA",
+      "Perfiles",
       "Accesos y conexiones",
       "MCP e IA",
       "Documentos",
@@ -95,12 +100,60 @@ describe("ClientFicha", () => {
     unmount();
   });
 
+  it("pestaña Biblioteca IA: reutiliza el mismo ContentLibraryPanel anclado a este cliente, sin selector de alcance visible", async () => {
+    const invoke = setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "content-scope.resolve-root": (payload) => {
+        const p = payload as { clientId?: string };
+        return success("content-scope.resolve-root", {
+          root: p.clientId ? `/workspace/CLIENTES/${p.clientId}` : "/workspace",
+        });
+      },
+      "agents.list": () => success("agents.list", [{ id: "coordinador", archived: false }]),
+    });
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Biblioteca IA"
+      ) ?? null
+    );
+    await settle();
+
+    // Selector de alcance oculto: el panel ya está anclado a este cliente.
+    expect(container.textContent).not.toContain("Alcance");
+    expect(container.textContent).toContain("coordinador");
+
+    const resolveCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "content-scope.resolve-root"
+    );
+    expect((resolveCall?.[0] as { payload: { clientId: string } }).payload).toMatchObject({
+      clientId: "mci-finance",
+    });
+    const listCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "agents.list"
+    );
+    expect((listCall?.[0] as { payload: { root: string } }).payload.root).toBe(
+      "/workspace/CLIENTES/mci-finance"
+    );
+    unmount();
+  });
+
   it("Resumen muestra los datos reales del cliente", async () => {
     setDwm({ "clients.get": () => success("clients.get", baseClient) });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -117,9 +170,11 @@ describe("ClientFicha", () => {
         success("projects.open-in-vscode", { opened: true, message: 'VS Code abierto en "..."' }),
     });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -154,9 +209,11 @@ describe("ClientFicha", () => {
       "projects.get": () => success("projects.get", baseProject),
     });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -187,9 +244,11 @@ describe("ClientFicha", () => {
       "projects.archive": () => success("projects.archive", { ...baseProject, state: "closed" }),
     });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -230,9 +289,11 @@ describe("ClientFicha", () => {
     const withAi = { ...baseClient, defaultAi: { provider: "openai", model: "gpt-4o" } };
     setDwm({ "clients.get": () => success("clients.get", withAi) });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
     click(
@@ -263,9 +324,11 @@ describe("ClientFicha", () => {
         ]),
     });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -296,9 +359,11 @@ describe("ClientFicha", () => {
       "clients.documents": () => success("clients.documents", []),
     });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -326,9 +391,11 @@ describe("ClientFicha", () => {
         ]),
     });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -354,9 +421,11 @@ describe("ClientFicha", () => {
       "clients.activity": () => success("clients.activity", []),
     });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
 
@@ -377,9 +446,11 @@ describe("ClientFicha", () => {
     };
     setDwm({ "clients.get": () => success("clients.get", withoutProjects) });
     const { container, unmount } = mount(
-      <ToastProvider>
-        <ClientFicha clientId="mci-finance" />
-      </ToastProvider>
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
     );
     await settle();
     click(
@@ -390,6 +461,73 @@ describe("ClientFicha", () => {
     await settle();
 
     expect(container.textContent).toContain("Este cliente todavía no tiene proyectos");
+    unmount();
+  });
+
+  it("tras asignar desde Biblioteca IA del cliente, ofrece 'Abrir proyecto' y reutiliza projects.open-in-vscode", async () => {
+    const invoke = setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "content-scope.resolve-root": () =>
+        success("content-scope.resolve-root", { root: "/workspace/CLIENTES/mci-finance" }),
+      "agents.list": () => success("agents.list", [{ id: "coordinador", archived: false }]),
+      "projects.list": () => success("projects.list", ["p1"]),
+      "projects.get": () => success("projects.get", baseProject),
+      "content-sync.assign": () =>
+        success("content-sync.assign", { applied: true, preview: { action: "create" } }),
+      "projects.open-in-vscode": () =>
+        success("projects.open-in-vscode", { opened: true, message: "VS Code abierto." }),
+    });
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll('[role="tab"]')).find(
+        (t) => t.textContent === "Biblioteca IA"
+      ) ?? null
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Asignar a proyecto"
+      ) ?? null
+    );
+    await settle();
+    const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
+    const select = dialog.querySelector("select") as HTMLSelectElement;
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLSelectElement.prototype,
+      "value"
+    )?.set;
+    act(() => {
+      setter?.call(select, "p1");
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await settle();
+    click(
+      Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === "Asignar") ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("asignado correctamente");
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    const openCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+    );
+    expect(openCall).toBeDefined();
+    expect((openCall?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
     unmount();
   });
 });

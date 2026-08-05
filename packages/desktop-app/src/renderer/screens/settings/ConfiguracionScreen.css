@@ -1,0 +1,5 @@
+.dwm-configuracion-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-lg);
+}

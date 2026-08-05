@@ -8,7 +8,7 @@ import { AgentManager } from "@dwm/agent-manager";
 import { SkillManager } from "@dwm/skill-manager";
 import { RuleManager } from "@dwm/rule-manager";
 import { ProjectManager } from "@dwm/project";
-import { ContentSyncService } from "@dwm/project-provisioning";
+import { ContentSyncService, ensureClientKiloSkeleton } from "@dwm/project-provisioning";
 import type { PortableWorkspaceManager, WorkspaceRegistryEntry } from "@dwm/portable-workspace";
 import { ApplicationAPI } from "../../../src/ApplicationAPI.js";
 import { makeRequest } from "../support/fixtures.js";
@@ -77,6 +77,50 @@ describe("ContentSyncController", () => {
     });
 
     return { api, agentManager, workspaceRoot, projectPath };
+  }
+
+  /** Variante con ProjectManager real (varios proyectos dinámicos) y psnAdapter expuesto, para los tests de alcance de cliente — no toca `buildApi()`, que ya usan los tests existentes con su proyecto fijo "p1". */
+  async function buildApiWithRealProjects() {
+    const workspaceRoot = await makeKiloRoot();
+    await fs.mkdir(path.join(workspaceRoot, "CLIENTES"), { recursive: true });
+    const psnAdapter = new PSNAdapter();
+    await psnAdapter.scanWorkspace(workspaceRoot);
+
+    const agentManager = new AgentManager({ psnAdapter });
+    const skillManager = new SkillManager({ psnAdapter });
+    const ruleManager = new RuleManager({ psnAdapter });
+    const contentSyncService = new ContentSyncService({
+      psnAdapter,
+      agentManager,
+      skillManager,
+      ruleManager,
+    });
+    const projectManager = new ProjectManager({
+      projectsDir: tempDir("dwm-content-sync-ctrl-real-projects-"),
+    });
+
+    const api = new ApplicationAPI({
+      psnAdapter,
+      agentManager,
+      skillManager,
+      ruleManager,
+      projectManager,
+      contentSyncService,
+      portableWorkspaceManager: fakeWorkspaceManager(workspaceRoot),
+    });
+
+    async function makeProject(): Promise<{ id: string; projectPath: string }> {
+      const projectPath = await makeKiloRoot();
+      const project = await projectManager.createProject("Proyecto de prueba", "", {
+        profileId: "p",
+        projectPath,
+        usedTools: [],
+        usedAdapters: [],
+      });
+      return { id: project.id, projectPath };
+    }
+
+    return { api, agentManager, workspaceRoot, psnAdapter, makeProject };
   }
 
   it("content-sync.list-catalog devuelve el estado real (preview) de cada agente del catálogo global frente al proyecto", async () => {
@@ -249,5 +293,207 @@ describe("ContentSyncController", () => {
       )
     );
     expect(response.success).toBe(false);
+  });
+
+  describe("alcance de cliente (sourceClientId)", () => {
+    it("primera vez: crea el esqueleto .kilo del cliente y asigna su contenido real a un proyecto", async () => {
+      const { api, agentManager, workspaceRoot, psnAdapter, makeProject } =
+        await buildApiWithRealProjects();
+      const clientRoot = path.join(workspaceRoot, "CLIENTES", "mci-finance");
+      await ensureClientKiloSkeleton(clientRoot);
+      await psnAdapter.scanWorkspace(clientRoot);
+      await agentManager.createAgent(
+        { id: "coordinador", content: "# Coordinador del cliente\n" },
+        clientRoot
+      );
+
+      const project = await makeProject();
+      const response = await api.execute(
+        makeRequest(
+          "content-sync.assign",
+          {
+            kind: "agent",
+            id: "coordinador",
+            targetProjectId: project.id,
+            sourceClientId: "mci-finance",
+          },
+          { caller: admin }
+        )
+      );
+
+      expect(response.success).toBe(true);
+      const raw = await fs.readFile(
+        path.join(project.projectPath, ".kilo", "agents", "coordinador.md"),
+        "utf-8"
+      );
+      expect(raw).toContain("# Coordinador del cliente");
+    });
+
+    it("asigna el contenido de un cliente a dos proyectos distintos", async () => {
+      const { api, agentManager, workspaceRoot, psnAdapter, makeProject } =
+        await buildApiWithRealProjects();
+      const clientRoot = path.join(workspaceRoot, "CLIENTES", "mci-finance");
+      await ensureClientKiloSkeleton(clientRoot);
+      await psnAdapter.scanWorkspace(clientRoot);
+      await agentManager.createAgent({ id: "coordinador", content: "# Coordinador\n" }, clientRoot);
+
+      const projectA = await makeProject();
+      const projectB = await makeProject();
+
+      for (const project of [projectA, projectB]) {
+        const response = await api.execute(
+          makeRequest(
+            "content-sync.assign",
+            {
+              kind: "agent",
+              id: "coordinador",
+              targetProjectId: project.id,
+              sourceClientId: "mci-finance",
+            },
+            { caller: admin }
+          )
+        );
+        expect(response.success).toBe(true);
+      }
+
+      for (const project of [projectA, projectB]) {
+        const raw = await fs.readFile(
+          path.join(project.projectPath, ".kilo", "agents", "coordinador.md"),
+          "utf-8"
+        );
+        expect(raw).toContain("# Coordinador");
+      }
+    });
+
+    it("retirar de un proyecto no afecta al otro (mismo origen de cliente)", async () => {
+      const { api, agentManager, workspaceRoot, psnAdapter, makeProject } =
+        await buildApiWithRealProjects();
+      const clientRoot = path.join(workspaceRoot, "CLIENTES", "mci-finance");
+      await ensureClientKiloSkeleton(clientRoot);
+      await psnAdapter.scanWorkspace(clientRoot);
+      await agentManager.createAgent({ id: "coordinador", content: "# Coordinador\n" }, clientRoot);
+
+      const projectA = await makeProject();
+      const projectB = await makeProject();
+      for (const project of [projectA, projectB]) {
+        await api.execute(
+          makeRequest(
+            "content-sync.assign",
+            {
+              kind: "agent",
+              id: "coordinador",
+              targetProjectId: project.id,
+              sourceClientId: "mci-finance",
+            },
+            { caller: admin }
+          )
+        );
+      }
+
+      const withdrawResponse = await api.execute(
+        makeRequest(
+          "content-sync.withdraw",
+          { kind: "agent", id: "coordinador", targetProjectId: projectA.id },
+          { caller: admin }
+        )
+      );
+      expect(withdrawResponse.success).toBe(true);
+
+      await expect(
+        fs.access(path.join(projectA.projectPath, ".kilo", "agents", "coordinador.md"))
+      ).rejects.toThrow();
+      const stillThere = await fs.readFile(
+        path.join(projectB.projectPath, ".kilo", "agents", "coordinador.md"),
+        "utf-8"
+      );
+      expect(stillThere).toContain("# Coordinador");
+    });
+
+    it("list-catalog con sourceClientId muestra el catálogo real del cliente, no el global", async () => {
+      const { api, agentManager, workspaceRoot, psnAdapter, makeProject } =
+        await buildApiWithRealProjects();
+      const clientRoot = path.join(workspaceRoot, "CLIENTES", "mci-finance");
+      await ensureClientKiloSkeleton(clientRoot);
+      await psnAdapter.scanWorkspace(clientRoot);
+      await agentManager.createAgent(
+        { id: "coordinador-cliente", content: "# Cliente\n" },
+        clientRoot
+      );
+      await agentManager.createAgent(
+        { id: "coordinador-global", content: "# Global\n" },
+        workspaceRoot
+      );
+
+      const project = await makeProject();
+      const response = await api.execute(
+        makeRequest(
+          "content-sync.list-catalog",
+          { kind: "agent", targetProjectId: project.id, sourceClientId: "mci-finance" },
+          { caller: admin }
+        )
+      );
+
+      expect(response.success).toBe(true);
+      if (response.success) {
+        const ids = (response.data as { id: string }[]).map((e) => e.id);
+        expect(ids).toEqual(["coordinador-cliente"]);
+      }
+    });
+
+    it("rechaza un sourceClientId con intento de path traversal, sin tocar el sistema de ficheros fuera de CLIENTES", async () => {
+      const { api, makeProject } = await buildApiWithRealProjects();
+      const project = await makeProject();
+      const response = await api.execute(
+        makeRequest(
+          "content-sync.list-catalog",
+          { kind: "agent", targetProjectId: project.id, sourceClientId: "../../etc" },
+          { caller: admin }
+        )
+      );
+      expect(response.success).toBe(false);
+    });
+
+    it("cliente inexistente (nunca usado): catálogo vacío real, no un error, y no expone rutas ni secretos", async () => {
+      const { api, makeProject } = await buildApiWithRealProjects();
+      const project = await makeProject();
+      const response = await api.execute(
+        makeRequest(
+          "content-sync.list-catalog",
+          { kind: "agent", targetProjectId: project.id, sourceClientId: "cliente-nunca-usado" },
+          { caller: admin }
+        )
+      );
+      expect(response.success).toBe(true);
+      if (response.success) expect(response.data).toEqual([]);
+    });
+
+    it("nunca expone secretos ni contenido sensible en la respuesta de asignación de cliente", async () => {
+      const { api, agentManager, workspaceRoot, psnAdapter, makeProject } =
+        await buildApiWithRealProjects();
+      const clientRoot = path.join(workspaceRoot, "CLIENTES", "mci-finance");
+      await ensureClientKiloSkeleton(clientRoot);
+      await psnAdapter.scanWorkspace(clientRoot);
+      await agentManager.createAgent(
+        { id: "coordinador", content: "# Coordinador\n\nclave-secreta-nunca-expuesta-123\n" },
+        clientRoot
+      );
+
+      const project = await makeProject();
+      const response = await api.execute(
+        makeRequest(
+          "content-sync.assign",
+          {
+            kind: "agent",
+            id: "coordinador",
+            targetProjectId: project.id,
+            sourceClientId: "mci-finance",
+          },
+          { caller: admin }
+        )
+      );
+      // El resultado de la operación (preview/applied) nunca serializa el
+      // contenido del fichero: solo metadatos de la acción realizada.
+      expect(JSON.stringify(response)).not.toContain("clave-secreta-nunca-expuesta-123");
+    });
   });
 });

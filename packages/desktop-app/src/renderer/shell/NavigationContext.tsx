@@ -4,6 +4,16 @@ import type { DesktopNavigationSection } from "../../shared/types/DesktopConfig.
 export interface NavigationContextValue {
   readonly activeSection: DesktopNavigationSection;
   setActiveSection(section: DesktopNavigationSection): void;
+  /**
+   * Cliente real a prerrellenar la próxima vez que se navegue a
+   * "provisioning" (Nuevo trabajo) — así "Crear proyecto"/"Nuevo
+   * trabajo" desde la ficha de un cliente reutilizan el mismo
+   * provisioning unificado sin pedirle de nuevo el nombre. Se limpia
+   * tras leerse una vez.
+   */
+  readonly pendingProvisioningClientName: string | undefined;
+  navigateToProvisioning(clientName?: string): void;
+  clearPendingProvisioningClientName(): void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | undefined>(undefined);
@@ -24,10 +34,22 @@ export function NavigationProvider({
   children,
 }: NavigationProviderProps): JSX.Element {
   const [activeSection, setActiveSection] = useState<DesktopNavigationSection>(initialSection);
+  const [pendingProvisioningClientName, setPendingProvisioningClientName] = useState<
+    string | undefined
+  >(undefined);
 
   const value = useMemo<NavigationContextValue>(
-    () => ({ activeSection, setActiveSection }),
-    [activeSection]
+    () => ({
+      activeSection,
+      setActiveSection,
+      pendingProvisioningClientName,
+      navigateToProvisioning: (clientName?: string) => {
+        setPendingProvisioningClientName(clientName);
+        setActiveSection("provisioning");
+      },
+      clearPendingProvisioningClientName: () => setPendingProvisioningClientName(undefined),
+    }),
+    [activeSection, pendingProvisioningClientName]
   );
 
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;

@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { useEffect, type JSX } from "react";
 import { NAVIGATION_CATALOG } from "./navigationCatalog.js";
 import { useNavigation } from "./NavigationContext.js";
 import { PageHeader } from "../design-system/composites/PageHeader/index.js";
@@ -6,6 +6,7 @@ import { EmptyState } from "../design-system/composites/EmptyState/index.js";
 import { AgentsScreen } from "../screens/agents/AgentsScreen.js";
 import { SkillsScreen } from "../screens/skills/SkillsScreen.js";
 import { RulesScreen } from "../screens/rules/RulesScreen.js";
+import { BibliotecaIAScreen } from "../screens/library/BibliotecaIAScreen.js";
 import { KnowledgeScreen } from "../screens/knowledge/KnowledgeScreen.js";
 import { ClientsScreen } from "../screens/clients/ClientsScreen.js";
 import { DashboardScreen } from "../screens/dashboard/DashboardScreen.js";
@@ -23,6 +24,7 @@ import { BackupsScreen } from "../screens/backups/BackupsScreen.js";
 import { StatusScreen } from "../screens/status/StatusScreen.js";
 import { LogsScreen } from "../screens/logs/LogsScreen.js";
 import { SettingsScreen } from "../screens/settings/SettingsScreen.js";
+import { ConfiguracionScreen } from "../screens/settings/ConfiguracionScreen.js";
 import { HelpScreen } from "../screens/help/HelpScreen.js";
 import { AboutScreen } from "../screens/about/AboutScreen.js";
 import type { DesktopNavigationSection } from "../../shared/types/DesktopConfig.js";
@@ -38,6 +40,7 @@ const IMPLEMENTED_SCREENS: Partial<Record<DesktopNavigationSection, () => JSX.El
   provisioning: ProvisioningScreen,
   workspace: WorkspaceScreen,
   projects: ProjectsScreen,
+  aiLibrary: BibliotecaIAScreen,
   agents: AgentsScreen,
   skills: SkillsScreen,
   rules: RulesScreen,
@@ -54,13 +57,56 @@ const IMPLEMENTED_SCREENS: Partial<Record<DesktopNavigationSection, () => JSX.El
   status: StatusScreen,
   logs: LogsScreen,
   settings: SettingsScreen,
+  configuration: ConfiguracionScreen,
   help: HelpScreen,
   about: AboutScreen,
 };
 
 export function ContentArea(): JSX.Element {
-  const { activeSection } = useNavigation();
+  const {
+    activeSection,
+    setActiveSection,
+    pendingProvisioningClientName,
+    clearPendingProvisioningClientName,
+  } = useNavigation();
   const Screen = IMPLEMENTED_SCREENS[activeSection];
+
+  useEffect(() => {
+    if (activeSection === "provisioning" && pendingProvisioningClientName !== undefined) {
+      clearPendingProvisioningClientName();
+    }
+  }, [activeSection]);
+
+  // Biblioteca IA sustituye completamente a AI Creator (encargo,
+  // rediseño de producto v2): la ruta antigua "aiCreator" sigue siendo
+  // una DesktopNavigationSection real y navegable por compatibilidad
+  // (nunca se elimina), pero redirige de verdad a Biblioteca IA en vez
+  // de mostrar la pantalla técnica de JSON en bruto.
+  useEffect(() => {
+    if (activeSection === "aiCreator") {
+      setActiveSection("aiLibrary");
+    }
+  }, [activeSection]);
+
+  if (activeSection === "aiCreator") {
+    return (
+      <section aria-label="Contenido" data-testid="content-area" className="dwm-content-area">
+        <BibliotecaIAScreen />
+      </section>
+    );
+  }
+
+  if (activeSection === "provisioning") {
+    return (
+      <section aria-label="Contenido" data-testid="content-area" className="dwm-content-area">
+        <ProvisioningScreen
+          {...(pendingProvisioningClientName
+            ? { initialClientName: pendingProvisioningClientName }
+            : {})}
+        />
+      </section>
+    );
+  }
 
   if (Screen) {
     return (
