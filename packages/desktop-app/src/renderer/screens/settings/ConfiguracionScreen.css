@@ -17,3 +17,13 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.dwm-configuracion-screen__group .dwm-resource-card {
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+.dwm-configuracion-screen__group .dwm-resource-card:hover {
+  box-shadow: var(--dwm-shadow-raised);
+  transform: translateY(-1px);
+}

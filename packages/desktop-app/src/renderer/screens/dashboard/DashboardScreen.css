@@ -21,6 +21,15 @@
   gap: var(--dwm-space-md);
   margin-bottom: var(--dwm-space-lg);
 }
+.dwm-dashboard__flow .dwm-resource-card {
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+.dwm-dashboard__flow .dwm-resource-card:hover {
+  box-shadow: var(--dwm-shadow-raised);
+  transform: translateY(-1px);
+}
 .dwm-dashboard__flow-icon {
   display: inline-flex;
   align-items: center;

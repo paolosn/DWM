@@ -58,7 +58,7 @@
     transform 0.15s ease;
 }
 .dwm-profiles-screen__card-wrap .dwm-resource-card:hover {
-  box-shadow: var(--dwm-shadow-card-hover, 0 4px 12px rgba(0, 0, 0, 0.08));
+  box-shadow: var(--dwm-shadow-raised);
   transform: translateY(-1px);
 }
 .dwm-profiles-screen__card-summary {
