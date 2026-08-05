@@ -63,8 +63,12 @@ const IMPLEMENTED_SCREENS: Partial<Record<DesktopNavigationSection, () => JSX.El
 };
 
 export function ContentArea(): JSX.Element {
-  const { activeSection, pendingProvisioningClientName, clearPendingProvisioningClientName } =
-    useNavigation();
+  const {
+    activeSection,
+    setActiveSection,
+    pendingProvisioningClientName,
+    clearPendingProvisioningClientName,
+  } = useNavigation();
   const Screen = IMPLEMENTED_SCREENS[activeSection];
 
   useEffect(() => {
@@ -72,6 +76,25 @@ export function ContentArea(): JSX.Element {
       clearPendingProvisioningClientName();
     }
   }, [activeSection]);
+
+  // Biblioteca IA sustituye completamente a AI Creator (encargo,
+  // rediseño de producto v2): la ruta antigua "aiCreator" sigue siendo
+  // una DesktopNavigationSection real y navegable por compatibilidad
+  // (nunca se elimina), pero redirige de verdad a Biblioteca IA en vez
+  // de mostrar la pantalla técnica de JSON en bruto.
+  useEffect(() => {
+    if (activeSection === "aiCreator") {
+      setActiveSection("aiLibrary");
+    }
+  }, [activeSection]);
+
+  if (activeSection === "aiCreator") {
+    return (
+      <section aria-label="Contenido" data-testid="content-area" className="dwm-content-area">
+        <BibliotecaIAScreen />
+      </section>
+    );
+  }
 
   if (activeSection === "provisioning") {
     return (

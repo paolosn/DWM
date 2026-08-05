@@ -204,7 +204,7 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
     },
     {
       id: "kilo-content",
-      label: "Agentes, Skills y Reglas",
+      label: "Biblioteca IA",
       content: <ProjectContentTab projectId={project.id} />,
     },
   ];

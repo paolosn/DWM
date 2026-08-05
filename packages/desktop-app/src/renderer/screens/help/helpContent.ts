@@ -53,7 +53,7 @@ export const HELP_TOPICS: readonly HelpTopic[] = [
   },
   {
     id: "ai-creator",
-    title: "AI Creator",
+    title: "Biblioteca IA",
     body: "Previsualiza siempre antes de crear: nada se escribe hasta aprobar explícitamente la previsualización.",
   },
   {

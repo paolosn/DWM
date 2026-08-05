@@ -109,4 +109,18 @@ describe("ContentArea", () => {
     expect(container.textContent).not.toContain("se implementa más adelante");
     unmount();
   });
+
+  it("la ruta antigua 'aiCreator' redirige de verdad a Biblioteca IA, nunca muestra la pantalla técnica de JSON en bruto", () => {
+    setDwm();
+    const { container, unmount } = mount(
+      <NavigationProvider initialSection="aiCreator">
+        <ToastProvider>
+          <ContentArea />
+        </ToastProvider>
+      </NavigationProvider>
+    );
+    expect(container.querySelector("h1")?.textContent).toBe("Biblioteca IA");
+    expect(container.textContent).not.toContain("AI Creator");
+    unmount();
+  });
 });
