@@ -73,6 +73,29 @@ describe("ProfilesScreen", () => {
     unmount();
   });
 
+  it("la lista muestra Cards reales del kit (nombre real, resumen visual y 'Aplicado en N proyectos'), nunca el UUID", async () => {
+    setDwm({
+      "projects.list": () => success("projects.list", ["p1"]),
+      "projects.get": () =>
+        success("projects.get", {
+          id: "p1",
+          metadata: { name: "Proyecto Uno" },
+          configuration: { profileId: "default" },
+        }),
+    });
+    const { container, unmount } = mountScreen();
+    await settle(8);
+
+    expect(container.textContent).toContain("Kit Backend");
+    expect(container.textContent).not.toContain(">default<");
+    expect(container.textContent).toContain("1 agentes");
+    expect(container.textContent).toContain("1 skills");
+    expect(container.textContent).toContain("0 reglas");
+    expect(container.textContent).toContain("IA configurada");
+    expect(container.textContent).toContain("Aplicado en 1 proyecto");
+    unmount();
+  });
+
   it("ver detalle carga profiles.get real y muestra el resumen real del kit", async () => {
     const invoke = setDwm();
     const { container, unmount } = mountScreen();

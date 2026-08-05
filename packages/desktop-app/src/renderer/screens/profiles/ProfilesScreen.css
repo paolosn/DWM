@@ -49,3 +49,21 @@
   justify-content: space-between;
   gap: var(--dwm-space-sm);
 }
+
+.dwm-profiles-screen__card-wrap .dwm-resource-card {
+  border-left: 4px solid var(--dwm-profile-color, var(--dwm-color-accent));
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+.dwm-profiles-screen__card-wrap .dwm-resource-card:hover {
+  box-shadow: var(--dwm-shadow-card-hover, 0 4px 12px rgba(0, 0, 0, 0.08));
+  transform: translateY(-1px);
+}
+.dwm-profiles-screen__card-summary {
+  display: flex;
+  gap: var(--dwm-space-xs);
+  flex-wrap: wrap;
+  margin-top: var(--dwm-space-xs);
+}
