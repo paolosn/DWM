@@ -162,6 +162,39 @@ describe("ClientFicha", () => {
     unmount();
   });
 
+  it("Resumen muestra las estadísticas rápidas reales (proyectos/agentes/skills/reglas de client.references, conexiones/documentos/actividad reales)", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "connections.list-for-client": () => success("connections.list-for-client", [{ id: "c1" }]),
+      "clients.documents": () => success("clients.documents", [{ path: "a" }, { path: "b" }]),
+      "clients.activity": () => success("clients.activity", []),
+    });
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
+    );
+    await settle();
+
+    for (const label of [
+      "Proyectos",
+      "Agentes",
+      "Skills",
+      "Reglas",
+      "Conexiones",
+      "Documentos",
+      "Actividad",
+    ]) {
+      expect(container.textContent).toContain(label);
+    }
+    const statsSection = container.querySelector(".dwm-client-ficha__stats") as HTMLElement;
+    expect(statsSection.textContent).toContain("1"); // proyectos: ["p1"]
+    expect(statsSection.textContent).toContain("2"); // documentos reales
+    unmount();
+  });
+
   it("Proyectos resuelve cada id real vía projects.get y permite abrir en VS Code", async () => {
     const invoke = setDwm({
       "clients.get": () => success("clients.get", baseClient),

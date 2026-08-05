@@ -8,6 +8,7 @@ import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js";
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
+import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ClientRelationsPanel } from "./ClientRelationsPanel.js";
@@ -35,6 +36,34 @@ function ResumenTab({
   const { showToast } = useToast();
   const { navigateToProvisioning } = useNavigation();
   const [mainProject, setMainProject] = useState<Project | undefined>(undefined);
+  const [extraStats, setExtraStats] = useState<{
+    readonly connections: number;
+    readonly documents: number;
+    readonly activity: number;
+  }>({ connections: 0, documents: 0, activity: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [connections, documents, activity] = await Promise.all([
+        callOperation("connections.list-for-client", { clientId: client.id }).catch(
+          () => undefined
+        ),
+        callOperation("clients.documents", { id: client.id }).catch(() => undefined),
+        callOperation("clients.activity", { id: client.id }).catch(() => undefined),
+      ]);
+      if (!cancelled) {
+        setExtraStats({
+          connections: (connections ?? []).length,
+          documents: (documents ?? []).length,
+          activity: (activity ?? []).length,
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +96,15 @@ function ResumenTab({
 
   return (
     <div className="dwm-client-ficha__resumen">
+      <div className="dwm-client-ficha__stats">
+        <ResourceCard title={String(client.references.projects.length)} description="Proyectos" />
+        <ResourceCard title={String(client.references.agents.length)} description="Agentes" />
+        <ResourceCard title={String(client.references.skills.length)} description="Skills" />
+        <ResourceCard title={String(client.references.rules.length)} description="Reglas" />
+        <ResourceCard title={String(extraStats.connections)} description="Conexiones" />
+        <ResourceCard title={String(extraStats.documents)} description="Documentos" />
+        <ResourceCard title={String(extraStats.activity)} description="Actividad" />
+      </div>
       <div className="dwm-client-ficha__primary-actions">
         <Button onClick={() => navigateToProvisioning(client.name)}>Nuevo trabajo</Button>
         <Button variant="secondary" onClick={() => navigateToProvisioning(client.name)}>

@@ -78,7 +78,7 @@ describe("ContentArea", () => {
         </ToastProvider>
       </NavigationProvider>
     );
-    expect(container.querySelector("h1")?.textContent).toBe("Inicio");
+    expect(container.querySelector("h1")?.textContent).toBe("Bienvenido a DWM");
     expect(container.textContent).not.toContain("se implementa más adelante");
     unmount();
   });

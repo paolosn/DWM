@@ -2,9 +2,17 @@
 import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DashboardScreen } from "../../../../../src/renderer/screens/dashboard/DashboardScreen.js";
-import { NavigationProvider } from "../../../../../src/renderer/shell/NavigationContext.js";
+import {
+  NavigationProvider,
+  useNavigation,
+} from "../../../../../src/renderer/shell/NavigationContext.js";
 import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
+
+function ActiveSectionProbe(): JSX.Element {
+  const { activeSection } = useNavigation();
+  return <span data-testid="active-section">{activeSection}</span>;
+}
 
 const originalDwm = window.dwm;
 
@@ -150,6 +158,49 @@ describe("DashboardScreen — acciones adicionales", () => {
     );
     click(button ?? null);
     expect(button).toBeDefined();
+    unmount();
+  });
+
+  it("muestra el bloque de bienvenida real y las 5 Cards del flujo recomendado (Cliente → Nuevo trabajo → Biblioteca IA → Centro de trabajo → Configuración)", async () => {
+    setDwm();
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    expect(container.textContent).toContain("Bienvenido a DWM");
+    expect(container.textContent).toContain(
+      "DWM organiza clientes, proyectos, conocimiento e IA en un único flujo de trabajo."
+    );
+    for (const title of [
+      "Crear cliente",
+      "Nuevo trabajo",
+      "Biblioteca IA",
+      "Centro de trabajo",
+      "Configuración",
+    ]) {
+      expect(container.textContent).toContain(title);
+    }
+    unmount();
+  });
+
+  it("cada Card del flujo navega de verdad a su sección real (reutiliza useNavigation, sin mecanismo nuevo)", async () => {
+    setDwm();
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ActiveSectionProbe />
+        <DashboardScreen />
+      </NavigationProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir Biblioteca IA"
+      ) ?? null
+    );
+    await settle();
+    expect(container.querySelector('[data-testid="active-section"]')?.textContent).toBe(
+      "aiLibrary"
+    );
     unmount();
   });
 });

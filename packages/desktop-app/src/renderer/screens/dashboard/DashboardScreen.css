@@ -1,3 +1,37 @@
+.dwm-dashboard__welcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+  margin-bottom: var(--dwm-space-md);
+}
+.dwm-dashboard__welcome-title {
+  margin: 0;
+  font-size: var(--dwm-font-size-screen-title);
+  font-weight: 700;
+}
+.dwm-dashboard__welcome-subtitle {
+  margin: 0;
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-body);
+  max-width: 640px;
+}
+.dwm-dashboard__flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--dwm-space-md);
+  margin-bottom: var(--dwm-space-lg);
+}
+.dwm-dashboard__flow-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--dwm-radius-card);
+  background: color-mix(in srgb, var(--dwm-color-accent) 12%, transparent);
+  color: var(--dwm-color-accent);
+  margin-bottom: var(--dwm-space-xs);
+}
 .dwm-dashboard__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
