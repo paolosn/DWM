@@ -26,10 +26,15 @@ interface ClientCardStats {
  * archivar/creación tal cual. Sin `clients.duplicate` (no existe en
  * el contrato). El detalle inyecta `ClientFicha` sin tocarla.
  */
-export function ClientsScreen(): JSX.Element {
+export interface ClientsScreenProps {
+  /** Cuando es true, abre el formulario de creación directamente al montar (encargo: "Crear cliente" en Inicio debe abrir el formulario real, no solo la lista). */
+  readonly autoOpenCreate?: boolean;
+}
+
+export function ClientsScreen({ autoOpenCreate = false }: ClientsScreenProps = {}): JSX.Element {
   const [search, setSearch] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(autoOpenCreate);
   const [detailClientId, setDetailClientId] = useState<string | undefined>(undefined);
   const [pendingDelete, setPendingDelete] = useState<ClientSummary | undefined>(undefined);
   const [statsById, setStatsById] = useState<Record<string, ClientCardStats>>({});

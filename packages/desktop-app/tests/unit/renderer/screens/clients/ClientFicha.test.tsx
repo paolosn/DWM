@@ -563,4 +563,196 @@ describe("ClientFicha", () => {
     expect((openCall?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
     unmount();
   });
+
+  describe("'Abrir proyecto principal' — nunca asume silenciosamente el primero", () => {
+    it("con 0 proyectos reales, no muestra el botón", async () => {
+      const withoutProjects = {
+        ...baseClient,
+        references: { ...baseClient.references, projects: [] },
+      };
+      setDwm({ "clients.get": () => success("clients.get", withoutProjects) });
+      const { container, unmount } = mount(
+        <NavigationProvider>
+          <ToastProvider>
+            <ClientFicha clientId="mci-finance" />
+          </ToastProvider>
+        </NavigationProvider>
+      );
+      await settle(8);
+
+      expect(
+        Array.from(container.querySelectorAll("button")).some(
+          (b) => b.textContent === "Abrir proyecto principal"
+        )
+      ).toBe(false);
+      unmount();
+    });
+
+    it("con 1 proyecto real, lo abre directamente sin mostrar selector", async () => {
+      const invoke = setDwm({
+        "clients.get": () => success("clients.get", baseClient),
+        "projects.get": () => success("projects.get", baseProject),
+        "projects.open-in-vscode": () =>
+          success("projects.open-in-vscode", { opened: true, message: "VS Code abierto." }),
+      });
+      const { container, unmount } = mount(
+        <NavigationProvider>
+          <ToastProvider>
+            <ClientFicha clientId="mci-finance" />
+          </ToastProvider>
+        </NavigationProvider>
+      );
+      await settle(8);
+
+      click(
+        Array.from(container.querySelectorAll("button")).find(
+          (b) => b.textContent === "Abrir proyecto principal"
+        ) ?? null
+      );
+      await settle();
+
+      expect(container.querySelector('[role="dialog"]')).toBeNull();
+      const openCall = invoke.mock.calls.find(
+        (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+      );
+      expect((openCall?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
+      unmount();
+    });
+
+    it("con varios proyectos reales, muestra un selector real por nombre en vez de abrir el primero silenciosamente", async () => {
+      const secondProject = {
+        ...baseProject,
+        id: "p2",
+        metadata: { ...baseProject.metadata, id: "p2", name: "Portal Interno" },
+      };
+      const withTwoProjects = {
+        ...baseClient,
+        references: { ...baseClient.references, projects: ["p1", "p2"] },
+      };
+      const invoke = setDwm({
+        "clients.get": () => success("clients.get", withTwoProjects),
+        "projects.get": (payload) => {
+          const p = payload as { id: string };
+          return success("projects.get", p.id === "p2" ? secondProject : baseProject);
+        },
+        "projects.open-in-vscode": () =>
+          success("projects.open-in-vscode", { opened: true, message: "VS Code abierto." }),
+      });
+      const { container, unmount } = mount(
+        <NavigationProvider>
+          <ToastProvider>
+            <ClientFicha clientId="mci-finance" />
+          </ToastProvider>
+        </NavigationProvider>
+      );
+      await settle(8);
+
+      click(
+        Array.from(container.querySelectorAll("button")).find(
+          (b) => b.textContent === "Abrir proyecto principal"
+        ) ?? null
+      );
+      await settle();
+
+      // Nunca abre directamente: exige elegir explícitamente en el selector real.
+      expect(
+        invoke.mock.calls.some(
+          (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+        )
+      ).toBe(false);
+      const dialog = container.querySelector('[role="dialog"]') as HTMLElement;
+      expect(dialog.textContent).toContain("Portal de Clientes");
+      expect(dialog.textContent).toContain("Portal Interno");
+
+      const select = dialog.querySelector("select") as HTMLSelectElement;
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLSelectElement.prototype,
+        "value"
+      )?.set;
+      act(() => {
+        setter?.call(select, "p2");
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await settle();
+      click(
+        Array.from(dialog.querySelectorAll("button")).find(
+          (b) => b.textContent === "Abrir en VS Code"
+        ) ?? null
+      );
+      await settle();
+
+      const openCall = invoke.mock.calls.find(
+        (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+      );
+      expect((openCall?.[0] as { payload: { id: string } }).payload.id).toBe("p2");
+      unmount();
+    });
+  });
+
+  describe("Pestaña Perfiles — 'Perfiles en uso' (cualquier origen, nunca UUID)", () => {
+    it("muestra perfiles globales y de cliente realmente aplicados a proyectos de este cliente, con nombre/descripción/proyectos, nunca el UUID", async () => {
+      const globalProfile = {
+        id: "a3f9e21c-uuid-real-global",
+        metadata: { name: "Kit Global", description: "Aplicable a cualquier cliente." },
+        configuration: {},
+      };
+      const clientProfile = {
+        id: "b7e2f9a1-uuid-real-cliente",
+        metadata: { name: "Kit MCI", description: "Propio de MCI Finance." },
+        configuration: { sourceClientId: "mci-finance" },
+      };
+      const secondProject = {
+        ...baseProject,
+        id: "p2",
+        metadata: { ...baseProject.metadata, id: "p2", name: "Portal Interno" },
+        configuration: { ...baseProject.configuration, profileId: "b7e2f9a1-uuid-real-cliente" },
+      };
+      const withTwoProjects = {
+        ...baseClient,
+        references: { ...baseClient.references, projects: ["p1", "p2"] },
+      };
+      setDwm({
+        "clients.get": () => success("clients.get", withTwoProjects),
+        "projects.get": (payload) => {
+          const p = payload as { id: string };
+          return success("projects.get", p.id === "p2" ? secondProject : baseProject);
+        },
+        "profiles.list": () =>
+          success("profiles.list", ["a3f9e21c-uuid-real-global", "b7e2f9a1-uuid-real-cliente"]),
+        "profiles.get": (payload) => {
+          const p = payload as { id: string };
+          if (p.id === "a3f9e21c-uuid-real-global") return success("profiles.get", globalProfile);
+          if (p.id === "b7e2f9a1-uuid-real-cliente") return success("profiles.get", clientProfile);
+          return success("profiles.get", undefined);
+        },
+      });
+      const { container, unmount } = mount(
+        <NavigationProvider>
+          <ToastProvider>
+            <ClientFicha clientId="mci-finance" />
+          </ToastProvider>
+        </NavigationProvider>
+      );
+      await settle(8);
+
+      click(
+        Array.from(container.querySelectorAll('[role="tab"]')).find(
+          (t) => t.textContent === "Perfiles"
+        ) ?? null
+      );
+      await settle(8);
+
+      const enUsoSection = Array.from(container.querySelectorAll("section")).find((s) =>
+        s.querySelector("h3")?.textContent?.includes("Perfiles en uso")
+      ) as HTMLElement;
+
+      // baseProject usa profileId "p" (sin perfil real resuelto) -> solo el segundo proyecto aporta un perfil real en uso.
+      expect(enUsoSection.textContent).toContain("Kit MCI");
+      expect(enUsoSection.textContent).toContain("Propio de MCI Finance.");
+      expect(enUsoSection.textContent).toContain("Portal Interno");
+      expect(container.textContent).not.toContain("a3f9e21c-uuid-real-global");
+      expect(container.textContent).not.toContain("b7e2f9a1-uuid-real-cliente");
+      unmount();
+    });
+  });
 });

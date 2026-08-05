@@ -14,6 +14,14 @@ export interface NavigationContextValue {
   readonly pendingProvisioningClientName: string | undefined;
   navigateToProvisioning(clientName?: string): void;
   clearPendingProvisioningClientName(): void;
+  /**
+   * Indica que, al navegar a "clients", el formulario de creación debe
+   * abrirse directamente (encargo: "Crear cliente" en Inicio debe abrir
+   * el formulario real, no solo la lista). Se limpia tras leerse una vez.
+   */
+  readonly pendingClientCreate: boolean;
+  navigateToClientsAndCreate(): void;
+  clearPendingClientCreate(): void;
 }
 
 const NavigationContext = createContext<NavigationContextValue | undefined>(undefined);
@@ -37,6 +45,7 @@ export function NavigationProvider({
   const [pendingProvisioningClientName, setPendingProvisioningClientName] = useState<
     string | undefined
   >(undefined);
+  const [pendingClientCreate, setPendingClientCreate] = useState(false);
 
   const value = useMemo<NavigationContextValue>(
     () => ({
@@ -48,8 +57,14 @@ export function NavigationProvider({
         setActiveSection("provisioning");
       },
       clearPendingProvisioningClientName: () => setPendingProvisioningClientName(undefined),
+      pendingClientCreate,
+      navigateToClientsAndCreate: () => {
+        setPendingClientCreate(true);
+        setActiveSection("clients");
+      },
+      clearPendingClientCreate: () => setPendingClientCreate(false),
     }),
-    [activeSection, pendingProvisioningClientName]
+    [activeSection, pendingProvisioningClientName, pendingClientCreate]
   );
 
   return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;

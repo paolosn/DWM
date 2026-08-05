@@ -10,6 +10,7 @@ import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
 import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
+import { Select } from "../../design-system/primitives/Select/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ClientRelationsPanel } from "./ClientRelationsPanel.js";
 import { ClientConnectionsPanel } from "./ClientConnectionsPanel.js";
@@ -35,7 +36,11 @@ function ResumenTab({
 }): JSX.Element {
   const { showToast } = useToast();
   const { navigateToProvisioning } = useNavigation();
-  const [mainProject, setMainProject] = useState<Project | undefined>(undefined);
+  const [clientProjects, setClientProjects] = useState<
+    readonly { readonly id: string; readonly name: string }[] | undefined
+  >(undefined);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
+  const [pickedProjectId, setPickedProjectId] = useState("");
   const [extraStats, setExtraStats] = useState<{
     readonly connections: number;
     readonly documents: number;
@@ -68,23 +73,27 @@ function ResumenTab({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const firstId = client.references.projects[0];
-      if (!firstId) {
-        setMainProject(undefined);
-        return;
-      }
-      const project = await callOperation("projects.get", { id: firstId }).catch(() => undefined);
-      if (!cancelled) setMainProject(project);
+      const details = await Promise.all(
+        client.references.projects.map((id) =>
+          callOperation("projects.get", { id }).catch(() => undefined)
+        )
+      );
+      if (cancelled) return;
+      setClientProjects(
+        (details.filter(Boolean) as { id: string; metadata: { name: string } }[]).map((p) => ({
+          id: p.id,
+          name: p.metadata.name,
+        }))
+      );
     })();
     return () => {
       cancelled = true;
     };
   }, [client.references.projects]);
 
-  async function openMainProject(): Promise<void> {
-    if (!mainProject) return;
+  async function openProjectInVSCode(projectId: string): Promise<void> {
     try {
-      const result = await callOperation("projects.open-in-vscode", { id: mainProject.id });
+      const result = await callOperation("projects.open-in-vscode", { id: projectId });
       showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
     } catch (err) {
       showToast({
@@ -92,6 +101,23 @@ function ResumenTab({
         tone: "danger",
       });
     }
+  }
+
+  /**
+   * "Abrir proyecto principal" — nunca asume silenciosamente el primer
+   * proyecto (encargo): con 1 proyecto real lo abre directamente; con
+   * varios, muestra un selector real por nombre para que el usuario
+   * elija. Reutiliza exclusivamente projects.open-in-vscode ya
+   * existente.
+   */
+  async function handleOpenMainProject(): Promise<void> {
+    if (!clientProjects || clientProjects.length === 0) return;
+    if (clientProjects.length === 1) {
+      await openProjectInVSCode(clientProjects[0]!.id);
+      return;
+    }
+    setPickedProjectId("");
+    setProjectPickerOpen(true);
   }
 
   return (
@@ -113,12 +139,34 @@ function ResumenTab({
         <Button variant="secondary" onClick={() => onGoToTab("biblioteca-ia")}>
           Crear con IA
         </Button>
-        {mainProject && (
-          <Button variant="secondary" onClick={() => void openMainProject()}>
+        {clientProjects && clientProjects.length > 0 && (
+          <Button variant="secondary" onClick={() => void handleOpenMainProject()}>
             Abrir proyecto principal
           </Button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={projectPickerOpen}
+        title="Elige el proyecto a abrir"
+        description="Este cliente tiene varios proyectos reales — elige cuál abrir en VS Code."
+        confirmLabel="Abrir en VS Code"
+        onCancel={() => setProjectPickerOpen(false)}
+        onConfirm={() => {
+          if (!pickedProjectId) return;
+          setProjectPickerOpen(false);
+          void openProjectInVSCode(pickedProjectId);
+        }}
+      >
+        <Select
+          label="Proyecto"
+          placeholder="Elige un proyecto"
+          options={(clientProjects ?? []).map((p) => ({ value: p.id, label: p.name }))}
+          value={pickedProjectId}
+          onChange={(e) => setPickedProjectId(e.target.value)}
+        />
+      </ConfirmDialog>
+
       <dl>
         <dt>Nombre / empresa</dt>
         <dd>{client.name}</dd>
@@ -407,6 +455,15 @@ function PerfilesTab({ client }: { readonly client: Client }): JSX.Element {
     | readonly { readonly id: string; readonly name: string; readonly description: string }[]
     | undefined
   >(undefined);
+  const [profilesInUse, setProfilesInUse] = useState<
+    | readonly {
+        readonly id: string;
+        readonly name: string;
+        readonly description: string;
+        readonly projectNames: readonly string[];
+      }[]
+    | undefined
+  >(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -437,30 +494,115 @@ function PerfilesTab({ client }: { readonly client: Client }): JSX.Element {
     };
   }, [client.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      // "Perfiles en uso" (encargo): perfiles de CUALQUIER origen
+      // (global o de otro cliente) que estén realmente aplicados a
+      // alguno de los proyectos reales de este cliente -- distinto de
+      // "propios" (arriba), que solo filtra por sourceClientId. Datos
+      // reales ya existentes (client.references.projects,
+      // projects.get, profiles.get): sin almacenamiento nuevo.
+      const projectDetails = await Promise.all(
+        client.references.projects.map((id) =>
+          callOperation("projects.get", { id }).catch(() => undefined)
+        )
+      );
+      const realProjects = projectDetails.filter(Boolean) as {
+        id: string;
+        metadata: { name: string };
+        configuration: { profileId: string };
+      }[];
+
+      const projectNamesByProfileId = new Map<string, string[]>();
+      for (const project of realProjects) {
+        const names = projectNamesByProfileId.get(project.configuration.profileId) ?? [];
+        names.push(project.metadata.name);
+        projectNamesByProfileId.set(project.configuration.profileId, names);
+      }
+
+      const entries = await Promise.all(
+        Array.from(projectNamesByProfileId.entries()).map(async ([profileId, projectNames]) => {
+          const profile = await callOperation("profiles.get", { id: profileId }).catch(
+            () => undefined
+          );
+          return { profileId, projectNames, profile };
+        })
+      );
+      if (cancelled) return;
+      setProfilesInUse(
+        entries
+          .filter((entry) => entry.profile)
+          .map((entry) => ({
+            id: entry.profileId,
+            name: entry.profile!.metadata.name,
+            description: entry.profile!.metadata.description,
+            projectNames: entry.projectNames,
+          }))
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [client.references.projects]);
+
   if (profiles === undefined) return <Spinner label="Cargando perfiles…" />;
 
   return (
     <div className="dwm-client-ficha__perfiles">
-      <p className="dwm-client-ficha__perfiles-hint">
-        Kits de trabajo cuyo catálogo real (agentes/skills/reglas/MCP) sale de este cliente.
-      </p>
-      {profiles.length === 0 ? (
-        <EmptyState title="Este cliente todavía no tiene ningún kit de perfil propio." />
-      ) : (
-        <ul className="dwm-client-ficha__perfiles-list">
-          {profiles.map((profile) => (
-            <li key={profile.id} className="dwm-client-ficha__perfiles-row">
-              <div>
-                <strong>{profile.name}</strong>
-                <p>{profile.description || "—"}</p>
-              </div>
-              <Button variant="secondary" onClick={() => setActiveSection("profiles")}>
-                Gestionar en Perfiles
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <section>
+        <h3>Perfiles en uso</h3>
+        <p className="dwm-client-ficha__perfiles-hint">
+          Kits realmente aplicados a los proyectos de este cliente, sea cual sea su origen (global o
+          de otro cliente).
+        </p>
+        {profilesInUse === undefined && <Spinner label="Cargando perfiles en uso…" />}
+        {profilesInUse !== undefined && profilesInUse.length === 0 && (
+          <EmptyState title="Ningún proyecto de este cliente tiene un perfil aplicado todavía." />
+        )}
+        {profilesInUse !== undefined && profilesInUse.length > 0 && (
+          <ul className="dwm-client-ficha__perfiles-list">
+            {profilesInUse.map((profile) => (
+              <li key={profile.id} className="dwm-client-ficha__perfiles-row">
+                <div>
+                  <strong>{profile.name}</strong>
+                  <p>{profile.description || "—"}</p>
+                  <p className="dwm-client-ficha__perfiles-hint">
+                    Aplicado en: {profile.projectNames.join(", ")}
+                  </p>
+                </div>
+                <Button variant="secondary" onClick={() => setActiveSection("profiles")}>
+                  Gestionar en Perfiles
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h3>Perfiles propios de este cliente</h3>
+        <p className="dwm-client-ficha__perfiles-hint">
+          Kits de trabajo cuyo catálogo real (agentes/skills/reglas/MCP) sale de este cliente.
+        </p>
+        {profiles.length === 0 ? (
+          <EmptyState title="Este cliente todavía no tiene ningún kit de perfil propio." />
+        ) : (
+          <ul className="dwm-client-ficha__perfiles-list">
+            {profiles.map((profile) => (
+              <li key={profile.id} className="dwm-client-ficha__perfiles-row">
+                <div>
+                  <strong>{profile.name}</strong>
+                  <p>{profile.description || "—"}</p>
+                </div>
+                <Button variant="secondary" onClick={() => setActiveSection("profiles")}>
+                  Gestionar en Perfiles
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <Button variant="secondary" onClick={() => setActiveSection("profiles")}>
         Crear un kit para este cliente
       </Button>

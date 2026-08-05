@@ -12,6 +12,11 @@
   font-size: var(--dwm-font-size-section-title);
   margin: 0 0 var(--dwm-space-sm);
 }
+.dwm-provisioning-screen__card-description {
+  margin: 0 0 var(--dwm-space-md);
+  color: var(--dwm-color-text-secondary);
+  font-size: var(--dwm-font-size-body);
+}
 .dwm-provisioning-screen__form {
   display: flex;
   flex-direction: column;

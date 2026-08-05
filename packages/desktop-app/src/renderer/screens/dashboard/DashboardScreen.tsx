@@ -78,7 +78,7 @@ const FLOW_CARDS: readonly FlowCard[] = [
  * backups que ya existía, sin cambios de comportamiento.
  */
 export function DashboardScreen(): JSX.Element {
-  const { setActiveSection } = useNavigation();
+  const { setActiveSection, navigateToClientsAndCreate } = useNavigation();
   const health = useShellHealth();
   const projectsQuery = useDwmQuery("projects.list", {});
   const backupsQuery = useDwmQuery("backups.list", {});
@@ -97,20 +97,26 @@ export function DashboardScreen(): JSX.Element {
       </div>
 
       <div className="dwm-dashboard__flow">
-        {FLOW_CARDS.map((flow) => (
-          <ResourceCard
-            key={flow.section}
-            title={flow.title}
-            description={flow.description}
-            onClick={() => setActiveSection(flow.section)}
-            meta={
-              <span className="dwm-dashboard__flow-icon" aria-hidden="true">
-                <flow.icon size={20} />
-              </span>
-            }
-            trailing={<Button onClick={() => setActiveSection(flow.section)}>{flow.cta}</Button>}
-          />
-        ))}
+        {FLOW_CARDS.map((flow) => {
+          const activate =
+            flow.section === "clients"
+              ? navigateToClientsAndCreate
+              : () => setActiveSection(flow.section);
+          return (
+            <ResourceCard
+              key={flow.section}
+              title={flow.title}
+              description={flow.description}
+              onClick={activate}
+              meta={
+                <span className="dwm-dashboard__flow-icon" aria-hidden="true">
+                  <flow.icon size={20} />
+                </span>
+              }
+              trailing={<Button onClick={activate}>{flow.cta}</Button>}
+            />
+          );
+        })}
       </div>
 
       <div className="dwm-dashboard__grid">

@@ -41,6 +41,17 @@ const CATEGORY_LABEL: Record<Category, string> = {
   directo: "Nuevo proyecto directo",
 };
 
+const CATEGORY_DESCRIPTION: Record<Category, string> = {
+  viabilidad:
+    "Analiza con IA si el trabajo es viable (objetivo, plazo, riesgos) antes de crear nada. Recomendado cuando todavía no tienes claro el alcance.",
+  auditoria:
+    "Revisa con IA un proyecto o idea ya definida en busca de problemas y mejoras antes de arrancar. Recomendado cuando el trabajo ya está acotado y quieres una segunda opinión.",
+  seguridad:
+    "Analiza con IA los riesgos de seguridad de un trabajo antes de comenzar. Recomendado para proyectos que manejarán datos sensibles o accesos críticos.",
+  directo:
+    "Crea el proyecto directamente, sin análisis previo. Recomendado cuando ya sabes exactamente qué vas a construir.",
+};
+
 const TIPO_TRABAJO_OPTIONS = [
   { value: "wordpress", label: "WordPress" },
   { value: "web", label: "Web" },
@@ -436,6 +447,9 @@ export function ProvisioningScreen({
           {(Object.keys(CATEGORY_LABEL) as Category[]).map((cat) => (
             <Card key={cat}>
               <h2 className="dwm-provisioning-screen__card-title">{CATEGORY_LABEL[cat]}</h2>
+              <p className="dwm-provisioning-screen__card-description">
+                {CATEGORY_DESCRIPTION[cat]}
+              </p>
               <Button onClick={() => setCategory(cat)}>Empezar</Button>
             </Card>
           ))}
