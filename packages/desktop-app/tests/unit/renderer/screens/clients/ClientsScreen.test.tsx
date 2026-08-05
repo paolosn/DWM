@@ -3,9 +3,17 @@ import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ClientsScreen } from "../../../../../src/renderer/screens/clients/ClientsScreen.js";
 import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
-import { NavigationProvider } from "../../../../../src/renderer/shell/NavigationContext.js";
+import {
+  NavigationProvider,
+  useNavigation,
+} from "../../../../../src/renderer/shell/NavigationContext.js";
 import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
+
+function ActiveSectionProbe(): JSX.Element {
+  const { activeSection } = useNavigation();
+  return <span data-testid="active-section">{activeSection}</span>;
+}
 
 const originalDwm = window.dwm;
 
@@ -72,6 +80,82 @@ describe("ClientsScreen", () => {
     unmount();
   });
 
+  it("cada Card muestra proyectos/conexiones reales y 'Nuevo trabajo' navega al provisioning unificado con el cliente prerrellenado", async () => {
+    const invoke = vi.fn().mockImplementation((request: { operation: string }) => {
+      if (request.operation === "clients.list") {
+        return Promise.resolve({
+          success: true,
+          requestId: "x",
+          operation: "clients.list",
+          data: [
+            {
+              id: "c1",
+              name: "MCI Finance",
+              slug: "mci-finance",
+              status: "active",
+              tags: [],
+              archived: false,
+              createdAt: "x",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        });
+      }
+      if (request.operation === "clients.get") {
+        return Promise.resolve({
+          success: true,
+          requestId: "x",
+          operation: "clients.get",
+          data: {
+            id: "c1",
+            references: {
+              projects: ["p1", "p2"],
+              knowledge: [],
+              agents: [],
+              skills: [],
+              rules: [],
+            },
+          },
+        });
+      }
+      if (request.operation === "connections.list-for-client") {
+        return Promise.resolve({
+          success: true,
+          requestId: "x",
+          operation: "connections.list-for-client",
+          data: [{ id: "conn1" }],
+        });
+      }
+      return Promise.reject(new Error(`no mockeada: ${request.operation}`));
+    });
+    setDwm(invoke);
+
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ActiveSectionProbe />
+        <ToastProvider>
+          <ClientsScreen />
+        </ToastProvider>
+      </NavigationProvider>
+    );
+    await settle(8);
+
+    expect(container.textContent).toContain("2 proyectos");
+    expect(container.textContent).toContain("1 conexiones");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Nuevo trabajo"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.querySelector('[data-testid="active-section"]')?.textContent).toBe(
+      "provisioning"
+    );
+    unmount();
+  });
+
   it("no ofrece la acción 'Duplicar' (no existe en el contrato de clients)", async () => {
     const invoke = vi.fn().mockResolvedValue({
       success: true,
@@ -99,7 +183,7 @@ describe("ClientsScreen", () => {
       (el) => el.textContent
     );
     expect(labels).not.toContain("Duplicar");
-    expect(labels).toEqual(["Ver cliente", "Archivar", "Eliminar"]);
+    expect(labels).toEqual(["Archivar", "Eliminar"]);
     unmount();
   });
 
@@ -147,11 +231,11 @@ describe("ClientsScreen", () => {
     const { container, unmount } = mountScreen();
     await settle();
 
-    click(container.querySelector('button[aria-label="Acciones para MCI Finance"]'));
-    const detailItem = Array.from(container.querySelectorAll('[role="menuitem"]')).find(
-      (el) => el.textContent === "Ver cliente"
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Ver cliente"
+      ) ?? null
     );
-    click(detailItem ?? null);
     await settle();
 
     const getCall = invoke.mock.calls.find(
