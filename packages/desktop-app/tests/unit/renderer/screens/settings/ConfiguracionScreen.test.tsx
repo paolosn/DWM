@@ -59,4 +59,31 @@ describe("ConfiguracionScreen", () => {
     expect(container.querySelector('[data-testid="active-section"]')?.textContent).toBe("profiles");
     unmount();
   });
+
+  it("agrupa las secciones por categoría real (Sistema/IA/Conocimiento/Workspace/Herramientas/Diagnóstico/Ayuda), no como lista plana", () => {
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ConfiguracionScreen />
+      </NavigationProvider>
+    );
+
+    const groupTitles = Array.from(container.querySelectorAll("h2")).map((h) => h.textContent);
+    expect(groupTitles).toEqual([
+      "Workspace",
+      "IA",
+      "Conocimiento",
+      "Herramientas",
+      "Sistema",
+      "Diagnóstico",
+      "Ayuda",
+    ]);
+
+    const iaGroup = Array.from(container.querySelectorAll("section")).find(
+      (s) => s.querySelector("h2")?.textContent === "IA"
+    ) as HTMLElement;
+    expect(iaGroup.textContent).toContain("Perfiles");
+    expect(iaGroup.textContent).toContain("IA y modelos");
+    expect(iaGroup.textContent).not.toContain("Conocimiento");
+    unmount();
+  });
 });

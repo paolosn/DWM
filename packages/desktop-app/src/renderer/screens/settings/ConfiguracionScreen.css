@@ -3,3 +3,17 @@
   flex-direction: column;
   gap: var(--dwm-space-lg);
 }
+
+.dwm-configuracion-screen__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-configuracion-screen__group-title {
+  margin: 0;
+  font-size: var(--dwm-font-size-section-title);
+  font-weight: 600;
+  color: var(--dwm-color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
