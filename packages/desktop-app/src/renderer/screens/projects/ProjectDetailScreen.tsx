@@ -112,18 +112,46 @@ function ProjectSummaryPanel({
       let unchanged = 0;
       let pending = 0;
       for (const kind of CONTENT_KINDS) {
-        try {
-          const entries = (await callOperation("content-sync.list-catalog", {
-            kind,
-            targetProjectId: project.id,
-          })) as { readonly preview: { readonly action: string } }[];
-          for (const entry of entries) {
-            if (entry.preview.action === "conflict") conflicts += 1;
-            else if (entry.preview.action === "unchanged") unchanged += 1;
-            else pending += 1;
-          }
-        } catch {
-          // El catálogo global puede no estar disponible: ese tipo simplemente no aporta al resumen.
+        // Estado agregado real: combina el catálogo global y el del
+        // cliente del proyecto (si tiene uno), reutilizando
+        // exclusivamente content-sync.list-catalog (mismo motor que ya
+        // usa ContentLibraryPanel) — nunca un segundo sistema. Un
+        // elemento aplicado por un perfil sincroniza literalmente desde
+        // uno de estos dos orígenes reales (ProfileSyncService reutiliza
+        // ContentSyncService.assign), así que ya queda contado aquí sin
+        // fabricar una categoría "perfil" separada que no tiene una
+        // señal real que la respalde. El contenido propio del proyecto
+        // (que no aparece en ningún catálogo real) no se cuenta como
+        // conflicto ni pendiente: simplemente no participa en este
+        // agregado.
+        const [globalEntries, clientEntries] = await Promise.all([
+          callOperation("content-sync.list-catalog", { kind, targetProjectId: project.id }).catch(
+            () => [] as { readonly id: string; readonly preview: { readonly action: string } }[]
+          ),
+          project.configuration.clientId
+            ? callOperation("content-sync.list-catalog", {
+                kind,
+                targetProjectId: project.id,
+                sourceClientId: project.configuration.clientId,
+              }).catch(
+                () => [] as { readonly id: string; readonly preview: { readonly action: string } }[]
+              )
+            : Promise.resolve(
+                [] as { readonly id: string; readonly preview: { readonly action: string } }[]
+              ),
+        ]);
+
+        const byId = new Map<string, { readonly action: string }[]>();
+        for (const entry of [...globalEntries, ...clientEntries]) {
+          const actions = byId.get(entry.id) ?? [];
+          actions.push(entry.preview);
+          byId.set(entry.id, actions);
+        }
+
+        for (const actions of byId.values()) {
+          if (actions.some((a) => a.action === "conflict")) conflicts += 1;
+          else if (actions.some((a) => a.action === "unchanged")) unchanged += 1;
+          else pending += 1;
         }
       }
       if (!cancelled) setSyncSummary({ conflicts, unchanged, pending });
@@ -131,7 +159,7 @@ function ProjectSummaryPanel({
     return () => {
       cancelled = true;
     };
-  }, [project.id]);
+  }, [project.id, project.configuration.clientId]);
 
   async function openVSCode(): Promise<void> {
     try {

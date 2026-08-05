@@ -384,4 +384,161 @@ describe("ProjectDetailScreen", () => {
     );
     unmount();
   });
+
+  describe("Resumen — estado agregado de sincronización real (global + cliente)", () => {
+    const projectWithClient = {
+      ...fullProject,
+      configuration: { ...fullProject.configuration, clientId: "mci-finance" },
+    };
+
+    function setDwmWithCatalogs(
+      globalEntries: readonly { id: string; preview: { action: string } }[],
+      clientEntries: readonly { id: string; preview: { action: string } }[],
+      project: typeof fullProject = projectWithClient
+    ): ReturnType<typeof vi.fn> {
+      const invoke = vi
+        .fn()
+        .mockImplementation((request: { operation: string; payload?: unknown }) => {
+          if (request.operation === "projects.get") {
+            return Promise.resolve({
+              success: true,
+              requestId: "x",
+              operation: "projects.get",
+              data: project,
+            });
+          }
+          if (request.operation === "profiles.get") {
+            return Promise.resolve({
+              success: true,
+              requestId: "x",
+              operation: "profiles.get",
+              data: undefined,
+            });
+          }
+          if (request.operation === "content-sync.list-catalog") {
+            const payload = request.payload as { kind: string; sourceClientId?: string };
+            if (payload.kind !== "agent") {
+              return Promise.resolve({
+                success: true,
+                requestId: "x",
+                operation: "content-sync.list-catalog",
+                data: [],
+              });
+            }
+            return Promise.resolve({
+              success: true,
+              requestId: "x",
+              operation: "content-sync.list-catalog",
+              data: payload.sourceClientId ? clientEntries : globalEntries,
+            });
+          }
+          return Promise.reject(new Error(`no mockeada: ${request.operation}`));
+        });
+      Object.defineProperty(window, "dwm", {
+        value: { invoke, getVersionInfo: vi.fn() },
+        configurable: true,
+      });
+      return invoke;
+    }
+
+    it("cuenta un conflicto real contra el catálogo global", async () => {
+      setDwmWithCatalogs([{ id: "coordinador", preview: { action: "conflict" } }], []);
+      const { container, unmount } = mount(
+        <ToastProvider>
+          <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+        </ToastProvider>
+      );
+      await settle(8);
+
+      const statsSection = container.querySelector(
+        ".dwm-project-detail__sync-stats"
+      ) as HTMLElement;
+      expect(statsSection.textContent).toContain("1");
+      expect(container.textContent).toContain("Hay conflictos reales en este proyecto");
+      unmount();
+    });
+
+    it("cuenta un conflicto real contra el catálogo del cliente del proyecto", async () => {
+      setDwmWithCatalogs([], [{ id: "coordinador", preview: { action: "conflict" } }]);
+      const { container, unmount } = mount(
+        <ToastProvider>
+          <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+        </ToastProvider>
+      );
+      await settle(8);
+
+      const statsSection = container.querySelector(
+        ".dwm-project-detail__sync-stats"
+      ) as HTMLElement;
+      expect(statsSection.textContent).toContain("1");
+      expect(container.textContent).toContain("Hay conflictos reales en este proyecto");
+      unmount();
+    });
+
+    it("contenido propio del proyecto (sin coincidencia en ningún catálogo real) no cuenta como conflicto ni pendiente", async () => {
+      // Ninguna entrada real en global ni en cliente: el contenido propio del proyecto simplemente no participa del agregado.
+      setDwmWithCatalogs([], []);
+      const { container, unmount } = mount(
+        <ToastProvider>
+          <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+        </ToastProvider>
+      );
+      await settle(8);
+
+      const statsSection = container.querySelector(
+        ".dwm-project-detail__sync-stats"
+      ) as HTMLElement;
+      expect(statsSection.textContent).toContain("0");
+      expect(container.textContent).not.toContain("Hay conflictos reales en este proyecto");
+      unmount();
+    });
+
+    it("contenido aplicado por perfil (sincronizado real desde global o cliente) cuenta como sincronizado, sin fabricar una categoría 'perfil' inexistente", async () => {
+      // Un elemento aplicado por un perfil ya sincroniza literalmente desde el
+      // origen real (global o cliente) via ProfileSyncService -> ContentSyncService.assign
+      // -- por eso aquí aparece como "unchanged" real contra ese mismo origen,
+      // nunca como una tercera categoría inventada.
+      setDwmWithCatalogs([{ id: "coordinador", preview: { action: "unchanged" } }], []);
+      const { container, unmount } = mount(
+        <ToastProvider>
+          <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+        </ToastProvider>
+      );
+      await settle(8);
+
+      expect(container.textContent).toContain("Sincronizados");
+      const statsSection = container.querySelector(
+        ".dwm-project-detail__sync-stats"
+      ) as HTMLElement;
+      expect(statsSection.textContent).toContain("1");
+      unmount();
+    });
+
+    it("recuento agregado correcto: combina global + cliente sin duplicar el mismo elemento", async () => {
+      setDwmWithCatalogs(
+        [
+          { id: "coordinador", preview: { action: "unchanged" } },
+          { id: "duplicado", preview: { action: "conflict" } },
+        ],
+        [
+          { id: "duplicado", preview: { action: "unchanged" } }, // mismo id en ambos catálogos: prevalece el conflicto real
+          { id: "checklist", preview: { action: "create" } },
+        ]
+      );
+      const { container, unmount } = mount(
+        <ToastProvider>
+          <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+        </ToastProvider>
+      );
+      await settle(8);
+
+      const statsSection = container.querySelector(
+        ".dwm-project-detail__sync-stats"
+      ) as HTMLElement;
+      // 1 conflicto real (duplicado, prevalece conflicto sobre unchanged) + 1 sincronizado real (coordinador).
+      // checklist ("create") no es conflicto ni sincronizado: no se refleja en las dos primeras Cards.
+      expect(statsSection.textContent).toContain("1");
+      unmount();
+    });
+  });
 });
