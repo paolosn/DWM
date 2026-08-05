@@ -1,9 +1,16 @@
 // @vitest-environment jsdom
+import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { NavigationProvider } from "../../../src/renderer/shell/NavigationContext.js";
 import { ContentArea } from "../../../src/renderer/shell/ContentArea.js";
 import { ToastProvider } from "../../../src/renderer/design-system/composites/Toast/index.js";
-import { mount } from "../support/renderHelpers.js";
+import { click, mount } from "../support/renderHelpers.js";
+
+async function settle(times = 8): Promise<void> {
+  await act(async () => {
+    for (let i = 0; i < times; i += 1) await Promise.resolve();
+  });
+}
 
 const originalDwm = window.dwm;
 
@@ -78,7 +85,7 @@ describe("ContentArea", () => {
         </ToastProvider>
       </NavigationProvider>
     );
-    expect(container.querySelector("h1")?.textContent).toBe("Inicio");
+    expect(container.querySelector("h1")?.textContent).toBe("Bienvenido a DWM");
     expect(container.textContent).not.toContain("se implementa más adelante");
     unmount();
   });
@@ -121,6 +128,30 @@ describe("ContentArea", () => {
     );
     expect(container.querySelector("h1")?.textContent).toBe("Biblioteca IA");
     expect(container.textContent).not.toContain("AI Creator");
+    unmount();
+  });
+
+  it("'Crear cliente' desde Inicio navega a Clientes y abre el formulario de creación real directamente (no solo la lista)", async () => {
+    setDwm();
+    const { container, unmount } = mount(
+      <NavigationProvider initialSection="dashboard">
+        <ToastProvider>
+          <ContentArea />
+        </ToastProvider>
+      </NavigationProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Crear cliente"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.querySelector("h1")?.textContent).toBe("Clientes");
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(container.textContent).toContain("Crear cliente");
     unmount();
   });
 });

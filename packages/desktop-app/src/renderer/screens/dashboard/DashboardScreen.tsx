@@ -1,13 +1,15 @@
 import { useDwmQuery } from "../../api-client/index.js";
 import { useNavigation } from "../../shell/NavigationContext.js";
-import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
+import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { HealthRow } from "../../design-system/composites/HealthRow/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { Skeleton } from "../../design-system/composites/Skeleton/index.js";
 import { useShellHealth, type ShellHealthStatus } from "../../shell/hooks/useShellHealth.js";
+import { Users, Rocket, Bot, LayoutGrid, Settings } from "lucide-react";
+import type { DesktopNavigationSection } from "../../../shared/types/DesktopConfig.js";
 import "./DashboardScreen.css";
 
 const healthToneByStatus: Record<ShellHealthStatus, "success" | "warning" | "danger"> = {
@@ -21,17 +23,62 @@ const healthLabelByStatus: Record<ShellHealthStatus, string> = {
   unreachable: "Sin conexión con el motor",
 };
 
+interface FlowCard {
+  readonly section: DesktopNavigationSection;
+  readonly icon: typeof Users;
+  readonly title: string;
+  readonly description: string;
+  readonly cta: string;
+}
+
+const FLOW_CARDS: readonly FlowCard[] = [
+  {
+    section: "clients",
+    icon: Users,
+    title: "Crear cliente",
+    description: "El punto de partida: cada trabajo real pertenece a un cliente.",
+    cta: "Crear cliente",
+  },
+  {
+    section: "provisioning",
+    icon: Rocket,
+    title: "Nuevo trabajo",
+    description: "Crea el proyecto real, aplica un perfil y abre VS Code en un solo paso.",
+    cta: "Empezar",
+  },
+  {
+    section: "aiLibrary",
+    icon: Bot,
+    title: "Biblioteca IA",
+    description: "Agentes, skills y reglas reales — globales, de un cliente o de un proyecto.",
+    cta: "Abrir Biblioteca IA",
+  },
+  {
+    section: "workspace",
+    icon: LayoutGrid,
+    title: "Centro de trabajo",
+    description: "El Sistema de Trabajo activo: dónde vive todo lo que creas.",
+    cta: "Ver Centro de trabajo",
+  },
+  {
+    section: "configuration",
+    icon: Settings,
+    title: "Configuración",
+    description: "Perfiles, Workspaces, IA y el resto de funciones avanzadas.",
+    cta: "Abrir Configuración",
+  },
+];
+
 /**
- * Módulo 33A — Fase 3: Inicio/Dashboard (documento §9.1). Deliberadamente
- * modesto ("no convertirlo en un panel saturado de métricas"): estado del
- * motor, recuento de proyectos y backups (operaciones reales
- * `projects.list`/`backups.list`), y accesos rápidos de navegación.
- * Sin "perfil/workspace/IA activos" ni "alertas"/"últimas sesiones": esas
- * secciones son del Módulo 33B o no tienen operación pública que las
- * respalde todavía — se omiten en vez de simularse.
+ * Módulo 33A — Fase 3: Inicio/Dashboard. Explica visualmente el flujo
+ * recomendado (Cliente → Nuevo trabajo → Biblioteca IA → Perfil →
+ * Proyecto → VS Code) con Cards reales de acceso directo, reutilizando
+ * exclusivamente `ResourceCard`/`Card`/`Button` ya existentes — ningún
+ * componente nuevo. Debajo, el mismo estado real del motor/proyectos/
+ * backups que ya existía, sin cambios de comportamiento.
  */
 export function DashboardScreen(): JSX.Element {
-  const { setActiveSection } = useNavigation();
+  const { setActiveSection, navigateToClientsAndCreate } = useNavigation();
   const health = useShellHealth();
   const projectsQuery = useDwmQuery("projects.list", {});
   const backupsQuery = useDwmQuery("backups.list", {});
@@ -42,7 +89,35 @@ export function DashboardScreen(): JSX.Element {
 
   return (
     <div className="dwm-dashboard">
-      <PageHeader title="Inicio" description="Estado general del Workspace activo." />
+      <div className="dwm-dashboard__welcome">
+        <h1 className="dwm-dashboard__welcome-title">Bienvenido a DWM</h1>
+        <p className="dwm-dashboard__welcome-subtitle">
+          DWM organiza clientes, proyectos, conocimiento e IA en un único flujo de trabajo.
+        </p>
+      </div>
+
+      <div className="dwm-dashboard__flow">
+        {FLOW_CARDS.map((flow) => {
+          const activate =
+            flow.section === "clients"
+              ? navigateToClientsAndCreate
+              : () => setActiveSection(flow.section);
+          return (
+            <ResourceCard
+              key={flow.section}
+              title={flow.title}
+              description={flow.description}
+              onClick={activate}
+              meta={
+                <span className="dwm-dashboard__flow-icon" aria-hidden="true">
+                  <flow.icon size={20} />
+                </span>
+              }
+              trailing={<Button onClick={activate}>{flow.cta}</Button>}
+            />
+          );
+        })}
+      </div>
 
       <div className="dwm-dashboard__grid">
         <Card>

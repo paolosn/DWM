@@ -130,6 +130,82 @@ describe("ProjectsScreen", () => {
     unmount();
   });
 
+  it("muestra cliente/perfil/sincronización reales en la Card y ofrece Abrir en VS Code, Abrir carpeta y Archivar", async () => {
+    const invoke = setDwm({
+      "projects.list": { success: true, requestId: "x", operation: "projects.list", data: ["p1"] },
+      "projects.get:p1": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: {
+          ...project1,
+          configuration: { ...project1.configuration, clientId: "mci-finance" },
+        },
+      },
+      "clients.get": {
+        success: true,
+        requestId: "x",
+        operation: "clients.get",
+        data: { id: "mci-finance", metadata: { name: "MCI Finance" } },
+      },
+      "profiles.get": {
+        success: true,
+        requestId: "x",
+        operation: "profiles.get",
+        data: { id: "default", metadata: { name: "Kit Backend" } },
+      },
+      "content-sync.list-catalog": {
+        success: true,
+        requestId: "x",
+        operation: "content-sync.list-catalog",
+        data: [{ id: "coordinador", preview: { action: "conflict" } }],
+      },
+      "projects.open-in-vscode": {
+        success: true,
+        requestId: "x",
+        operation: "projects.open-in-vscode",
+        data: { opened: true, message: "VS Code abierto." },
+      },
+      "projects.archive": {
+        success: true,
+        requestId: "x",
+        operation: "projects.archive",
+        data: { ...project1, state: "closed" },
+      },
+    });
+    const { container, unmount } = mountScreen();
+    await settle(8);
+
+    expect(container.textContent).toContain("MCI Finance");
+    expect(container.textContent).toContain("Kit Backend");
+    expect(container.textContent).toContain("Con conflictos");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir en VS Code"
+      ) ?? null
+    );
+    await settle();
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+      )
+    ).toBe(true);
+
+    click(container.querySelector('button[aria-label="Acciones para DWM"]'));
+    const archiveItem = Array.from(container.querySelectorAll('[role="menuitem"]')).find(
+      (el) => el.textContent === "Archivar"
+    );
+    click(archiveItem ?? null);
+    await settle();
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "projects.archive"
+      )
+    ).toBe(true);
+    unmount();
+  });
+
   it("muestra estado vacío cuando no hay proyectos", async () => {
     setDwm();
     const { container, unmount } = mountScreen();
@@ -138,7 +214,7 @@ describe("ProjectsScreen", () => {
     unmount();
   });
 
-  it("cambia a vista de tarjetas y muestra ProjectCard", async () => {
+  it("muestra Cards reales de proyecto directamente, sin alternancia de vista", async () => {
     setDwm({
       "projects.list": { success: true, requestId: "x", operation: "projects.list", data: ["p1"] },
       "projects.get:p1": {
@@ -151,12 +227,12 @@ describe("ProjectsScreen", () => {
     const { container, unmount } = mountScreen();
     await settle();
 
-    click(container.querySelector('button[aria-label="Vista de tarjetas"]'));
     expect(container.querySelector(".dwm-project-card")).not.toBeNull();
+    expect(container.querySelector('button[aria-label="Vista de tarjetas"]')).toBeNull();
     unmount();
   });
 
-  it("abre el detalle del proyecto al pulsar 'Ver detalle'", async () => {
+  it("abre el detalle del proyecto al pulsar 'Ver proyecto'", async () => {
     setDwm({
       "projects.list": { success: true, requestId: "x", operation: "projects.list", data: ["p1"] },
       "projects.get:p1": {
@@ -171,7 +247,7 @@ describe("ProjectsScreen", () => {
 
     click(container.querySelector('button[aria-label="Acciones para DWM"]'));
     const detailItem = Array.from(container.querySelectorAll('[role="menuitem"]')).find(
-      (el) => el.textContent === "Ver detalle"
+      (el) => el.textContent === "Ver proyecto"
     );
     click(detailItem ?? null);
     await settle();
@@ -348,7 +424,7 @@ describe("ProjectsScreen — cancelar, vista de tarjetas y detalle desde tarjeta
     unmount();
   });
 
-  it("abrir el detalle desde la tarjeta en vista de tarjetas", async () => {
+  it("abrir el detalle desde la Card ('Abrir proyecto')", async () => {
     setDwm({
       "projects.list": { success: true, requestId: "x", operation: "projects.list", data: ["p1"] },
       "projects.get:p1": {
@@ -361,7 +437,6 @@ describe("ProjectsScreen — cancelar, vista de tarjetas y detalle desde tarjeta
     const { container, unmount } = mountScreen();
     await settle();
 
-    click(container.querySelector('button[aria-label="Vista de tarjetas"]'));
     click(
       Array.from(container.querySelectorAll("button")).find(
         (b) => b.textContent === "Abrir proyecto"

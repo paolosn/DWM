@@ -4,6 +4,7 @@ import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
+import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { Switch } from "../../design-system/primitives/Switch/index.js";
 import { Spinner } from "../../design-system/primitives/Spinner/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
@@ -515,70 +516,89 @@ export function ContentLibraryPanel({
       {items !== undefined && filtered.length > 0 && (
         <ul className="dwm-content-library-panel__list">
           {filtered.map((item) => (
-            <li key={item.id} className="dwm-content-library-panel__row">
-              <div>
-                <strong>{item.name ?? item.id}</strong>
-                <p className="dwm-content-library-panel__id">{item.id}</p>
-                {item.description && (
-                  <p className="dwm-content-library-panel__desc">{item.description}</p>
-                )}
-              </div>
-              <StatusBadge
-                label={item.archived ? "Archivado" : "Activo"}
-                tone={item.archived ? "neutral" : "success"}
-              />
-              {lockedScope?.kind === "project" && (
-                <StatusBadge
-                  label={
-                    originByItemId[item.id] === "global"
-                      ? "Origen: Global"
-                      : originByItemId[item.id] === "cliente"
-                        ? "Origen: Cliente"
-                        : "Origen: Proyecto / desconocido"
-                  }
-                  tone={originByItemId[item.id] ? "accent" : "neutral"}
-                />
-              )}
-              <div className="dwm-content-library-panel__actions">
-                <Button variant="secondary" onClick={() => void openView(item)}>
-                  Ver contenido
-                </Button>
-                <Button variant="secondary" onClick={() => void openEdit(item)}>
-                  Editar
-                </Button>
-                <Button variant="secondary" onClick={() => setDuplicating(item)}>
-                  Duplicar
-                </Button>
-                {!item.archived && (
-                  <Button variant="secondary" onClick={() => setPendingArchive(item)}>
-                    Archivar
-                  </Button>
-                )}
-                {root && (
-                  <Button variant="secondary" onClick={() => void handleOpenFile(item)}>
-                    Abrir archivo real
-                  </Button>
-                )}
-                {lockedScope?.kind === "project" ? (
-                  <>
-                    {originByItemId[item.id] && (
-                      <Button
-                        variant="secondary"
-                        onClick={() => void runResync(item, originByItemId[item.id]!, false)}
-                      >
-                        Resincronizar
+            <li
+              key={item.id}
+              className={`dwm-content-library-panel__card-wrap dwm-content-library-panel__card-wrap--${kind}`}
+            >
+              <ResourceCard
+                title={item.name ?? item.id}
+                description={item.description ?? item.id}
+                meta={
+                  <div className="dwm-content-library-panel__badges">
+                    <StatusBadge label={label.singular} tone="accent" />
+                    <StatusBadge
+                      label={
+                        lockedScope?.kind === "project"
+                          ? "Proyecto"
+                          : lockedScope?.kind === "client"
+                            ? "Cliente"
+                            : scope === "client"
+                              ? "Cliente"
+                              : scope === "project"
+                                ? "Proyecto"
+                                : "Global"
+                      }
+                      tone="neutral"
+                    />
+                    {lockedScope?.kind === "project" && (
+                      <StatusBadge
+                        label={
+                          originByItemId[item.id] === "global"
+                            ? "Origen: Global"
+                            : originByItemId[item.id] === "cliente"
+                              ? "Origen: Cliente"
+                              : "Origen: Proyecto / desconocido"
+                        }
+                        tone={originByItemId[item.id] ? "accent" : "neutral"}
+                      />
+                    )}
+                    <StatusBadge
+                      label={item.archived ? "Archivado" : "Activo"}
+                      tone={item.archived ? "neutral" : "success"}
+                    />
+                  </div>
+                }
+                trailing={
+                  <div className="dwm-content-library-panel__actions">
+                    <Button variant="secondary" onClick={() => void openView(item)}>
+                      Ver contenido
+                    </Button>
+                    <Button variant="secondary" onClick={() => void openEdit(item)}>
+                      Editar
+                    </Button>
+                    <Button variant="secondary" onClick={() => setDuplicating(item)}>
+                      Duplicar
+                    </Button>
+                    {!item.archived && (
+                      <Button variant="secondary" onClick={() => setPendingArchive(item)}>
+                        Archivar
                       </Button>
                     )}
-                    <Button variant="secondary" onClick={() => setWithdrawing(item)}>
-                      Retirar
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="secondary" onClick={() => setAssigning(item)}>
-                    Asignar a proyecto
-                  </Button>
-                )}
-              </div>
+                    {root && (
+                      <Button variant="secondary" onClick={() => void handleOpenFile(item)}>
+                        Abrir archivo real
+                      </Button>
+                    )}
+                    {lockedScope?.kind === "project" ? (
+                      <>
+                        {originByItemId[item.id] && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => void runResync(item, originByItemId[item.id]!, false)}
+                          >
+                            Resincronizar
+                          </Button>
+                        )}
+                        <Button variant="secondary" onClick={() => setWithdrawing(item)}>
+                          Retirar
+                        </Button>
+                      </>
+                    ) : (
+                      <Button onClick={() => setAssigning(item)}>Asignar a proyecto</Button>
+                    )}
+                  </div>
+                }
+              />
             </li>
           ))}
         </ul>

@@ -250,6 +250,29 @@ describe("ProvisioningScreen — Viabilidad con IA", () => {
   });
 });
 
+describe("ProvisioningScreen — elección inicial clara de categoría", () => {
+  afterEach(() => {
+    __resetQueryCacheForTests();
+    Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
+  });
+
+  it("las 4 categorías muestran una descripción real de qué significan y cuándo usarlas", async () => {
+    setDwm();
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    expect(container.textContent).toContain("Nueva viabilidad");
+    expect(container.textContent).toContain("Analiza con IA si el trabajo es viable");
+    expect(container.textContent).toContain("Nueva auditoría");
+    expect(container.textContent).toContain("Revisa con IA un proyecto o idea ya definida");
+    expect(container.textContent).toContain("Nueva revisión de seguridad");
+    expect(container.textContent).toContain("Analiza con IA los riesgos de seguridad");
+    expect(container.textContent).toContain("Nuevo proyecto directo");
+    expect(container.textContent).toContain("Crea el proyecto directamente, sin análisis previo");
+    unmount();
+  });
+});
+
 describe("ProvisioningScreen — Perfil integrado en la creación", () => {
   afterEach(() => {
     __resetQueryCacheForTests();

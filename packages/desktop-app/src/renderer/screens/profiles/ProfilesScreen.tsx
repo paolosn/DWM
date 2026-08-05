@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { callOperation, useDwmQuery, DwmOperationError } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { FilterBar } from "../../design-system/composites/FilterBar/index.js";
@@ -32,6 +32,16 @@ interface ProjectOption {
   readonly id: string;
   readonly name: string;
 }
+interface ProfileCardData {
+  readonly name: string;
+  readonly description: string;
+  readonly color?: string;
+  readonly agentCount: number;
+  readonly skillCount: number;
+  readonly ruleCount: number;
+  readonly hasAi: boolean;
+  readonly mcpCount: number;
+}
 
 const ACTION_LABEL: Record<ProfileSyncItem["preview"]["action"], string> = {
   create: "Se creará",
@@ -62,6 +72,10 @@ export function ProfilesScreen(): JSX.Element {
 
   const [projectOptions, setProjectOptions] = useState<readonly ProjectOption[]>([]);
   const [appliedIn, setAppliedIn] = useState<readonly ProjectOption[] | undefined>(undefined);
+  const [appliedCountByProfileId, setAppliedCountByProfileId] = useState<Record<string, number>>(
+    {}
+  );
+  const [cardDataById, setCardDataById] = useState<Record<string, ProfileCardData>>({});
 
   const { showToast } = useToast();
 
@@ -81,20 +95,65 @@ export function ProfilesScreen(): JSX.Element {
             callOperation("projects.get" as never, { id } as never).catch(() => undefined)
           )
         );
-        setProjectOptions(
-          (
-            details.filter(Boolean) as {
-              id: string;
-              metadata: { name: string };
-              configuration: { profileId: string };
-            }[]
-          ).map((p) => ({ id: p.id, name: p.metadata.name }))
-        );
+        const realProjects = details.filter(Boolean) as {
+          id: string;
+          metadata: { name: string };
+          configuration: { profileId: string };
+        }[];
+        setProjectOptions(realProjects.map((p) => ({ id: p.id, name: p.metadata.name })));
+        const counts: Record<string, number> = {};
+        for (const p of realProjects) {
+          counts[p.configuration.profileId] = (counts[p.configuration.profileId] ?? 0) + 1;
+        }
+        setAppliedCountByProfileId(counts);
       } catch {
         setProjectOptions([]);
+        setAppliedCountByProfileId({});
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (listQuery.status !== "success" || !listQuery.data) return;
+    void (async () => {
+      const entries = await Promise.all(
+        listQuery.data!.map(async (id) => {
+          const profile = await callOperation("profiles.get" as never, { id } as never).catch(
+            () => undefined
+          );
+          return [id, profile] as const;
+        })
+      );
+      const map: Record<string, ProfileCardData> = {};
+      for (const [id, profile] of entries) {
+        const p = profile as
+          | {
+              metadata: { name: string; description: string };
+              configuration: {
+                color?: string;
+                agentIds?: readonly string[];
+                skillIds?: readonly string[];
+                ruleIds?: readonly string[];
+                defaultAIProviderId?: string;
+                mcpConnectionIds?: readonly string[];
+              };
+            }
+          | undefined;
+        if (!p) continue;
+        map[id] = {
+          name: p.metadata.name,
+          description: p.metadata.description,
+          ...(p.configuration.color ? { color: p.configuration.color } : {}),
+          agentCount: (p.configuration.agentIds ?? []).length,
+          skillCount: (p.configuration.skillIds ?? []).length,
+          ruleCount: (p.configuration.ruleIds ?? []).length,
+          hasAi: Boolean(p.configuration.defaultAIProviderId),
+          mcpCount: (p.configuration.mcpConnectionIds ?? []).length,
+        };
+      }
+      setCardDataById(map);
+    })();
+  }, [listQuery.status, listQuery.data]);
 
   useEffect(() => {
     if (!detailId) {
@@ -260,16 +319,51 @@ export function ProfilesScreen(): JSX.Element {
           ariaLabel="Perfiles"
           items={filtered}
           getItemId={(id) => id}
-          renderItem={(id) => (
-            <ResourceCard
-              title={id}
-              trailing={
-                <Button variant="secondary" onClick={() => setDetailId(id)}>
-                  Ver detalle
-                </Button>
-              }
-            />
-          )}
+          renderItem={(id) => {
+            const card = cardDataById[id];
+            const appliedCount = appliedCountByProfileId[id] ?? 0;
+            return (
+              <div
+                className="dwm-profiles-screen__card-wrap"
+                style={
+                  card?.color ? ({ "--dwm-profile-color": card.color } as CSSProperties) : undefined
+                }
+              >
+                <ResourceCard
+                  title={card?.name ?? id}
+                  description={card?.description || "Sin descripción."}
+                  meta={
+                    card ? (
+                      <div className="dwm-profiles-screen__card-summary">
+                        <StatusBadge label={`${card.agentCount} agentes`} tone="neutral" />
+                        <StatusBadge label={`${card.skillCount} skills`} tone="neutral" />
+                        <StatusBadge label={`${card.ruleCount} reglas`} tone="neutral" />
+                        <StatusBadge
+                          label={card.hasAi ? "IA configurada" : "Sin IA"}
+                          tone={card.hasAi ? "success" : "neutral"}
+                        />
+                        <StatusBadge label={`${card.mcpCount} MCP`} tone="neutral" />
+                        <StatusBadge
+                          label={
+                            appliedCount > 0
+                              ? `Aplicado en ${appliedCount} proyecto${appliedCount === 1 ? "" : "s"}`
+                              : "Sin aplicar todavía"
+                          }
+                          tone={appliedCount > 0 ? "accent" : "neutral"}
+                        />
+                      </div>
+                    ) : undefined
+                  }
+                  onClick={() => setDetailId(id)}
+                  trailing={
+                    <Button variant="secondary" onClick={() => setDetailId(id)}>
+                      Ver detalle
+                    </Button>
+                  }
+                />
+              </div>
+            );
+          }}
         />
       )}
 

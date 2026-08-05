@@ -68,12 +68,20 @@ export function ContentArea(): JSX.Element {
     setActiveSection,
     pendingProvisioningClientName,
     clearPendingProvisioningClientName,
+    pendingClientCreate,
+    clearPendingClientCreate,
   } = useNavigation();
   const Screen = IMPLEMENTED_SCREENS[activeSection];
 
   useEffect(() => {
     if (activeSection === "provisioning" && pendingProvisioningClientName !== undefined) {
       clearPendingProvisioningClientName();
+    }
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection === "clients" && pendingClientCreate) {
+      clearPendingClientCreate();
     }
   }, [activeSection]);
 
@@ -92,6 +100,14 @@ export function ContentArea(): JSX.Element {
     return (
       <section aria-label="Contenido" data-testid="content-area" className="dwm-content-area">
         <BibliotecaIAScreen />
+      </section>
+    );
+  }
+
+  if (activeSection === "clients") {
+    return (
+      <section aria-label="Contenido" data-testid="content-area" className="dwm-content-area">
+        <ClientsScreen autoOpenCreate={pendingClientCreate} />
       </section>
     );
   }

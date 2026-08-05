@@ -150,3 +150,16 @@
   font-size: var(--dwm-font-size-meta);
   color: var(--dwm-color-text-secondary);
 }
+
+.dwm-client-ficha__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--dwm-space-sm);
+  margin-bottom: var(--dwm-space-md);
+}
+.dwm-client-ficha__stats .dwm-resource-card {
+  text-align: center;
+}
+.dwm-client-ficha__stats .dwm-resource-card__title {
+  font-size: var(--dwm-font-size-screen-title);
+}
