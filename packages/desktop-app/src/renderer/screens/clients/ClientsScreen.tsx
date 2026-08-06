@@ -3,8 +3,8 @@ import type { ClientSummary } from "@dwm/client-manager";
 import { useDwmMutation, useDwmQuery, callOperation } from "../../api-client/index.js";
 import { EntityPage, EntityToolbar, EntityActions } from "../../entities/index.js";
 import { DataList } from "../../design-system/composites/DataList/index.js";
-import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
-import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
+import { EntityCard } from "../../design-system/composites/EntityCard/index.js";
+import { StatusBadge, STATUS_PRESETS } from "../../design-system/primitives/StatusBadge/index.js";
 import { Switch } from "../../design-system/primitives/Switch/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/index.js";
@@ -144,29 +144,21 @@ export function ClientsScreen({ autoOpenCreate = false }: ClientsScreenProps = {
           renderItem={(client) => {
             const stats = statsById[client.id];
             return (
-              <ResourceCard
-                title={client.name}
+              <EntityCard
+                name={client.name}
                 description={client.slug}
-                accentColor="accent"
-                meta={
+                status={
                   <div className="dwm-clients-screen__badges">
                     <StatusBadge label={client.status} tone="accent" />
-                    <StatusBadge
-                      label={client.archived ? "Archivado" : "Activo"}
-                      tone={client.archived ? "neutral" : "success"}
-                    />
-                    <StatusBadge
-                      label={`${stats?.projects ?? "…"} proyecto${stats?.projects === 1 ? "" : "s"}`}
-                      tone="neutral"
-                    />
-                    <StatusBadge label={`${stats?.connections ?? "…"} conexiones`} tone="neutral" />
-                    <StatusBadge
-                      label={`Última actividad: ${new Date(client.updatedAt).toLocaleDateString()}`}
-                      tone="neutral"
-                    />
+                    <StatusBadge {...STATUS_PRESETS[client.archived ? "archivado" : "activo"]} />
                   </div>
                 }
-                trailing={
+                stats={[
+                  { label: "Proyectos", value: stats?.projects ?? "…" },
+                  { label: "Conexiones", value: stats?.connections ?? "…" },
+                ]}
+                lastActivityLabel={`Última actividad: ${new Date(client.updatedAt).toLocaleDateString()}`}
+                primaryActions={
                   <div className="dwm-clients-screen__actions">
                     <Button variant="secondary" onClick={() => navigateToProvisioning(client.name)}>
                       Nuevo trabajo
