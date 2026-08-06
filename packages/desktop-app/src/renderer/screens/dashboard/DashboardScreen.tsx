@@ -3,6 +3,7 @@ import { useNavigation } from "../../shell/NavigationContext.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { ActionCard } from "../../design-system/composites/ActionCard/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { HealthRow } from "../../design-system/composites/HealthRow/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
@@ -117,7 +118,7 @@ export function DashboardScreen(): JSX.Element {
 
       <div className="dwm-dashboard__grid">
         <Card>
-          <h2 className="dwm-dashboard__card-title">Estado del motor</h2>
+          <SectionHeader title="Estado del motor" />
           <HealthRow
             label="Motor DWM"
             statusLabel={healthLabelByStatus[health.status]}
@@ -126,7 +127,7 @@ export function DashboardScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <h2 className="dwm-dashboard__card-title">Proyectos</h2>
+          <SectionHeader title="Proyectos" />
           {loading && <Skeleton variant="block" height="60px" />}
           {projectsQuery.status === "error" && (
             <ErrorState
@@ -155,7 +156,7 @@ export function DashboardScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <h2 className="dwm-dashboard__card-title">Backups recientes</h2>
+          <SectionHeader title="Backups recientes" />
           {backupsQuery.status === "idle" || backupsQuery.status === "loading" ? (
             <Skeleton variant="block" height="60px" />
           ) : backupsQuery.status === "error" ? (
@@ -173,7 +174,7 @@ export function DashboardScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <h2 className="dwm-dashboard__card-title">Acciones rápidas</h2>
+          <SectionHeader title="Acciones rápidas" />
           <div className="dwm-dashboard__actions">
             <Button onClick={() => setActiveSection("workspace")}>Abrir Centro de trabajo</Button>
             <Button variant="secondary" onClick={() => setActiveSection("projects")}>
