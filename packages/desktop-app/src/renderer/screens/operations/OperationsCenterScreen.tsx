@@ -3,6 +3,7 @@ import type { VerificationDescriptor } from "@dwm/verification";
 import type { RestoreDescriptor } from "@dwm/restore";
 import { callOperation } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import {
   OperationProgress,
@@ -104,7 +105,7 @@ export function OperationsCenterScreen(): JSX.Element {
       />
 
       <Card>
-        <h2 className="dwm-operations-center__section-title">Backups</h2>
+        <SectionHeader title="Backups" />
         {backups.status === "success" && backups.items.length > 0 ? (
           backups.items.map((backup) => (
             <OperationProgress
@@ -127,7 +128,7 @@ export function OperationsCenterScreen(): JSX.Element {
       </Card>
 
       <Card>
-        <h2 className="dwm-operations-center__section-title">Verificaciones</h2>
+        <SectionHeader title="Verificaciones" />
         {verifications.status === "success" && verifications.items.length > 0 ? (
           verifications.items.map((verification) => (
             <OperationProgress
@@ -146,7 +147,7 @@ export function OperationsCenterScreen(): JSX.Element {
       </Card>
 
       <Card>
-        <h2 className="dwm-operations-center__section-title">Restauraciones</h2>
+        <SectionHeader title="Restauraciones" />
         {restores.status === "success" && restores.items.length > 0 ? (
           restores.items.map((restore) => (
             <OperationProgress

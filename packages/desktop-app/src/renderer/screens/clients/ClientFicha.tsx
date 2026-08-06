@@ -8,7 +8,8 @@ import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js";
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
-import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
+import { StatCard } from "../../design-system/composites/StatCard/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
@@ -123,13 +124,13 @@ function ResumenTab({
   return (
     <div className="dwm-client-ficha__resumen">
       <div className="dwm-client-ficha__stats">
-        <ResourceCard title={String(client.references.projects.length)} description="Proyectos" />
-        <ResourceCard title={String(client.references.agents.length)} description="Agentes" />
-        <ResourceCard title={String(client.references.skills.length)} description="Skills" />
-        <ResourceCard title={String(client.references.rules.length)} description="Reglas" />
-        <ResourceCard title={String(extraStats.connections)} description="Conexiones" />
-        <ResourceCard title={String(extraStats.documents)} description="Documentos" />
-        <ResourceCard title={String(extraStats.activity)} description="Actividad" />
+        <StatCard value={client.references.projects.length} label="Proyectos" />
+        <StatCard value={client.references.agents.length} label="Agentes" />
+        <StatCard value={client.references.skills.length} label="Skills" />
+        <StatCard value={client.references.rules.length} label="Reglas" />
+        <StatCard value={extraStats.connections} label="Conexiones" />
+        <StatCard value={extraStats.documents} label="Documentos" />
+        <StatCard value={extraStats.activity} label="Actividad" />
       </div>
       <div className="dwm-client-ficha__primary-actions">
         <Button onClick={() => navigateToProvisioning(client.name)}>Nuevo trabajo</Button>
@@ -551,7 +552,7 @@ function PerfilesTab({ client }: { readonly client: Client }): JSX.Element {
   return (
     <div className="dwm-client-ficha__perfiles">
       <section>
-        <h3>Perfiles en uso</h3>
+        <SectionHeader title="Perfiles en uso" />
         <p className="dwm-client-ficha__perfiles-hint">
           Kits realmente aplicados a los proyectos de este cliente, sea cual sea su origen (global o
           de otro cliente).
@@ -581,7 +582,7 @@ function PerfilesTab({ client }: { readonly client: Client }): JSX.Element {
       </section>
 
       <section>
-        <h3>Perfiles propios de este cliente</h3>
+        <SectionHeader title="Perfiles propios de este cliente" />
         <p className="dwm-client-ficha__perfiles-hint">
           Kits de trabajo cuyo catálogo real (agentes/skills/reglas/MCP) sale de este cliente.
         </p>
@@ -614,7 +615,7 @@ function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
   return (
     <div className="dwm-client-ficha__mcp-ia">
       <section>
-        <h3>IA predeterminada del cliente</h3>
+        <SectionHeader title="IA predeterminada del cliente" />
         {client.defaultAi ? (
           <dl>
             <dt>Proveedor</dt>

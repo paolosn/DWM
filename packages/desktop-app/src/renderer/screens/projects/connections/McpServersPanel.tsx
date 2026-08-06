@@ -7,6 +7,7 @@ import {
 } from "../../../design-system/composites/DataTable/index.js";
 import { StatusBadge } from "../../../design-system/primitives/StatusBadge/index.js";
 import { Button } from "../../../design-system/primitives/Button/index.js";
+import { SectionHeader } from "../../../design-system/composites/SectionHeader/index.js";
 import { Modal } from "../../../design-system/composites/Modal/index.js";
 import { Drawer } from "../../../design-system/composites/Drawer/index.js";
 import { TextField } from "../../../design-system/primitives/TextField/index.js";
@@ -352,10 +353,10 @@ export function McpServersPanel({ projectId, mcpConnections }: McpServersPanelPr
 
   return (
     <div className="dwm-mcp-panel">
-      <div className="dwm-mcp-panel__header">
-        <h3 className="dwm-mcp-panel__title">Servidores MCP</h3>
-        <Button onClick={() => setRegisterOpen(true)}>Registrar servidor MCP…</Button>
-      </div>
+      <SectionHeader
+        title="Servidores MCP"
+        action={<Button onClick={() => setRegisterOpen(true)}>Registrar servidor MCP…</Button>}
+      />
 
       {listQuery.status === "error" && (
         <ErrorState

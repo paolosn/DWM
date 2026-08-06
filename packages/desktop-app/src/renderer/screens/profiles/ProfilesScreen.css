@@ -50,16 +50,9 @@
   gap: var(--dwm-space-sm);
 }
 
-.dwm-profiles-screen__card-wrap .dwm-resource-card {
-  border-left: 4px solid var(--dwm-profile-color, var(--dwm-color-accent));
-  cursor: pointer;
-  transition:
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
-}
-.dwm-profiles-screen__card-wrap .dwm-resource-card:hover {
-  box-shadow: var(--dwm-shadow-raised);
-  transform: translateY(-1px);
+/* Color real y propio de cada kit (Fase 1: única excepción legítima a "no colores arbitrarios" -- es una preferencia real del usuario, no una decisión de diseño; el resto del borde/hover ya lo resuelve EntityCard). */
+.dwm-profiles-screen__card-wrap[style] .dwm-entity-card {
+  border-left: 4px solid var(--dwm-profile-color);
 }
 .dwm-profiles-screen__card-summary {
   display: flex;

@@ -9,11 +9,6 @@
   gap: var(--dwm-space-sm);
   align-items: flex-start;
 }
-.dwm-ai-creator-screen__title {
-  margin: 0 0 var(--dwm-space-sm);
-  font-size: var(--dwm-font-size-section-title);
-  font-weight: 600;
-}
 .dwm-ai-creator-screen__facts dt {
   font-size: var(--dwm-font-size-meta);
   color: var(--dwm-color-text-secondary);

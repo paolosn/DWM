@@ -10,7 +10,7 @@ import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { Tabs, type TabItem } from "../../design-system/composites/Tabs/index.js";
 import { StatusBadge, type StatusTone } from "../../design-system/primitives/StatusBadge/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
-import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
+import { StatCard } from "../../design-system/composites/StatCard/index.js";
 import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
@@ -203,15 +203,9 @@ function ProjectSummaryPanel({
       </div>
 
       <div className="dwm-project-detail__sync-stats">
-        <ResourceCard
-          title={syncSummary ? String(syncSummary.conflicts) : "—"}
-          description="Conflictos pendientes"
-        />
-        <ResourceCard
-          title={syncSummary ? String(syncSummary.unchanged) : "—"}
-          description="Sincronizados"
-        />
-        <ResourceCard title={profileName ?? "Sin perfil aplicado"} description="Perfil aplicado" />
+        <StatCard value={syncSummary ? syncSummary.conflicts : "—"} label="Conflictos pendientes" />
+        <StatCard value={syncSummary ? syncSummary.unchanged : "—"} label="Sincronizados" />
+        <StatCard value={profileName ?? "Sin perfil aplicado"} label="Perfil aplicado" />
       </div>
 
       {syncSummary?.conflicts ? (

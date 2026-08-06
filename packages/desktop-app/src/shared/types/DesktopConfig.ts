@@ -36,7 +36,8 @@ export type DesktopNavigationSection =
   | "logs"
   | "settings"
   | "help"
-  | "about";
+  | "about"
+  | "designSystemShowcase";
 
 export interface DesktopConfiguration {
   readonly schemaVersion: 1;
@@ -101,6 +102,7 @@ const KNOWN_NAVIGATION_SECTIONS: readonly DesktopNavigationSection[] = [
   "settings",
   "help",
   "about",
+  "designSystemShowcase",
 ];
 
 export function isDesktopNavigationSection(value: unknown): value is DesktopNavigationSection {

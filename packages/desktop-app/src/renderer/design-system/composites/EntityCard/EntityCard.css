@@ -1,0 +1,64 @@
+.dwm-entity-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-entity-card[role="button"] {
+  cursor: pointer;
+  transition:
+    box-shadow var(--dwm-motion-hover) ease,
+    transform var(--dwm-motion-hover) ease;
+}
+.dwm-entity-card[role="button"]:hover {
+  box-shadow: var(--dwm-shadow-raised);
+  transform: translateY(-1px);
+}
+.dwm-entity-card[role="button"]:focus-visible {
+  outline: 2px solid var(--dwm-color-accent);
+  outline-offset: 2px;
+}
+.dwm-entity-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
+}
+.dwm-entity-card__name {
+  margin: 0;
+  font-size: var(--dwm-font-size-body);
+  font-weight: 600;
+}
+.dwm-entity-card__description {
+  margin: 4px 0 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-entity-card__stats {
+  display: flex;
+  gap: var(--dwm-space-md);
+  margin: 0;
+  flex-wrap: wrap;
+}
+.dwm-entity-card__stat {
+  display: flex;
+  flex-direction: column;
+}
+.dwm-entity-card__stat dt {
+  font-size: var(--dwm-font-size-body);
+  font-weight: 700;
+}
+.dwm-entity-card__stat dd {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-entity-card__activity {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-entity-card__actions {
+  display: flex;
+  gap: var(--dwm-space-xs);
+  flex-wrap: wrap;
+}

@@ -3,16 +3,6 @@
   flex-direction: column;
   gap: var(--dwm-space-md);
 }
-.dwm-mcp-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--dwm-space-sm);
-}
-.dwm-mcp-panel__title {
-  font-size: var(--dwm-font-size-section-title);
-  margin: 0;
-}
 .dwm-mcp-panel__row-actions {
   display: flex;
   flex-wrap: wrap;

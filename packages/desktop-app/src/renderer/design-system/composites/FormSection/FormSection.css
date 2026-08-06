@@ -1,0 +1,23 @@
+.dwm-form-section {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-form-section__title {
+  padding: 0;
+  font-size: var(--dwm-font-size-body);
+  font-weight: 600;
+}
+.dwm-form-section__description {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-form-section__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}

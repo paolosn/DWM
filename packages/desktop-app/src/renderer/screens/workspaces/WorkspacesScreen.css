@@ -3,10 +3,8 @@
   flex-direction: column;
   gap: var(--dwm-space-md);
 }
-.dwm-workspaces-screen__title {
-  margin: 0 0 var(--dwm-space-sm);
-  font-size: var(--dwm-font-size-section-title);
-  font-weight: 600;
+.dwm-workspaces-screen .dwm-section-header {
+  margin-bottom: var(--dwm-space-sm);
 }
 .dwm-workspaces-screen__facts dt {
   font-size: var(--dwm-font-size-meta);

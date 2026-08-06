@@ -6,6 +6,7 @@ import type {
 } from "@dwm/portable-package-manager";
 import { callOperation, DwmOperationError, useDwmMutation } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
@@ -82,7 +83,7 @@ export function PackagesScreen(): JSX.Element {
       />
 
       <Card>
-        <h2 className="dwm-packages-screen__title">Crear paquete</h2>
+        <SectionHeader title="Crear paquete" />
         <div className="dwm-packages-screen__form">
           <TextField
             label="Ruta destino (.zip)"
@@ -110,7 +111,7 @@ export function PackagesScreen(): JSX.Element {
       </Card>
 
       <Card>
-        <h2 className="dwm-packages-screen__title">Inspeccionar paquete</h2>
+        <SectionHeader title="Inspeccionar paquete" />
         <div className="dwm-packages-screen__form">
           <TextField
             label="Ruta del .zip"
@@ -132,7 +133,7 @@ export function PackagesScreen(): JSX.Element {
         )}
         {manifest && (
           <div className="dwm-packages-screen__result">
-            <h3>Manifiesto</h3>
+            <SectionHeader title="Manifiesto" />
             <dl className="dwm-packages-screen__facts">
               <dt>Identificador</dt>
               <dd>{manifest.packageId}</dd>
@@ -147,7 +148,7 @@ export function PackagesScreen(): JSX.Element {
         )}
         {validation && (
           <div className="dwm-packages-screen__result">
-            <h3>Validación</h3>
+            <SectionHeader title="Validación" />
             <StatusBadge
               label={validation.valid ? "Válido" : "Con problemas"}
               tone={validation.valid ? "success" : "danger"}
@@ -156,7 +157,7 @@ export function PackagesScreen(): JSX.Element {
         )}
         {contents && (
           <div className="dwm-packages-screen__result">
-            <h3>Contenido ({contents.length})</h3>
+            <SectionHeader title={`Contenido (${contents.length})`} />
             <ul className="dwm-packages-screen__contents">
               {contents.slice(0, 50).map((entry) => (
                 <li key={entry.relativePath}>{entry.relativePath}</li>

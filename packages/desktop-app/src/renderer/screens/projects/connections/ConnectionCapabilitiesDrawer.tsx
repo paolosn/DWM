@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Connection } from "@dwm/connections-manager";
 import { useDwmMutation, useDwmQuery } from "../../../api-client/index.js";
 import { Drawer } from "../../../design-system/composites/Drawer/index.js";
+import { SectionHeader } from "../../../design-system/composites/SectionHeader/index.js";
 import { Button } from "../../../design-system/primitives/Button/index.js";
 import { TextField } from "../../../design-system/primitives/TextField/index.js";
 import { Select } from "../../../design-system/primitives/Select/index.js";
@@ -95,7 +96,7 @@ export function ConnectionCapabilitiesDrawer({
       {connection && (
         <div className="dwm-capabilities-drawer">
           <section>
-            <h3 className="dwm-capabilities-drawer__section-title">Capacidades declaradas</h3>
+            <SectionHeader title="Capacidades declaradas" />
             {declared.length === 0 ? (
               <EmptyState
                 title="Esta conexión no declara ninguna capacidad"
@@ -113,7 +114,7 @@ export function ConnectionCapabilitiesDrawer({
           </section>
 
           <section>
-            <h3 className="dwm-capabilities-drawer__section-title">Conceder capacidad</h3>
+            <SectionHeader title="Conceder capacidad" />
             <InlineAlert tone="info" title="Denegado por defecto">
               Un agente, herramienta o proceso solo puede usar una capacidad de esta conexión si
               existe una concesión explícita para él.
@@ -143,7 +144,7 @@ export function ConnectionCapabilitiesDrawer({
           </section>
 
           <section>
-            <h3 className="dwm-capabilities-drawer__section-title">Concesiones actuales</h3>
+            <SectionHeader title="Concesiones actuales" />
             {grantsQuery.status === "error" && (
               <ErrorState
                 title="No se pudieron cargar las concesiones"

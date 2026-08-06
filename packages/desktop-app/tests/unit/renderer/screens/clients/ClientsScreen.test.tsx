@@ -140,8 +140,13 @@ describe("ClientsScreen", () => {
     );
     await settle(8);
 
-    expect(container.textContent).toContain("2 proyectos");
-    expect(container.textContent).toContain("1 conexiones");
+    expect(container.textContent).toContain("Proyectos");
+    expect(container.textContent).toContain("Conexiones");
+    const statsSection = Array.from(container.querySelectorAll("dl")).find((dl) =>
+      dl.textContent?.includes("Proyectos")
+    ) as HTMLElement;
+    expect(statsSection.textContent).toContain("2");
+    expect(statsSection.textContent).toContain("1");
 
     click(
       Array.from(container.querySelectorAll("button")).find(

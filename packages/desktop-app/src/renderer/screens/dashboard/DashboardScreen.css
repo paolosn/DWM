@@ -21,35 +21,13 @@
   gap: var(--dwm-space-md);
   margin-bottom: var(--dwm-space-lg);
 }
-.dwm-dashboard__flow .dwm-resource-card {
-  transition:
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
-}
-.dwm-dashboard__flow .dwm-resource-card:hover {
-  box-shadow: var(--dwm-shadow-raised);
-  transform: translateY(-1px);
-}
-.dwm-dashboard__flow-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--dwm-radius-card);
-  background: color-mix(in srgb, var(--dwm-color-accent) 12%, transparent);
-  color: var(--dwm-color-accent);
-  margin-bottom: var(--dwm-space-xs);
-}
 .dwm-dashboard__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--dwm-space-md);
 }
-.dwm-dashboard__card-title {
-  margin: 0 0 var(--dwm-space-sm);
-  font-size: var(--dwm-font-size-section-title);
-  font-weight: 600;
+.dwm-dashboard__grid .dwm-section-header {
+  margin-bottom: var(--dwm-space-sm);
 }
 .dwm-dashboard__count {
   font-size: var(--dwm-font-size-body);

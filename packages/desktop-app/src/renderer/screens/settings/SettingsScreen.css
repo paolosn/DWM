@@ -9,10 +9,8 @@
   gap: var(--dwm-space-md);
   align-items: start;
 }
-.dwm-settings-screen__title {
-  margin: 0 0 var(--dwm-space-sm);
-  font-size: var(--dwm-font-size-section-title);
-  font-weight: 600;
+.dwm-settings-screen .dwm-section-header {
+  margin-bottom: var(--dwm-space-sm);
 }
 .dwm-settings-screen__namespaces {
   list-style: none;

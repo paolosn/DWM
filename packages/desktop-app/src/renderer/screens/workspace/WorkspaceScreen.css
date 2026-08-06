@@ -3,10 +3,8 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--dwm-space-md);
 }
-.dwm-workspace-screen__card-title {
-  margin: 0 0 var(--dwm-space-sm);
-  font-size: var(--dwm-font-size-section-title);
-  font-weight: 600;
+.dwm-workspace-screen__grid .dwm-section-header {
+  margin-bottom: var(--dwm-space-sm);
 }
 .dwm-workspace-screen__facts {
   margin: 0;

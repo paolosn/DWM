@@ -80,7 +80,7 @@ describe("ProvisioningScreen — Viabilidad con IA", () => {
   });
 
   async function openViabilidadForm(container: HTMLElement) {
-    const heading = Array.from(container.querySelectorAll("h2")).find(
+    const heading = Array.from(container.querySelectorAll("h3")).find(
       (h) => h.textContent === "Nueva viabilidad"
     );
     const card = heading?.closest(".dwm-card") ?? heading?.parentElement ?? container;
@@ -300,7 +300,7 @@ describe("ProvisioningScreen — Perfil integrado en la creación", () => {
   };
 
   async function openDirectoForm(container: HTMLElement) {
-    const heading = Array.from(container.querySelectorAll("h2")).find(
+    const heading = Array.from(container.querySelectorAll("h3")).find(
       (h) => h.textContent === "Nuevo proyecto directo"
     );
     const card = heading?.closest(".dwm-card") ?? heading?.parentElement ?? container;

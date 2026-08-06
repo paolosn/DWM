@@ -1,0 +1,26 @@
+.dwm-showcase {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-lg);
+  padding: var(--dwm-space-lg);
+}
+.dwm-showcase__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+  padding-bottom: var(--dwm-space-lg);
+  border-bottom: 1px solid var(--dwm-color-border-subtle);
+}
+.dwm-showcase__section:last-child {
+  border-bottom: none;
+}
+.dwm-showcase__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--dwm-space-md);
+}
+.dwm-showcase__badges {
+  display: flex;
+  gap: var(--dwm-space-xs);
+  flex-wrap: wrap;
+}

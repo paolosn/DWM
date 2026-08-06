@@ -3,7 +3,11 @@ import { callOperation, DwmOperationError } from "../../api-client/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
-import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
+import {
+  StatusBadge,
+  STATUS_PRESETS,
+  type StatusTone,
+} from "../../design-system/primitives/StatusBadge/index.js";
 import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { Switch } from "../../design-system/primitives/Switch/index.js";
 import { Spinner } from "../../design-system/primitives/Spinner/index.js";
@@ -16,6 +20,13 @@ import { ContentForm, type ContentFormValues } from "./ContentForm.js";
 import { CreateWithAiDialog, type LibraryScope } from "./CreateWithAiDialog.js";
 import { type ContentKind, KIND_LABEL, opName, realFilePath } from "./ContentKind.js";
 import "./ContentLibraryPanel.css";
+
+/** Sistema visual base (Fase 1): color de dominio real por tipo, reutilizando exclusivamente los tonos ya existentes de ResourceCard/StatusBadge. */
+const KIND_ACCENT: Readonly<Record<ContentKind, StatusTone>> = {
+  agent: "accent",
+  skill: "success",
+  rule: "warning",
+};
 
 interface Summary {
   readonly id: string;
@@ -516,29 +527,26 @@ export function ContentLibraryPanel({
       {items !== undefined && filtered.length > 0 && (
         <ul className="dwm-content-library-panel__list">
           {filtered.map((item) => (
-            <li
-              key={item.id}
-              className={`dwm-content-library-panel__card-wrap dwm-content-library-panel__card-wrap--${kind}`}
-            >
+            <li key={item.id}>
               <ResourceCard
                 title={item.name ?? item.id}
                 description={item.description ?? item.id}
+                accentColor={KIND_ACCENT[kind]}
                 meta={
                   <div className="dwm-content-library-panel__badges">
                     <StatusBadge label={label.singular} tone="accent" />
                     <StatusBadge
-                      label={
+                      {...STATUS_PRESETS[
                         lockedScope?.kind === "project"
-                          ? "Proyecto"
+                          ? "proyecto"
                           : lockedScope?.kind === "client"
-                            ? "Cliente"
+                            ? "cliente"
                             : scope === "client"
-                              ? "Cliente"
+                              ? "cliente"
                               : scope === "project"
-                                ? "Proyecto"
-                                : "Global"
-                      }
-                      tone="neutral"
+                                ? "proyecto"
+                                : "global"
+                      ]}
                     />
                     {lockedScope?.kind === "project" && (
                       <StatusBadge
@@ -552,10 +560,7 @@ export function ContentLibraryPanel({
                         tone={originByItemId[item.id] ? "accent" : "neutral"}
                       />
                     )}
-                    <StatusBadge
-                      label={item.archived ? "Archivado" : "Activo"}
-                      tone={item.archived ? "neutral" : "success"}
-                    />
+                    <StatusBadge {...STATUS_PRESETS[item.archived ? "archivado" : "activo"]} />
                   </div>
                 }
                 trailing={

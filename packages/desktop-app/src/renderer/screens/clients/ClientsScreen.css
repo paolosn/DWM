@@ -1,13 +1,3 @@
-.dwm-clients-screen__card-wrap .dwm-resource-card {
-  border-left: 4px solid var(--dwm-color-accent);
-  transition:
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
-}
-.dwm-clients-screen__card-wrap .dwm-resource-card:hover {
-  box-shadow: var(--dwm-shadow-raised);
-  transform: translateY(-1px);
-}
 .dwm-clients-screen__badges {
   display: flex;
   gap: var(--dwm-space-xs);

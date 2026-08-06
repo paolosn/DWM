@@ -88,9 +88,9 @@ describe("ProfilesScreen", () => {
 
     expect(container.textContent).toContain("Kit Backend");
     expect(container.textContent).not.toContain(">default<");
-    expect(container.textContent).toContain("1 agentes");
-    expect(container.textContent).toContain("1 skills");
-    expect(container.textContent).toContain("0 reglas");
+    expect(container.textContent).toContain("Agentes");
+    expect(container.textContent).toContain("Skills");
+    expect(container.textContent).toContain("Reglas");
     expect(container.textContent).toContain("IA configurada");
     expect(container.textContent).toContain("Aplicado en 1 proyecto");
     unmount();

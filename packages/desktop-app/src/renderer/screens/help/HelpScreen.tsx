@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { FilterBar } from "../../design-system/composites/FilterBar/index.js";
-import { Card } from "../../design-system/primitives/Card/index.js";
+import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { HELP_TOPICS } from "./helpContent.js";
@@ -56,10 +56,7 @@ export function HelpScreen(): JSX.Element {
       ) : (
         <div className="dwm-help-screen__list">
           {filtered.map((topic) => (
-            <Card key={topic.id}>
-              <h2 className="dwm-help-screen__topic-title">{topic.title}</h2>
-              <p className="dwm-help-screen__topic-body">{topic.body}</p>
-            </Card>
+            <ResourceCard key={topic.id} title={topic.title} description={topic.body} />
           ))}
         </div>
       )}
