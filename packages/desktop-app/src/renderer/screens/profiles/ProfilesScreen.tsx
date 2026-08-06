@@ -4,6 +4,7 @@ import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { FilterBar } from "../../design-system/composites/FilterBar/index.js";
 import { DataList } from "../../design-system/composites/DataList/index.js";
 import { EntityCard } from "../../design-system/composites/EntityCard/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
@@ -424,7 +425,7 @@ export function ProfilesScreen(): JSX.Element {
             </Button>
 
             <section className="dwm-profiles-screen__apply">
-              <h3>Aplicar a un proyecto</h3>
+              <SectionHeader title="Aplicar a un proyecto" />
               <Select
                 label="Proyecto destino"
                 placeholder="Elige un proyecto"
@@ -483,7 +484,7 @@ export function ProfilesScreen(): JSX.Element {
             </section>
 
             <section className="dwm-profiles-screen__applied-in">
-              <h3>Aplicado actualmente en</h3>
+              <SectionHeader title="Aplicado actualmente en" />
               {appliedIn === undefined && <Skeleton variant="block" height="60px" />}
               {appliedIn !== undefined && appliedIn.length === 0 && (
                 <EmptyState title="Este perfil todavía no está aplicado en ningún proyecto." />

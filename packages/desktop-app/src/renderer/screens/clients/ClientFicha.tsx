@@ -9,6 +9,7 @@ import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js";
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
 import { StatCard } from "../../design-system/composites/StatCard/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
@@ -551,7 +552,7 @@ function PerfilesTab({ client }: { readonly client: Client }): JSX.Element {
   return (
     <div className="dwm-client-ficha__perfiles">
       <section>
-        <h3>Perfiles en uso</h3>
+        <SectionHeader title="Perfiles en uso" />
         <p className="dwm-client-ficha__perfiles-hint">
           Kits realmente aplicados a los proyectos de este cliente, sea cual sea su origen (global o
           de otro cliente).
@@ -581,7 +582,7 @@ function PerfilesTab({ client }: { readonly client: Client }): JSX.Element {
       </section>
 
       <section>
-        <h3>Perfiles propios de este cliente</h3>
+        <SectionHeader title="Perfiles propios de este cliente" />
         <p className="dwm-client-ficha__perfiles-hint">
           Kits de trabajo cuyo catálogo real (agentes/skills/reglas/MCP) sale de este cliente.
         </p>
@@ -614,7 +615,7 @@ function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
   return (
     <div className="dwm-client-ficha__mcp-ia">
       <section>
-        <h3>IA predeterminada del cliente</h3>
+        <SectionHeader title="IA predeterminada del cliente" />
         {client.defaultAi ? (
           <dl>
             <dt>Proveedor</dt>

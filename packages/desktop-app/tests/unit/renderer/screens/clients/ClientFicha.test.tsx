@@ -743,7 +743,7 @@ describe("ClientFicha", () => {
       await settle(8);
 
       const enUsoSection = Array.from(container.querySelectorAll("section")).find((s) =>
-        s.querySelector("h3")?.textContent?.includes("Perfiles en uso")
+        s.querySelector("h2")?.textContent?.includes("Perfiles en uso")
       ) as HTMLElement;
 
       // baseProject usa profileId "p" (sin perfil real resuelto) -> solo el segundo proyecto aporta un perfil real en uso.
