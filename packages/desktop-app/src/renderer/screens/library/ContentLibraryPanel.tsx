@@ -3,7 +3,7 @@ import { callOperation, DwmOperationError } from "../../api-client/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
-import { StatusBadge, type StatusTone } from "../../design-system/primitives/StatusBadge/index.js";
+import { StatusBadge, STATUS_PRESETS, type StatusTone } from "../../design-system/primitives/StatusBadge/index.js";
 import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { Switch } from "../../design-system/primitives/Switch/index.js";
 import { Spinner } from "../../design-system/primitives/Spinner/index.js";
@@ -532,18 +532,17 @@ export function ContentLibraryPanel({
                   <div className="dwm-content-library-panel__badges">
                     <StatusBadge label={label.singular} tone="accent" />
                     <StatusBadge
-                      label={
+                      {...STATUS_PRESETS[
                         lockedScope?.kind === "project"
-                          ? "Proyecto"
+                          ? "proyecto"
                           : lockedScope?.kind === "client"
-                            ? "Cliente"
+                            ? "cliente"
                             : scope === "client"
-                              ? "Cliente"
+                              ? "cliente"
                               : scope === "project"
-                                ? "Proyecto"
-                                : "Global"
-                      }
-                      tone="neutral"
+                                ? "proyecto"
+                                : "global"
+                      ]}
                     />
                     {lockedScope?.kind === "project" && (
                       <StatusBadge
@@ -557,10 +556,7 @@ export function ContentLibraryPanel({
                         tone={originByItemId[item.id] ? "accent" : "neutral"}
                       />
                     )}
-                    <StatusBadge
-                      label={item.archived ? "Archivado" : "Activo"}
-                      tone={item.archived ? "neutral" : "success"}
-                    />
+                    <StatusBadge {...STATUS_PRESETS[item.archived ? "archivado" : "activo"]} />
                   </div>
                 }
                 trailing={
