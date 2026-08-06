@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CreationKind, CreationRequest } from "@dwm/ai-creator-manager";
 import { callOperation, DwmOperationError } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
@@ -153,7 +154,7 @@ export function AICreatorScreen(): JSX.Element {
 
       {preview && (
         <Card>
-          <h2 className="dwm-ai-creator-screen__title">Previsualización</h2>
+          <SectionHeader title="Previsualización" />
           <dl className="dwm-ai-creator-screen__facts">
             <dt>Tipo</dt>
             <dd>{KIND_LABELS[preview.kind]}</dd>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDwmMutation, useDwmQuery } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
@@ -70,7 +71,7 @@ export function WorkspacesScreen(): JSX.Element {
       <PageHeader title="Workspaces" description="Workspace activo y validación de rutas." />
 
       <Card>
-        <h2 className="dwm-workspaces-screen__title">Workspace activo</h2>
+        <SectionHeader title="Workspace activo" />
         {(workspaceQuery.status === "idle" || workspaceQuery.status === "loading") && (
           <Skeleton variant="block" height="80px" />
         )}
@@ -103,7 +104,7 @@ export function WorkspacesScreen(): JSX.Element {
       </Card>
 
       <Card>
-        <h2 className="dwm-workspaces-screen__title">Crear o activar un Workspace</h2>
+        <SectionHeader title="Crear o activar un Workspace" />
         <div className="dwm-workspaces-screen__validate-row">
           <TextField
             label="Ruta del Workspace"
@@ -130,7 +131,7 @@ export function WorkspacesScreen(): JSX.Element {
       </Card>
 
       <Card>
-        <h2 className="dwm-workspaces-screen__title">Validar una ruta de Workspace</h2>
+        <SectionHeader title="Validar una ruta de Workspace" />
         <div className="dwm-workspaces-screen__validate-row">
           <TextField
             label="Ruta a validar"

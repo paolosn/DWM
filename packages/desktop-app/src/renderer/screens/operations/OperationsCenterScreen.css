@@ -3,8 +3,6 @@
   flex-direction: column;
   gap: var(--dwm-space-md);
 }
-.dwm-operations-center__section-title {
-  margin: 0 0 var(--dwm-space-sm);
-  font-size: var(--dwm-font-size-section-title);
-  font-weight: 600;
+.dwm-operations-center .dwm-section-header {
+  margin-bottom: var(--dwm-space-sm);
 }

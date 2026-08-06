@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDwmMutation, useDwmQuery } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { TextArea } from "../../design-system/primitives/TextArea/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
@@ -77,7 +78,7 @@ export function SettingsScreen(): JSX.Element {
 
       <div className="dwm-settings-screen__layout">
         <Card>
-          <h2 className="dwm-settings-screen__title">Namespaces</h2>
+          <SectionHeader title="Namespaces" />
           {(listQuery.status === "idle" || listQuery.status === "loading") && (
             <Skeleton variant="block" height="120px" />
           )}
@@ -108,7 +109,7 @@ export function SettingsScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <h2 className="dwm-settings-screen__title">{selected ?? "Selecciona un namespace"}</h2>
+          <SectionHeader title={selected ?? "Selecciona un namespace"} />
           {!selected && <EmptyState title="Elige un namespace de la izquierda" />}
           {selected && sectionQuery.status === "loading" && (
             <Skeleton variant="block" height="160px" />
