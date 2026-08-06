@@ -89,7 +89,26 @@ function ProjectSummaryPanel({
 }): JSX.Element {
   const { showToast } = useToast();
   const [profileName, setProfileName] = useState<string | undefined>(undefined);
+  const [clientName, setClientName] = useState<string | undefined>(undefined);
   const [syncSummary, setSyncSummary] = useState<SyncSummary | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!project.configuration.clientId) {
+      setClientName(undefined);
+      return;
+    }
+    void callOperation("clients.get", { id: project.configuration.clientId })
+      .then((client) => {
+        if (!cancelled) setClientName(client?.name);
+      })
+      .catch(() => {
+        if (!cancelled) setClientName(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [project.configuration.clientId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -221,7 +240,11 @@ function ProjectSummaryPanel({
         <dt>Ruta</dt>
         <dd>{project.configuration.projectPath}</dd>
         <dt>Cliente</dt>
-        <dd>{project.configuration.clientId ?? "Sin cliente asignado"}</dd>
+        <dd>
+          {project.configuration.clientId
+            ? (clientName ?? "Resolviendo cliente…")
+            : "Sin cliente asignado"}
+        </dd>
         <dt>Creado</dt>
         <dd>{new Date(project.metadata.createdAt).toLocaleString()}</dd>
         <dt>Actualizado</dt>

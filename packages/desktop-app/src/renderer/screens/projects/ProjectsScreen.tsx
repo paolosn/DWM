@@ -198,6 +198,9 @@ export function ProjectsScreen(): JSX.Element {
                 path={project.configuration.projectPath}
                 statusLabel={project.state}
                 statusTone={stateTone[project.state]}
+                lastOpenedLabel={`Última actividad: ${new Date(
+                  project.metadata.updatedAt
+                ).toLocaleDateString()}`}
                 onOpen={() => setOpenProjectId(project.id)}
                 actions={
                   <div className="dwm-projects-screen__card-body">

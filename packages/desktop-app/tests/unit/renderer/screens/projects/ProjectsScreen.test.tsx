@@ -179,6 +179,7 @@ describe("ProjectsScreen", () => {
     expect(container.textContent).toContain("MCI Finance");
     expect(container.textContent).toContain("Kit Backend");
     expect(container.textContent).toContain("Con conflictos");
+    expect(container.textContent).toContain("Última actividad:");
 
     click(
       Array.from(container.querySelectorAll("button")).find(

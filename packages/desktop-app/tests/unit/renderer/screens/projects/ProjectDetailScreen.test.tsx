@@ -303,6 +303,43 @@ describe("ProjectDetailScreen", () => {
     unmount();
   });
 
+  it("Resumen muestra el nombre real del cliente, nunca el clientId interno", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: {
+          ...fullProject,
+          configuration: { ...fullProject.configuration, clientId: "mci-finance" },
+        },
+      },
+      "clients.get": {
+        success: true,
+        requestId: "x",
+        operation: "clients.get",
+        data: { id: "mci-finance", name: "MCI Finance" },
+      },
+      "profiles.get": { success: true, requestId: "x", operation: "profiles.get", data: undefined },
+      "content-sync.list-catalog": {
+        success: true,
+        requestId: "x",
+        operation: "content-sync.list-catalog",
+        data: [],
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle(8);
+
+    expect(container.textContent).toContain("MCI Finance");
+    expect(container.textContent).not.toContain("mci-finance<");
+    unmount();
+  });
+
   it("'Abrir en VS Code' reutiliza projects.open-in-vscode real", async () => {
     const invoke = setDwm({
       "projects.get": {
