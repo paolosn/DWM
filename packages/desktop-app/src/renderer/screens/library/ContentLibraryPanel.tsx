@@ -3,7 +3,11 @@ import { callOperation, DwmOperationError } from "../../api-client/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
-import { StatusBadge, STATUS_PRESETS, type StatusTone } from "../../design-system/primitives/StatusBadge/index.js";
+import {
+  StatusBadge,
+  STATUS_PRESETS,
+  type StatusTone,
+} from "../../design-system/primitives/StatusBadge/index.js";
 import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { Switch } from "../../design-system/primitives/Switch/index.js";
 import { Spinner } from "../../design-system/primitives/Spinner/index.js";
