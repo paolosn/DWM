@@ -1,6 +1,8 @@
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { DataList } from "../../design-system/composites/DataList/index.js";
 import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
+import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { useNavigation } from "../../shell/NavigationContext.js";
 import type { DesktopNavigationSection } from "../../../shared/types/DesktopConfig.js";
@@ -125,7 +127,10 @@ export function ConfiguracionScreen(): JSX.Element {
         if (sections.length === 0) return null;
         return (
           <section key={category} className="dwm-configuracion-screen__group">
-            <h2 className="dwm-configuracion-screen__group-title">{category}</h2>
+            <SectionHeader
+              title={category}
+              badge={<StatusBadge label={String(sections.length)} tone="neutral" />}
+            />
             <DataList
               ariaLabel={`Sección ${category}`}
               items={sections}
@@ -135,6 +140,7 @@ export function ConfiguracionScreen(): JSX.Element {
                   title={section.title}
                   description={section.description}
                   onClick={() => setActiveSection(section.id)}
+                  accentColor="neutral"
                   trailing={
                     <Button variant="secondary" onClick={() => setActiveSection(section.id)}>
                       Abrir
