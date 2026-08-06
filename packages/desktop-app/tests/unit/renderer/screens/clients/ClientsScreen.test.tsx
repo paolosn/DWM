@@ -126,6 +126,14 @@ describe("ClientsScreen", () => {
           data: [{ id: "conn1" }],
         });
       }
+      if (request.operation === "clients.documents") {
+        return Promise.resolve({
+          success: true,
+          requestId: "x",
+          operation: "clients.documents",
+          data: [{ path: "a" }, { path: "b" }, { path: "c" }],
+        });
+      }
       return Promise.reject(new Error(`no mockeada: ${request.operation}`));
     });
     setDwm(invoke);
@@ -142,11 +150,13 @@ describe("ClientsScreen", () => {
 
     expect(container.textContent).toContain("Proyectos");
     expect(container.textContent).toContain("Conexiones");
+    expect(container.textContent).toContain("Documentos");
     const statsSection = Array.from(container.querySelectorAll("dl")).find((dl) =>
       dl.textContent?.includes("Proyectos")
     ) as HTMLElement;
     expect(statsSection.textContent).toContain("2");
     expect(statsSection.textContent).toContain("1");
+    expect(statsSection.textContent).toContain("3");
 
     click(
       Array.from(container.querySelectorAll("button")).find(

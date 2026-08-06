@@ -18,6 +18,7 @@ import "./ClientsScreen.css";
 interface ClientCardStats {
   readonly projects: number;
   readonly connections: number;
+  readonly documents: number;
 }
 
 /**
@@ -65,7 +66,7 @@ export function ClientsScreen({ autoOpenCreate = false }: ClientsScreenProps = {
     void (async () => {
       const entries = await Promise.all(
         query.data!.map(async (client) => {
-          const [full, connections] = await Promise.all([
+          const [full, connections, documents] = await Promise.all([
             callOperation("clients.get" as never, { id: client.id } as never).catch(
               () => undefined
             ),
@@ -75,12 +76,19 @@ export function ClientsScreen({ autoOpenCreate = false }: ClientsScreenProps = {
                 clientId: client.id,
               } as never
             ).catch(() => undefined),
+            callOperation("clients.documents" as never, { id: client.id } as never).catch(
+              () => undefined
+            ),
           ]);
           const projects =
             (full as { references?: { projects: readonly string[] } } | undefined)?.references
               ?.projects.length ?? 0;
           const connectionsCount = (connections as unknown[] | undefined)?.length ?? 0;
-          return [client.id, { projects, connections: connectionsCount }] as const;
+          const documentsCount = (documents as unknown[] | undefined)?.length ?? 0;
+          return [
+            client.id,
+            { projects, connections: connectionsCount, documents: documentsCount },
+          ] as const;
         })
       );
       setStatsById(Object.fromEntries(entries));
@@ -156,6 +164,7 @@ export function ClientsScreen({ autoOpenCreate = false }: ClientsScreenProps = {
                 stats={[
                   { label: "Proyectos", value: stats?.projects ?? "…" },
                   { label: "Conexiones", value: stats?.connections ?? "…" },
+                  { label: "Documentos", value: stats?.documents ?? "…" },
                 ]}
                 lastActivityLabel={`Última actividad: ${new Date(client.updatedAt).toLocaleDateString()}`}
                 primaryActions={
