@@ -183,6 +183,29 @@ describe("ContentLibraryPanel (Biblioteca IA — Agentes)", () => {
     unmount();
   });
 
+  it("muestra 'Asignado a N proyecto(s)' real cuando el elemento coincide con un proyecto real, y 'Sin asignar' si no coincide con ninguno", async () => {
+    const invoke = setDwm({
+      "projects.list": () => success("projects.list", ["p1"]),
+      "projects.get": () =>
+        success("projects.get", { id: "p1", metadata: { name: "Proyecto Uno" } }),
+      "content-sync.list-catalog": () =>
+        success("content-sync.list-catalog", [
+          { id: "coordinador", preview: { action: "unchanged" } },
+        ]),
+    });
+    const { container, unmount } = mountPanel();
+    await settle(10);
+
+    expect(container.textContent).toContain("Asignado a 1 proyecto");
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "content-sync.list-catalog"
+    );
+    expect((call?.[0] as { payload: { targetProjectId: string } }).payload.targetProjectId).toBe(
+      "p1"
+    );
+    unmount();
+  });
+
   it("cambiar el alcance a cliente vuelve a pedir el catálogo real de ese cliente (sourceClientId), no el global", async () => {
     setDwm({
       "clients.list": () => success("clients.list", [{ id: "mci-finance", name: "MCI Finance" }]),
