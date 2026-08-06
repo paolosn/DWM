@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { callOperation, DwmOperationError } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
+import { ActionCard } from "../../design-system/composites/ActionCard/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { TextArea } from "../../design-system/primitives/TextArea/index.js";
@@ -445,13 +446,13 @@ export function ProvisioningScreen({
         />
         <div className="dwm-provisioning-screen__grid">
           {(Object.keys(CATEGORY_LABEL) as Category[]).map((cat) => (
-            <Card key={cat}>
-              <h2 className="dwm-provisioning-screen__card-title">{CATEGORY_LABEL[cat]}</h2>
-              <p className="dwm-provisioning-screen__card-description">
-                {CATEGORY_DESCRIPTION[cat]}
-              </p>
-              <Button onClick={() => setCategory(cat)}>Empezar</Button>
-            </Card>
+            <ActionCard
+              key={cat}
+              title={CATEGORY_LABEL[cat]}
+              description={CATEGORY_DESCRIPTION[cat]}
+              ctaLabel="Empezar"
+              onAction={() => setCategory(cat)}
+            />
           ))}
         </div>
       </div>

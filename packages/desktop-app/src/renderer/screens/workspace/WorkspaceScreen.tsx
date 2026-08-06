@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDwmMutation, useDwmQuery } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
@@ -72,7 +73,7 @@ export function WorkspaceScreen(): JSX.Element {
 
       <div className="dwm-workspace-screen__grid">
         <Card>
-          <h2 className="dwm-workspace-screen__card-title">Workspace</h2>
+          <SectionHeader title="Workspace" />
           {(workspaceQuery.status === "idle" || workspaceQuery.status === "loading") && (
             <Skeleton variant="block" height="60px" />
           )}
@@ -103,7 +104,7 @@ export function WorkspaceScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <h2 className="dwm-workspace-screen__card-title">Perfil</h2>
+          <SectionHeader title="Perfil" />
           {(profilesQuery.status === "idle" || profilesQuery.status === "loading") && (
             <Skeleton variant="block" height="60px" />
           )}
@@ -144,7 +145,7 @@ export function WorkspaceScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <h2 className="dwm-workspace-screen__card-title">Herramientas detectadas</h2>
+          <SectionHeader title="Herramientas detectadas" />
           {(toolsQuery.status === "idle" || toolsQuery.status === "loading") && (
             <Skeleton variant="block" height="80px" />
           )}
@@ -173,7 +174,7 @@ export function WorkspaceScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <h2 className="dwm-workspace-screen__card-title">Estado general</h2>
+          <SectionHeader title="Estado general" />
           {(statusQuery.status === "idle" || statusQuery.status === "loading") && (
             <Skeleton variant="block" height="80px" />
           )}
@@ -208,7 +209,7 @@ export function WorkspaceScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <h2 className="dwm-workspace-screen__card-title">Acciones</h2>
+          <SectionHeader title="Acciones" />
           <div className="dwm-workspace-screen__actions">
             <Button variant="secondary" disabled>
               Cambiar IA (sin soporte todavía)
