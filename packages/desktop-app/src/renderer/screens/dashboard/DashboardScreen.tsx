@@ -2,7 +2,7 @@ import { useDwmQuery } from "../../api-client/index.js";
 import { useNavigation } from "../../shell/NavigationContext.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
-import { ActionCard } from "../../design-system/composites/ActionCard/index.js";
+import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { HealthRow } from "../../design-system/composites/HealthRow/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
@@ -104,13 +104,17 @@ export function DashboardScreen(): JSX.Element {
               ? navigateToClientsAndCreate
               : () => setActiveSection(flow.section);
           return (
-            <ActionCard
+            <ResourceCard
               key={flow.section}
-              icon={<flow.icon size={20} />}
               title={flow.title}
               description={flow.description}
-              ctaLabel={flow.cta}
-              onAction={activate}
+              accentColor="accent"
+              meta={
+                <span className="dwm-dashboard__flow-icon" aria-hidden="true">
+                  <flow.icon size={18} />
+                </span>
+              }
+              trailing={<Button onClick={activate}>{flow.cta}</Button>}
             />
           );
         })}

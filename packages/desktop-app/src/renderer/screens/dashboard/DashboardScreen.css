@@ -16,10 +16,23 @@
   max-width: 640px;
 }
 .dwm-dashboard__flow {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--dwm-space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
   margin-bottom: var(--dwm-space-lg);
+}
+.dwm-dashboard__flow .dwm-resource-card__row {
+  align-items: center;
+}
+.dwm-dashboard__flow-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--dwm-radius-control);
+  background: color-mix(in srgb, var(--dwm-color-accent) 12%, transparent);
+  color: var(--dwm-color-accent);
 }
 .dwm-dashboard__grid {
   display: grid;
