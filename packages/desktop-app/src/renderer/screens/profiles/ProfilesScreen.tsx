@@ -3,7 +3,7 @@ import { callOperation, useDwmQuery, DwmOperationError } from "../../api-client/
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { FilterBar } from "../../design-system/composites/FilterBar/index.js";
 import { DataList } from "../../design-system/composites/DataList/index.js";
-import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
+import { EntityCard } from "../../design-system/composites/EntityCard/index.js";
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
@@ -329,21 +329,27 @@ export function ProfilesScreen(): JSX.Element {
                   card?.color ? ({ "--dwm-profile-color": card.color } as CSSProperties) : undefined
                 }
               >
-                <ResourceCard
-                  title={card?.name ?? id}
+                <EntityCard
+                  name={card?.name ?? id}
                   description={card?.description || "Sin descripción."}
-                  accentColor="accent"
-                  meta={
+                  onClick={() => setDetailId(id)}
+                  {...(card
+                    ? {
+                        stats: [
+                          { label: "Agentes", value: card.agentCount },
+                          { label: "Skills", value: card.skillCount },
+                          { label: "Reglas", value: card.ruleCount },
+                          { label: "MCP", value: card.mcpCount },
+                        ],
+                      }
+                    : {})}
+                  status={
                     card ? (
                       <div className="dwm-profiles-screen__card-summary">
-                        <StatusBadge label={`${card.agentCount} agentes`} tone="neutral" />
-                        <StatusBadge label={`${card.skillCount} skills`} tone="neutral" />
-                        <StatusBadge label={`${card.ruleCount} reglas`} tone="neutral" />
                         <StatusBadge
                           label={card.hasAi ? "IA configurada" : "Sin IA"}
                           tone={card.hasAi ? "success" : "neutral"}
                         />
-                        <StatusBadge label={`${card.mcpCount} MCP`} tone="neutral" />
                         <StatusBadge
                           label={
                             appliedCount > 0
@@ -355,8 +361,7 @@ export function ProfilesScreen(): JSX.Element {
                       </div>
                     ) : undefined
                   }
-                  onClick={() => setDetailId(id)}
-                  trailing={
+                  primaryActions={
                     <Button variant="secondary" onClick={() => setDetailId(id)}>
                       Ver detalle
                     </Button>
