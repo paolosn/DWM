@@ -1,0 +1,21 @@
+.dwm-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dwm-space-md);
+}
+.dwm-section-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-sm);
+}
+.dwm-section-header__title {
+  margin: 0;
+  font-size: var(--dwm-font-size-section-title);
+  font-weight: 600;
+}
+.dwm-section-header__description {
+  margin: 4px 0 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}

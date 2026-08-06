@@ -332,6 +332,7 @@ export function ProfilesScreen(): JSX.Element {
                 <ResourceCard
                   title={card?.name ?? id}
                   description={card?.description || "Sin descripción."}
+                  accentColor="accent"
                   meta={
                     card ? (
                       <div className="dwm-profiles-screen__card-summary">

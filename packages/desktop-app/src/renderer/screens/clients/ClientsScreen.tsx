@@ -144,78 +144,71 @@ export function ClientsScreen({ autoOpenCreate = false }: ClientsScreenProps = {
           renderItem={(client) => {
             const stats = statsById[client.id];
             return (
-              <div className="dwm-clients-screen__card-wrap">
-                <ResourceCard
-                  title={client.name}
-                  description={client.slug}
-                  meta={
-                    <div className="dwm-clients-screen__badges">
-                      <StatusBadge label={client.status} tone="accent" />
-                      <StatusBadge
-                        label={client.archived ? "Archivado" : "Activo"}
-                        tone={client.archived ? "neutral" : "success"}
-                      />
-                      <StatusBadge
-                        label={`${stats?.projects ?? "…"} proyecto${stats?.projects === 1 ? "" : "s"}`}
-                        tone="neutral"
-                      />
-                      <StatusBadge
-                        label={`${stats?.connections ?? "…"} conexiones`}
-                        tone="neutral"
-                      />
-                      <StatusBadge
-                        label={`Última actividad: ${new Date(client.updatedAt).toLocaleDateString()}`}
-                        tone="neutral"
-                      />
-                    </div>
-                  }
-                  trailing={
-                    <div className="dwm-clients-screen__actions">
-                      <Button
-                        variant="secondary"
-                        onClick={() => navigateToProvisioning(client.name)}
-                      >
-                        Nuevo trabajo
-                      </Button>
-                      <Button onClick={() => setDetailClientId(client.id)}>Ver cliente</Button>
-                      <EntityActions
-                        row={client}
-                        entityLabel={client.name}
-                        actions={[
-                          {
-                            id: "archive",
-                            label: "Archivar",
-                            isAvailable: (c) => !c.archived,
-                            onSelect: (c) =>
-                              void archiveMutation
-                                .mutate({ id: c.id })
-                                .then(() =>
-                                  showToast({ title: `«${c.name}» archivado`, tone: "success" })
-                                ),
-                          },
-                          {
-                            id: "restore",
-                            label: "Restaurar",
-                            isAvailable: (c) => c.archived,
-                            onSelect: (c) =>
-                              void restoreMutation
-                                .mutate({ id: c.id })
-                                .then(() =>
-                                  showToast({ title: `«${c.name}» restaurado`, tone: "success" })
-                                ),
-                          },
-                          {
-                            id: "delete",
-                            label: "Eliminar",
-                            destructive: true,
-                            onSelect: (c) => setPendingDelete(c),
-                          },
-                        ]}
-                      />
-                    </div>
-                  }
-                />
-              </div>
+              <ResourceCard
+                title={client.name}
+                description={client.slug}
+                accentColor="accent"
+                meta={
+                  <div className="dwm-clients-screen__badges">
+                    <StatusBadge label={client.status} tone="accent" />
+                    <StatusBadge
+                      label={client.archived ? "Archivado" : "Activo"}
+                      tone={client.archived ? "neutral" : "success"}
+                    />
+                    <StatusBadge
+                      label={`${stats?.projects ?? "…"} proyecto${stats?.projects === 1 ? "" : "s"}`}
+                      tone="neutral"
+                    />
+                    <StatusBadge label={`${stats?.connections ?? "…"} conexiones`} tone="neutral" />
+                    <StatusBadge
+                      label={`Última actividad: ${new Date(client.updatedAt).toLocaleDateString()}`}
+                      tone="neutral"
+                    />
+                  </div>
+                }
+                trailing={
+                  <div className="dwm-clients-screen__actions">
+                    <Button variant="secondary" onClick={() => navigateToProvisioning(client.name)}>
+                      Nuevo trabajo
+                    </Button>
+                    <Button onClick={() => setDetailClientId(client.id)}>Ver cliente</Button>
+                    <EntityActions
+                      row={client}
+                      entityLabel={client.name}
+                      actions={[
+                        {
+                          id: "archive",
+                          label: "Archivar",
+                          isAvailable: (c) => !c.archived,
+                          onSelect: (c) =>
+                            void archiveMutation
+                              .mutate({ id: c.id })
+                              .then(() =>
+                                showToast({ title: `«${c.name}» archivado`, tone: "success" })
+                              ),
+                        },
+                        {
+                          id: "restore",
+                          label: "Restaurar",
+                          isAvailable: (c) => c.archived,
+                          onSelect: (c) =>
+                            void restoreMutation
+                              .mutate({ id: c.id })
+                              .then(() =>
+                                showToast({ title: `«${c.name}» restaurado`, tone: "success" })
+                              ),
+                        },
+                        {
+                          id: "delete",
+                          label: "Eliminar",
+                          destructive: true,
+                          onSelect: (c) => setPendingDelete(c),
+                        },
+                      ]}
+                    />
+                  </div>
+                }
+              />
             );
           }}
         />

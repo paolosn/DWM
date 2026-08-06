@@ -4,6 +4,67 @@
  * Solo tema claro en este módulo; los nombres están preparados para un
  * futuro tema oscuro (mismo set de variables, valores distintos en un
  * selector `[data-theme="dark"]` que aún no existe).
+ *
+ * ============================================================
+ * REGLAS VISUALES OBLIGATORIAS (Fase 1 — sistema visual base)
+ * ============================================================
+ * Única referencia real para toda la app. Ninguna pantalla debe
+ * definir su propio valor de espaciado/radio/sombra/color: siempre
+ * los tokens de abajo. Ver `DesignSystemShowcase` para ejemplos en
+ * vivo de cada regla.
+ *
+ * ESPACIADO — usar siempre --dwm-space-*, nunca un px suelto:
+ *   xs (8px) separación mínima entre elementos relacionados (badges,
+ *       iconos+texto); sm (12px) entre campos de un mismo grupo;
+ *       md (16px) entre bloques dentro de una Card o sección;
+ *       lg (24px) entre secciones de una pantalla;
+ *       xl (32px) margen exterior de una pantalla completa.
+ *
+ * TIPOGRAFÍA — jerarquía fija de 4 niveles, sin tamaños intermedios:
+ *   --dwm-font-size-screen-title (26px) título de pantalla (PageHeader);
+ *   --dwm-font-size-section-title (17px) título de sección (SectionHeader,
+ *       título de Card de entidad);
+ *   --dwm-font-size-body (14px) texto normal, valores de StatCard;
+ *   --dwm-font-size-meta (12px) descripciones, metadatos, StatusBadge.
+ *
+ * RADIOS — dos únicos valores: --dwm-radius-card (12px) en Cards/
+ *   diálogos/paneles; --dwm-radius-control (8px) en botones/campos/
+ *   badges. Nunca un radio distinto a mano.
+ *
+ * SOMBRAS — dos únicos niveles: --dwm-shadow-resting (reposo, en toda
+ *   Card por defecto vía el primitivo `Card`); --dwm-shadow-raised
+ *   (hover/elevación real de una Card interactiva). Nunca una sombra
+ *   inventada con rgba() suelto.
+ *
+ * HOVER — en cualquier elemento clicable (Card con onClick, botón
+ *   secundario): sombra --dwm-shadow-raised + `transform:
+ *   translateY(-1px)`, transición `var(--dwm-motion-hover)` (140ms,
+ *   0ms si `prefers-reduced-motion`). Ya integrado en `ResourceCard`/
+ *   `EntityCard`: no reimplementar en la pantalla consumidora.
+ *
+ * FOCUS — `outline: 2px solid var(--dwm-color-accent); outline-offset:
+ *   2px` en `:focus-visible` de cualquier elemento interactivo custom
+ *   (Card con role="button"). Los controles nativos (`button`, `input`,
+ *   `select`) usan el foco del navegador salvo excepción documentada.
+ *
+ * ESTADOS — normalizados en `STATUS_PRESETS` (ver StatusBadge):
+ *   activo/archivado/sincronizado/conflicto/pendiente/error/global/
+ *   cliente/proyecto/perfil, cada uno con su tono fijo de los 5 tonos
+ *   reales (neutral/success/warning/danger/accent). disabled y loading
+ *   son responsabilidad del primitivo (`Button loading`/`disabled`,
+ *   `ActionCard loading`/`disabled`): nunca simulados con opacidad a
+ *   mano.
+ *
+ * DENSIDAD DE CARDS — `Card` con `padded` (por defecto) usa el
+ *   espaciado `md` interno; listados de Cards usan `--dwm-space-sm`
+ *   entre elementos (`ResourceCard`) o `--dwm-space-md` en grids de
+ *   entidades (`EntityCard`, `StatCard`, `ActionCard`).
+ *
+ * GRIDS RESPONSIVE — único patrón real en toda la app:
+ *   `grid-template-columns: repeat(auto-fill, minmax(Npx, 1fr))` con
+ *   `gap` en un token de espaciado — nunca media queries a mano para
+ *   reflow de Cards. N varía según el contenido de la Card (220-260px
+ *   es el rango real ya usado).
  */
 :root {
   --dwm-color-background-primary: #f5f5f7;

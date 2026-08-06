@@ -1,0 +1,27 @@
+.dwm-action-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dwm-space-xs);
+}
+.dwm-action-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--dwm-radius-card);
+  background: color-mix(in srgb, var(--dwm-color-accent) 12%, transparent);
+  color: var(--dwm-color-accent);
+  margin-bottom: var(--dwm-space-xs);
+}
+.dwm-action-card__title {
+  margin: 0;
+  font-size: var(--dwm-font-size-body);
+  font-weight: 600;
+}
+.dwm-action-card__description {
+  margin: 0 0 var(--dwm-space-sm);
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}

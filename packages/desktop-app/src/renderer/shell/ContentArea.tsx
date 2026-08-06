@@ -7,6 +7,7 @@ import { AgentsScreen } from "../screens/agents/AgentsScreen.js";
 import { SkillsScreen } from "../screens/skills/SkillsScreen.js";
 import { RulesScreen } from "../screens/rules/RulesScreen.js";
 import { BibliotecaIAScreen } from "../screens/library/BibliotecaIAScreen.js";
+import { DesignSystemShowcase } from "../design-system/showcase/DesignSystemShowcase.js";
 import { KnowledgeScreen } from "../screens/knowledge/KnowledgeScreen.js";
 import { ClientsScreen } from "../screens/clients/ClientsScreen.js";
 import { DashboardScreen } from "../screens/dashboard/DashboardScreen.js";
@@ -95,6 +96,14 @@ export function ContentArea(): JSX.Element {
       setActiveSection("aiLibrary");
     }
   }, [activeSection]);
+
+  if (activeSection === "designSystemShowcase" && import.meta.env.DEV) {
+    return (
+      <section aria-label="Contenido" data-testid="content-area" className="dwm-content-area">
+        <DesignSystemShowcase />
+      </section>
+    );
+  }
 
   if (activeSection === "aiCreator") {
     return (

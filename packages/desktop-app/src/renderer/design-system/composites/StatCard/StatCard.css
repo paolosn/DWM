@@ -1,0 +1,38 @@
+.dwm-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+.dwm-stat-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--dwm-radius-control);
+  background: color-mix(in srgb, var(--dwm-color-accent) 12%, transparent);
+  color: var(--dwm-color-accent);
+  margin-bottom: var(--dwm-space-xs);
+}
+.dwm-stat-card__value {
+  font-size: var(--dwm-font-size-screen-title);
+  font-weight: 700;
+}
+.dwm-stat-card__label {
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-stat-card__trend {
+  font-size: var(--dwm-font-size-meta);
+  margin-top: 2px;
+}
+.dwm-stat-card__trend--up {
+  color: var(--dwm-color-success);
+}
+.dwm-stat-card__trend--down {
+  color: var(--dwm-color-danger);
+}
+.dwm-stat-card__trend--flat {
+  color: var(--dwm-color-text-secondary);
+}
