@@ -68,7 +68,61 @@ describe("DashboardScreen", () => {
     Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
   });
 
-  it("muestra el estado del motor y los recuentos reales de proyectos y backups", async () => {
+  it("muestra el bloque de bienvenida real y las 4 Cards de acción (Nuevo trabajo → Clientes → Proyectos → Biblioteca IA)", async () => {
+    setDwm();
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    expect(container.textContent).toContain("Bienvenido a DWM");
+    expect(container.textContent).toContain("Tu espacio de trabajo inteligente");
+    for (const title of ["Nuevo trabajo", "Clientes", "Proyectos", "Biblioteca IA"]) {
+      expect(container.textContent).toContain(title);
+    }
+    // Orden exacto pedido: Nuevo trabajo, Clientes, Proyectos, Biblioteca IA.
+    const cardTitles = Array.from(container.querySelectorAll(".dwm-action-card__title")).map(
+      (el) => el.textContent
+    );
+    expect(cardTitles).toEqual(["Nuevo trabajo", "Clientes", "Proyectos", "Biblioteca IA"]);
+    unmount();
+  });
+
+  it("las 4 etiquetas de categoría son las reales (EMPEZAR AQUÍ / GESTIÓN / EN CURSO / RECURSOS)", async () => {
+    setDwm();
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    const eyebrows = Array.from(container.querySelectorAll(".dwm-action-card__eyebrow")).map(
+      (el) => el.textContent
+    );
+    expect(eyebrows).toEqual(["EMPEZAR AQUÍ", "GESTIÓN", "EN CURSO", "RECURSOS"]);
+    unmount();
+  });
+
+  it("Centro de trabajo se muestra como fila ancha (fuera del grid 2x2), con acceso real", async () => {
+    setDwm();
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ActiveSectionProbe />
+        <DashboardScreen />
+      </NavigationProvider>
+    );
+    await settle();
+
+    expect(container.textContent).toContain("Centro de trabajo");
+    expect(container.textContent).toContain("Acceso rápido al entorno de desarrollo.");
+    click(
+      Array.from(container.querySelectorAll(".dwm-dashboard__workspace-button")).find(
+        (b) => b.textContent === "Ver"
+      ) ?? null
+    );
+    await settle();
+    expect(container.querySelector('[data-testid="active-section"]')?.textContent).toBe(
+      "workspace"
+    );
+    unmount();
+  });
+
+  it("muestra las 4 métricas reales (Motor/Proyectos/Backups/Versión), solo dato — sin descripciones ni botones", async () => {
     setDwm({
       "projects.list": {
         success: true,
@@ -81,106 +135,22 @@ describe("DashboardScreen", () => {
     const { container, unmount } = mountScreen();
     await settle();
 
+    expect(container.textContent).toContain("MOTOR");
     expect(container.textContent).toContain("Operativo");
-    expect(container.textContent).toContain("2 proyecto(s)");
-    expect(container.textContent).toContain("1 backup(s)");
-    unmount();
-  });
+    expect(container.textContent).toContain("PROYECTOS");
+    expect(container.textContent).toContain("BACKUPS");
+    expect(container.textContent).toContain("VERSIÓN");
+    expect(container.textContent).toContain("0.1.0");
 
-  it("muestra estado vacío cuando no hay proyectos ni backups", async () => {
-    setDwm();
-    const { container, unmount } = mountScreen();
-    await settle();
-
-    expect(container.textContent).toContain("Todavía no hay proyectos");
-    expect(container.textContent).toContain("Sin backups todavía");
-    unmount();
-  });
-
-  it("muestra ErrorState cuando projects.list falla", async () => {
-    setDwm({
-      "projects.list": {
-        success: false,
-        requestId: "x",
-        operation: "projects.list",
-        error: { code: "E", message: "fallo", category: "unknown", retryable: true },
-      },
-    });
-    const { container, unmount } = mountScreen();
-    await settle();
-
-    expect(container.textContent).toContain("No se pudieron cargar los proyectos");
-    unmount();
-  });
-
-  it("'Ir a Proyectos' navega a la sección de proyectos", async () => {
-    setDwm();
-    const { container, unmount } = mountScreen();
-    await settle();
-
-    const button = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Ir a Proyectos"
+    const values = Array.from(container.querySelectorAll(".dwm-dashboard__metric-value")).map(
+      (el) => el.textContent
     );
-    click(button ?? null);
-    // La navegación real la observa AppShell/ContentArea; aquí solo confirmamos que el botón existe y es interactivo.
-    expect(button).toBeDefined();
-    unmount();
-  });
-});
-
-describe("DashboardScreen — acciones adicionales", () => {
-  afterEach(() => {
-    __resetQueryCacheForTests();
-    Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
-  });
-
-  it("muestra ErrorState cuando backups.list falla", async () => {
-    setDwm({
-      "backups.list": {
-        success: false,
-        requestId: "x",
-        operation: "backups.list",
-        error: { code: "E", message: "fallo backups", category: "unknown", retryable: true },
-      },
-    });
-    const { container, unmount } = mountScreen();
-    await settle();
-    expect(container.textContent).toContain("No se pudieron cargar los backups");
+    expect(values[1]).toBe("2");
+    expect(values[2]).toBe("1");
     unmount();
   });
 
-  it("'Abrir Centro de trabajo' es interactivo", async () => {
-    setDwm();
-    const { container, unmount } = mountScreen();
-    await settle();
-    const button = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Abrir Centro de trabajo"
-    );
-    click(button ?? null);
-    expect(button).toBeDefined();
-    unmount();
-  });
-
-  it("muestra el bloque de bienvenida real y las 5 Cards del flujo recomendado (Clientes → Nuevo trabajo → Proyectos → Biblioteca IA → Centro de trabajo)", async () => {
-    setDwm();
-    const { container, unmount } = mountScreen();
-    await settle();
-
-    expect(container.textContent).toContain("Bienvenido a DWM");
-    expect(container.textContent).toContain("Tu espacio de trabajo inteligente");
-    for (const title of [
-      "Clientes",
-      "Nuevo trabajo",
-      "Proyectos",
-      "Biblioteca IA",
-      "Centro de trabajo",
-    ]) {
-      expect(container.textContent).toContain(title);
-    }
-    unmount();
-  });
-
-  it("cada Card del flujo navega de verdad a su sección real (reutiliza useNavigation, sin mecanismo nuevo)", async () => {
+  it("cada Card de acción navega de verdad a su sección real (reutiliza useNavigation, sin mecanismo nuevo)", async () => {
     setDwm();
     const { container, unmount } = mount(
       <NavigationProvider>
@@ -192,13 +162,11 @@ describe("DashboardScreen — acciones adicionales", () => {
 
     click(
       Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Abrir Biblioteca IA"
+        (b) => b.textContent === "Ver clientes"
       ) ?? null
     );
     await settle();
-    expect(container.querySelector('[data-testid="active-section"]')?.textContent).toBe(
-      "aiLibrary"
-    );
+    expect(container.querySelector('[data-testid="active-section"]')?.textContent).toBe("clients");
     unmount();
   });
 });
