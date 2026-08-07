@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Project, ProjectState } from "@dwm/project";
 import {
   useDwmMutation,
@@ -17,7 +17,7 @@ import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { Skeleton } from "../../design-system/composites/Skeleton/index.js";
 import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
-import { DeliveriesPanel } from "./deliveries/DeliveriesPanel.js";
+import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { ConnectionsPanel } from "./connections/ConnectionsPanel.js";
 import { ContentLibraryPanel } from "../library/ContentLibraryPanel.js";
 import "./ProjectDetailScreen.css";
@@ -29,14 +29,6 @@ const stateTone: Record<ProjectState, StatusTone> = {
   error: "danger",
   deleted: "neutral",
 };
-
-function NotAvailable({ label }: { readonly label: string }): JSX.Element {
-  return (
-    <InlineAlert tone="info" title="Función no disponible en esta versión">
-      No existe todavía una operación pública de Application API para «{label}».
-    </InlineAlert>
-  );
-}
 
 export interface ProjectDetailScreenProps {
   readonly projectId: string;
@@ -89,6 +81,16 @@ function ProjectSummaryPanel({
 }): JSX.Element {
   const { showToast } = useToast();
   const [profileName, setProfileName] = useState<string | undefined>(undefined);
+  const [profileCounts, setProfileCounts] = useState<
+    | {
+        readonly agents: number;
+        readonly skills: number;
+        readonly rules: number;
+        readonly mcp: number;
+        readonly aiProvider: string | undefined;
+      }
+    | undefined
+  >(undefined);
   const [clientName, setClientName] = useState<string | undefined>(undefined);
   const [syncSummary, setSyncSummary] = useState<SyncSummary | undefined>(undefined);
 
@@ -114,10 +116,25 @@ function ProjectSummaryPanel({
     let cancelled = false;
     void callOperation("profiles.get", { id: project.configuration.profileId })
       .then((profile) => {
-        if (!cancelled) setProfileName(profile?.metadata.name);
+        if (cancelled) return;
+        setProfileName(profile?.metadata.name);
+        setProfileCounts(
+          profile
+            ? {
+                agents: profile.configuration.agentIds?.length ?? 0,
+                skills: profile.configuration.skillIds?.length ?? 0,
+                rules: profile.configuration.ruleIds?.length ?? 0,
+                mcp: profile.configuration.mcpConnectionIds?.length ?? 0,
+                aiProvider: profile.configuration.defaultAIProviderId,
+              }
+            : undefined
+        );
       })
       .catch(() => {
-        if (!cancelled) setProfileName(undefined);
+        if (!cancelled) {
+          setProfileName(undefined);
+          setProfileCounts(undefined);
+        }
       });
     return () => {
       cancelled = true;
@@ -212,7 +229,7 @@ function ProjectSummaryPanel({
           Abrir carpeta
         </Button>
         <Button variant="secondary" onClick={() => onGoToTab("kilo-content")}>
-          Resincronizar
+          Sincronizar
         </Button>
         {syncSummary && syncSummary.conflicts > 0 && (
           <Button variant="destructive" onClick={() => onGoToTab("kilo-content")}>
@@ -226,6 +243,16 @@ function ProjectSummaryPanel({
         <StatCard value={syncSummary ? syncSummary.unchanged : "—"} label="Sincronizados" />
         <StatCard value={profileName ?? "Sin perfil aplicado"} label="Perfil aplicado" />
       </div>
+
+      {profileCounts && (
+        <div className="dwm-project-detail__profile-stats">
+          <StatCard value={profileCounts.agents} label="Agentes" />
+          <StatCard value={profileCounts.skills} label="Skills" />
+          <StatCard value={profileCounts.rules} label="Reglas" />
+          <StatCard value={profileCounts.mcp} label="MCP" />
+          <StatCard value={profileCounts.aiProvider ?? "Sin IA"} label="IA" />
+        </div>
+      )}
 
       {syncSummary?.conflicts ? (
         <InlineAlert tone="warning" title="Hay conflictos reales en este proyecto">
@@ -254,23 +281,126 @@ function ProjectSummaryPanel({
   );
 }
 
-function ProjectProfileTab({ profileId }: { readonly profileId: string }): JSX.Element {
-  const query = useDwmQuery("profiles.get", { id: profileId });
+/**
+ * Documentos y Actividad no tienen un almacén propio por proyecto en
+ * el backend (ClientDocumentIndex/ActivityLog son estrictamente de
+ * cliente) -- no se inventa uno. Reutilizan las mismas operaciones
+ * reales ya usadas en la ficha del cliente (clients.documents /
+ * clients.activity), mostrando los datos reales del cliente asociado
+ * a este proyecto. Si el proyecto no tiene cliente, un EmptyState
+ * honesto lo explica en vez de fabricar datos.
+ */
+function ProjectDocumentsTab({ clientId }: { readonly clientId: string | undefined }): JSX.Element {
+  const { showToast } = useToast();
+  const query = useDwmQuery(
+    "clients.documents",
+    { id: clientId ?? "" },
+    { enabled: Boolean(clientId) }
+  );
 
+  if (!clientId) {
+    return (
+      <EmptyState
+        title="Este proyecto no tiene cliente asignado"
+        description="Los documentos se gestionan a nivel de cliente. Asigna un cliente a este proyecto para ver aquí sus documentos reales."
+      />
+    );
+  }
   if (query.status === "idle" || query.status === "loading") {
     return <Skeleton variant="block" height="60px" />;
   }
-  if (query.status === "error" || !query.data) {
-    return <EmptyState title="No se pudo resolver el perfil aplicado" />;
+  if (query.status === "error") {
+    return (
+      <ErrorState
+        title="No se pudieron cargar los documentos"
+        {...(query.error?.message ? { technicalDetail: query.error.message } : {})}
+      />
+    );
+  }
+  const documents = query.data ?? [];
+  if (documents.length === 0) {
+    return (
+      <EmptyState
+        title="Este cliente todavía no tiene documentos"
+        description="Los documentos reales del cliente aparecerán aquí en cuanto se añadan desde su ficha."
+      />
+    );
+  }
+
+  async function openDocument(docPath: string, name: string): Promise<void> {
+    try {
+      const result = await window.dwm.openFolder(docPath);
+      showToast({
+        title: `${name}: ${result.message}`,
+        tone: result.opened ? "success" : "warning",
+      });
+    } catch {
+      showToast({ title: `No se pudo abrir «${name}»`, tone: "danger" });
+    }
   }
 
   return (
-    <dl className="dwm-project-detail__facts">
-      <dt>Nombre</dt>
-      <dd>{query.data.metadata.name}</dd>
-      <dt>Descripción</dt>
-      <dd>{query.data.metadata.description || "—"}</dd>
-    </dl>
+    <ul className="dwm-project-detail__documents">
+      {documents.map((doc) => (
+        <li key={doc.path}>
+          <ResourceCard
+            title={doc.name}
+            description={doc.path}
+            trailing={
+              <Button variant="secondary" onClick={() => void openDocument(doc.path, doc.name)}>
+                Abrir
+              </Button>
+            }
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ProjectActivityTab({ clientId }: { readonly clientId: string | undefined }): JSX.Element {
+  const query = useDwmQuery(
+    "clients.activity",
+    { id: clientId ?? "" },
+    { enabled: Boolean(clientId) }
+  );
+
+  if (!clientId) {
+    return (
+      <EmptyState
+        title="Este proyecto no tiene cliente asignado"
+        description="La actividad se registra a nivel de cliente. Asigna un cliente a este proyecto para ver aquí su actividad real."
+      />
+    );
+  }
+  if (query.status === "idle" || query.status === "loading") {
+    return <Skeleton variant="block" height="60px" />;
+  }
+  if (query.status === "error") {
+    return (
+      <ErrorState
+        title="No se pudo cargar la actividad"
+        {...(query.error?.message ? { technicalDetail: query.error.message } : {})}
+      />
+    );
+  }
+  const entries = query.data ?? [];
+  if (entries.length === 0) {
+    return (
+      <EmptyState title="Todavía no hay actividad registrada para el cliente de este proyecto." />
+    );
+  }
+
+  return (
+    <ol className="dwm-project-detail__activity">
+      {entries.map((entry, index) => (
+        <li key={`${entry.type}-${entry.at}-${index}`}>
+          <strong>{entry.type}</strong>
+          <p>{entry.message}</p>
+          <p className="dwm-project-detail__activity-date">{new Date(entry.at).toLocaleString()}</p>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -354,69 +484,24 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
       content: <ProjectSummaryPanel project={project} onGoToTab={setActiveTab} />,
     },
     {
-      id: "workspace",
-      label: "Workspace",
-      content: project.configuration.workspaceId ? (
-        <p>{project.configuration.workspaceId}</p>
-      ) : (
-        <EmptyState title="Sin workspace vinculado" />
-      ),
+      id: "kilo-content",
+      label: "Biblioteca IA",
+      content: <ProjectContentTab projectId={project.id} />,
     },
-    {
-      id: "profile",
-      label: "Perfil",
-      content: <ProjectProfileTab profileId={project.configuration.profileId} />,
-    },
-    {
-      id: "tools",
-      label: "Herramientas",
-      content:
-        project.configuration.usedTools.length > 0 ? (
-          <ul>
-            {project.configuration.usedTools.map((tool) => (
-              <li key={tool}>{tool}</li>
-            ))}
-          </ul>
-        ) : (
-          <EmptyState title="Sin herramientas asociadas" />
-        ),
-    },
-    { id: "ai", label: "IA", content: <NotAvailable label="IA activa del proyecto" /> },
-    {
-      id: "plugins",
-      label: "Extensiones de DWM",
-      content: <NotAvailable label="Extensiones de DWM del proyecto" />,
-    },
-    {
-      id: "settings",
-      label: "Variables y referencias",
-      content:
-        project.configuration.settings && Object.keys(project.configuration.settings).length > 0 ? (
-          <dl className="dwm-project-detail__facts">
-            {Object.entries(project.configuration.settings).map(([key, value]) => (
-              <Fragment key={key}>
-                <dt>{key}</dt>
-                <dd>{String(value)}</dd>
-              </Fragment>
-            ))}
-          </dl>
-        ) : (
-          <EmptyState title="Sin variables configuradas" />
-        ),
-    },
-    { id: "sessions", label: "Sesiones", content: <NotAvailable label="Sesiones del proyecto" /> },
-    { id: "history", label: "Historial", content: <NotAvailable label="Historial del proyecto" /> },
-    { id: "backups", label: "Backups", content: <NotAvailable label="Backups por proyecto" /> },
-    { id: "deliveries", label: "Entregas", content: <DeliveriesPanel projectId={project.id} /> },
     {
       id: "connections",
       label: "Conexiones",
       content: <ConnectionsPanel projectId={project.id} />,
     },
     {
-      id: "kilo-content",
-      label: "Biblioteca IA",
-      content: <ProjectContentTab projectId={project.id} />,
+      id: "documents",
+      label: "Documentos",
+      content: <ProjectDocumentsTab clientId={project.configuration.clientId} />,
+    },
+    {
+      id: "activity",
+      label: "Actividad",
+      content: <ProjectActivityTab clientId={project.configuration.clientId} />,
     },
   ];
 

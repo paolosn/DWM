@@ -356,7 +356,7 @@ describe("ProjectsScreen — reintentar y crear", () => {
     unmount();
   });
 
-  it("'Nuevo proyecto' navega al provisioning unificado (Nuevo trabajo), sin abrir un formulario ni pedir ruta/UUID", async () => {
+  it("'Nuevo trabajo' navega al provisioning unificado, sin abrir un formulario ni pedir ruta/UUID", async () => {
     setDwm({
       "projects.list": { success: true, requestId: "x", operation: "projects.list", data: [] },
     });
@@ -374,7 +374,7 @@ describe("ProjectsScreen — reintentar y crear", () => {
 
     click(
       Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Nuevo proyecto"
+        (b) => b.textContent === "Nuevo trabajo"
       ) ?? null
     );
     await settle();
