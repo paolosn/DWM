@@ -119,7 +119,7 @@ describe("DashboardScreen", () => {
     await settle();
 
     const button = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Ir a Proyectos"
+      (b) => b.textContent === "Ir a proyectos →"
     );
     click(button ?? null);
     // La navegación real la observa AppShell/ContentArea; aquí solo confirmamos que el botón existe y es interactivo.
@@ -154,7 +154,7 @@ describe("DashboardScreen — acciones adicionales", () => {
     const { container, unmount } = mountScreen();
     await settle();
     const button = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Abrir Centro de trabajo"
+      (b) => b.textContent === "Abrir centro de trabajo →"
     );
     click(button ?? null);
     expect(button).toBeDefined();

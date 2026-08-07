@@ -2,14 +2,13 @@ import { useDwmQuery } from "../../api-client/index.js";
 import { useNavigation } from "../../shell/NavigationContext.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
-import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { HealthRow } from "../../design-system/composites/HealthRow/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { Skeleton } from "../../design-system/composites/Skeleton/index.js";
 import { useShellHealth, type ShellHealthStatus } from "../../shell/hooks/useShellHealth.js";
-import { Users, Rocket, FolderKanban, Bot, LayoutGrid } from "lucide-react";
+import { Users, Rocket, FolderKanban, Bot, LayoutGrid, Cpu, Database, Zap } from "lucide-react";
 import type { DesktopNavigationSection } from "../../../shared/types/DesktopConfig.js";
 import "./DashboardScreen.css";
 
@@ -95,29 +94,39 @@ export function DashboardScreen(): JSX.Element {
         <p className="dwm-dashboard__welcome-subtitle">Tu espacio de trabajo inteligente</p>
       </div>
 
-      <div className="dwm-dashboard__flow">
-        {FLOW_CARDS.map((flow) => {
-          const activate = () => setActiveSection(flow.section);
-          return (
-            <ResourceCard
-              key={flow.section}
-              title={flow.title}
-              description={flow.description}
-              accentColor="accent"
-              meta={
+      <Card padded={false} className="dwm-dashboard__flow-card">
+        <ul className="dwm-dashboard__flow-list">
+          {FLOW_CARDS.map((flow) => {
+            const activate = () => setActiveSection(flow.section);
+            const isPrimary = flow.section === "provisioning";
+            return (
+              <li key={flow.section} className="dwm-dashboard__flow-row">
                 <span className="dwm-dashboard__flow-icon" aria-hidden="true">
                   <flow.icon size={18} />
                 </span>
-              }
-              trailing={<Button onClick={activate}>{flow.cta}</Button>}
-            />
-          );
-        })}
-      </div>
+                <div className="dwm-dashboard__flow-text">
+                  <h3 className="dwm-dashboard__flow-title">{flow.title}</h3>
+                  <p className="dwm-dashboard__flow-description">{flow.description}</p>
+                </div>
+                <Button variant={isPrimary ? "primary" : "secondary"} onClick={activate}>
+                  {flow.cta}
+                </Button>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
 
       <div className="dwm-dashboard__grid">
         <Card>
-          <SectionHeader title="Estado del motor" />
+          <SectionHeader
+            title="Estado del motor"
+            action={
+              <span className="dwm-dashboard__card-icon" aria-hidden="true">
+                <Cpu size={16} />
+              </span>
+            }
+          />
           <HealthRow
             label="Motor DWM"
             statusLabel={healthLabelByStatus[health.status]}
@@ -126,7 +135,14 @@ export function DashboardScreen(): JSX.Element {
         </Card>
 
         <Card>
-          <SectionHeader title="Proyectos" />
+          <SectionHeader
+            title="Proyectos"
+            action={
+              <span className="dwm-dashboard__card-icon" aria-hidden="true">
+                <FolderKanban size={16} />
+              </span>
+            }
+          />
           {loading && <Skeleton variant="block" height="60px" />}
           {projectsQuery.status === "error" && (
             <ErrorState
@@ -149,13 +165,24 @@ export function DashboardScreen(): JSX.Element {
               </ul>
             </>
           )}
-          <Button variant="secondary" onClick={() => setActiveSection("projects")}>
-            Ir a Proyectos
-          </Button>
+          <button
+            type="button"
+            className="dwm-dashboard__link"
+            onClick={() => setActiveSection("projects")}
+          >
+            Ir a proyectos →
+          </button>
         </Card>
 
         <Card>
-          <SectionHeader title="Backups recientes" />
+          <SectionHeader
+            title="Backups recientes"
+            action={
+              <span className="dwm-dashboard__card-icon" aria-hidden="true">
+                <Database size={16} />
+              </span>
+            }
+          />
           {backupsQuery.status === "idle" || backupsQuery.status === "loading" ? (
             <Skeleton variant="block" height="60px" />
           ) : backupsQuery.status === "error" ? (
@@ -166,19 +193,39 @@ export function DashboardScreen(): JSX.Element {
                 : {})}
             />
           ) : backupIds.length === 0 ? (
-            <EmptyState title="Sin backups todavía" />
+            <EmptyState
+              title="Sin backups todavía"
+              description="Se generarán al guardar un proyecto."
+            />
           ) : (
             <p className="dwm-dashboard__count">{backupIds.length} backup(s)</p>
           )}
         </Card>
 
         <Card>
-          <SectionHeader title="Acciones rápidas" />
+          <SectionHeader
+            title="Acciones rápidas"
+            action={
+              <span className="dwm-dashboard__card-icon" aria-hidden="true">
+                <Zap size={16} />
+              </span>
+            }
+          />
           <div className="dwm-dashboard__actions">
-            <Button onClick={() => setActiveSection("workspace")}>Abrir Centro de trabajo</Button>
-            <Button variant="secondary" onClick={() => setActiveSection("projects")}>
-              Ir a Proyectos
-            </Button>
+            <button
+              type="button"
+              className="dwm-dashboard__link"
+              onClick={() => setActiveSection("workspace")}
+            >
+              Abrir centro de trabajo →
+            </button>
+            <button
+              type="button"
+              className="dwm-dashboard__link"
+              onClick={() => setActiveSection("projects")}
+            >
+              Ir a Proyectos →
+            </button>
           </div>
         </Card>
       </div>
