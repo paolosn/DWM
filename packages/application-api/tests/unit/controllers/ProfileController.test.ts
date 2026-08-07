@@ -104,4 +104,67 @@ describe("ProfileController", () => {
     const data = response.data as { configuration: { agentIds?: readonly string[] } };
     expect(data.configuration.agentIds).toEqual(["coordinador"]);
   });
+
+  it("profiles.duplicate reutiliza ProfileManager.cloneProfile real: nuevo id, mismo configuration/referencias, nombre '<original> (copia)', nunca valores de secretos", async () => {
+    const profileManager = new RealProfileManager({ profilesDir: tempDir() });
+    const source = await profileManager.createProfile("Kit Backend", "desc real", {
+      ...defaultProfileConfiguration(),
+      color: "#4f46e5",
+      agentIds: ["coordinador"],
+      skillIds: ["checklist-produccion"],
+      ruleIds: ["seguridad-codigo"],
+      mcpConnectionIds: ["mcp-1"],
+      defaultAIProviderId: "openai",
+      secretRefs: ["openai-api-key"],
+    });
+    const api = new ApplicationAPI({ profileManager });
+
+    const response = await api.execute(
+      makeRequest("profiles.duplicate", { id: source.id }, { caller: admin })
+    );
+
+    expect(response.success).toBe(true);
+    if (!response.success) return;
+    const duplicated = response.data as {
+      id: string;
+      metadata: { name: string };
+      configuration: {
+        agentIds?: readonly string[];
+        skillIds?: readonly string[];
+        ruleIds?: readonly string[];
+        mcpConnectionIds?: readonly string[];
+        secretRefs: readonly string[];
+      };
+    };
+
+    // Nuevo id real, nunca el mismo que el original.
+    expect(duplicated.id).not.toBe(source.id);
+    // Nombre inicial exacto pedido.
+    expect(duplicated.metadata.name).toBe("Kit Backend (copia)");
+    // Configuración/referencias copiadas tal cual.
+    expect(duplicated.configuration.agentIds).toEqual(["coordinador"]);
+    expect(duplicated.configuration.skillIds).toEqual(["checklist-produccion"]);
+    expect(duplicated.configuration.ruleIds).toEqual(["seguridad-codigo"]);
+    expect(duplicated.configuration.mcpConnectionIds).toEqual(["mcp-1"]);
+    // secretRefs son claves, no valores: se copian igual que el resto de la configuración real.
+    expect(duplicated.configuration.secretRefs).toEqual(["openai-api-key"]);
+
+    // El duplicado queda realmente independiente: editarlo no afecta al original.
+    await profileManager.updateProfile(duplicated.id, {
+      configuration: { ...defaultProfileConfiguration(), agentIds: ["otro-agente"] },
+    });
+    const originalStillIntact = profileManager.getProfile(source.id);
+    expect(originalStillIntact?.configuration.agentIds).toEqual(["coordinador"]);
+  });
+
+  it("profiles.duplicate devuelve un error real si el perfil origen no existe", async () => {
+    const profileManager = new RealProfileManager({ profilesDir: tempDir() });
+    const api = new ApplicationAPI({ profileManager });
+
+    const response = await api.execute(
+      makeRequest("profiles.duplicate", { id: "no-existe" }, { caller: admin })
+    );
+
+    expect(response.success).toBe(false);
+  });
 });

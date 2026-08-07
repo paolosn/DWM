@@ -92,6 +92,9 @@ export function ContentLibraryPanel({
   const [error, setError] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
+  const [assignedProjectsByItemId, setAssignedProjectsByItemId] = useState<
+    Record<string, readonly string[]>
+  >({});
 
   const [createManualOpen, setCreateManualOpen] = useState(false);
   const [createAiOpen, setCreateAiOpen] = useState(false);
@@ -239,6 +242,45 @@ export function ContentLibraryPanel({
       setOriginByItemId(map);
     })();
   }, [lockedScope?.kind, lockedScope?.id, kind, items]);
+
+  // "Proyectos asignados" por elemento (encargo de acabado visual): solo
+  // tiene sentido cuando el panel NO está anclado a un proyecto (ahí ya se
+  // sabe que está en ESE proyecto). Reutiliza exclusivamente
+  // content-sync.list-catalog (mismo motor ya usado en originByItemId) y
+  // el catálogo de proyectos ya cargado -- sin operación nueva.
+  useEffect(() => {
+    if (lockedScope?.kind === "project" || items === undefined || projectOptions.length === 0) {
+      setAssignedProjectsByItemId({});
+      return;
+    }
+    void (async () => {
+      const map: Record<string, string[]> = {};
+      const sourceClientId =
+        lockedScope?.kind === "client" ? lockedScope.id : scope === "client" ? clientId : undefined;
+      await Promise.all(
+        projectOptions.map(async (project) => {
+          try {
+            const entries = (await callOperation(
+              "content-sync.list-catalog" as never,
+              {
+                kind,
+                targetProjectId: project.id,
+                ...(sourceClientId ? { sourceClientId } : {}),
+              } as never
+            )) as { id: string; preview: { action: string } }[];
+            for (const entry of entries) {
+              if (entry.preview.action === "unchanged") {
+                (map[entry.id] ??= []).push(project.name);
+              }
+            }
+          } catch {
+            // Proyecto sin acceso al catálogo de este origen: simplemente no aporta a este recuento.
+          }
+        })
+      );
+      setAssignedProjectsByItemId(map);
+    })();
+  }, [lockedScope?.kind, lockedScope?.id, kind, items, projectOptions, scope, clientId]);
 
   async function handleOpenFile(item: Summary): Promise<void> {
     if (!root) return;
@@ -561,6 +603,22 @@ export function ContentLibraryPanel({
                       />
                     )}
                     <StatusBadge {...STATUS_PRESETS[item.archived ? "archivado" : "activo"]} />
+                    {lockedScope?.kind !== "project" && (
+                      <StatusBadge
+                        label={
+                          (assignedProjectsByItemId[item.id]?.length ?? 0) > 0
+                            ? `Asignado a ${assignedProjectsByItemId[item.id]!.length} proyecto${
+                                assignedProjectsByItemId[item.id]!.length === 1 ? "" : "s"
+                              }`
+                            : "Sin asignar"
+                        }
+                        tone={
+                          (assignedProjectsByItemId[item.id]?.length ?? 0) > 0
+                            ? "accent"
+                            : "neutral"
+                        }
+                      />
+                    )}
                   </div>
                 }
                 trailing={

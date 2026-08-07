@@ -49,6 +49,15 @@ declare module "../ApplicationRequest.js" {
       };
       result: Profile;
     };
+    /**
+     * Duplica un perfil real — delega íntegramente en
+     * ProfileManager.cloneProfile(), ya existente (genera un id real
+     * nuevo, copia configuración/referencias, nunca valores de
+     * secretos: `secretRefs` son claves de @dwm/secrets, no el
+     * secreto en sí). Nombre inicial real: "<nombre original> (copia)".
+     * El duplicado queda completamente independiente para editarse.
+     */
+    "profiles.duplicate": { payload: { id: string }; result: Profile };
   }
 }
 
@@ -150,6 +159,31 @@ export class ProfileController implements ApplicationController {
           });
         }
         return updated;
+      },
+    });
+
+    permissions.register("profiles.duplicate", ["write"]);
+    operations.register({
+      name: "profiles.duplicate",
+      version: "1.0.0",
+      capabilities: ["write"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return { id: requireString(record, "id") };
+      },
+      handler: async (payload) => {
+        const source = manager().getProfile(payload.id);
+        if (!source) {
+          throw createApplicationError({
+            code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+            message: `No existe ningún perfil con id "${payload.id}".`,
+            origin: "validation",
+            category: "not-found",
+            retryable: false,
+            recoverable: true,
+          });
+        }
+        return manager().cloneProfile(payload.id, `${source.metadata.name} (copia)`);
       },
     });
   }

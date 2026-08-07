@@ -272,4 +272,28 @@ describe("ProfilesScreen", () => {
     expect((openCall?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
     unmount();
   });
+
+  it("'Duplicar' en la Card real llama a profiles.duplicate con el id real y muestra el nombre real del duplicado", async () => {
+    const invoke = setDwm({
+      "profiles.duplicate": () =>
+        success("profiles.duplicate", {
+          id: "default-copy",
+          metadata: { name: "Kit Backend (copia)" },
+        }),
+    });
+    const { container, unmount } = mountScreen();
+    await settle(8);
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Duplicar") ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "profiles.duplicate"
+    );
+    expect((call?.[0] as { payload: { id: string } }).payload.id).toBe("default");
+    expect(container.textContent).toContain("Kit Backend (copia)");
+    unmount();
+  });
 });

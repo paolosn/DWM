@@ -31,3 +31,28 @@
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: var(--dwm-space-sm);
 }
+
+.dwm-project-detail__profile-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--dwm-space-sm);
+}
+.dwm-project-detail__documents,
+.dwm-project-detail__activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-project-detail__activity li {
+  padding: var(--dwm-space-sm);
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-card);
+}
+.dwm-project-detail__activity-date {
+  margin: 0;
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}

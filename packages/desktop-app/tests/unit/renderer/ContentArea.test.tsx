@@ -131,7 +131,7 @@ describe("ContentArea", () => {
     unmount();
   });
 
-  it("'Crear cliente' desde Inicio navega a Clientes y abre el formulario de creación real directamente (no solo la lista)", async () => {
+  it("'Clientes' desde Inicio navega a la pantalla real de Clientes", async () => {
     setDwm();
     const { container, unmount } = mount(
       <NavigationProvider initialSection="dashboard">
@@ -144,14 +144,12 @@ describe("ContentArea", () => {
 
     click(
       Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Crear cliente"
+        (b) => b.textContent === "Ver clientes"
       ) ?? null
     );
     await settle();
 
     expect(container.querySelector("h1")?.textContent).toBe("Clientes");
-    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
-    expect(container.textContent).toContain("Crear cliente");
     unmount();
   });
 });

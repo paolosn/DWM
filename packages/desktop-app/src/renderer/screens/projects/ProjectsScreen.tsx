@@ -38,6 +38,14 @@ const CONTENT_KINDS = ["agent", "skill", "rule"] as const;
  * interna). Vista sobre `projects.list` + `projects.get` reales (ver
  * `useProjectsWithDetails`). El detalle se abre embebido en la propia
  * pantalla (`ProjectDetailScreen`).
+ *
+ * NOTA TÉCNICA: el diseño final pide mostrar "Tipo" en cada Card
+ * (Viabilidad/Auditoría/Seguridad/Directo, la categoría elegida en
+ * "Nuevo trabajo"). El modelo `Project` real no persiste esa
+ * categoría en ningún campo — no se deriva ni se inventa aquí. Si se
+ * quiere mostrar en el futuro, hace falta una migración real que
+ * añada el campo a `ProjectConfiguration` en el momento de la
+ * creación (`project-provisioning`).
  */
 export function ProjectsScreen(): JSX.Element {
   const [search, setSearch] = useState("");
@@ -171,9 +179,7 @@ export function ProjectsScreen(): JSX.Element {
           search ? "Sin proyectos que coincidan con la búsqueda" : "Todavía no hay proyectos"
         }
         emptyAction={
-          !search && (
-            <Button onClick={() => setActiveSection("provisioning")}>Nuevo proyecto</Button>
-          )
+          !search && <Button onClick={() => setActiveSection("provisioning")}>Nuevo trabajo</Button>
         }
         toolbar={
           <EntityToolbar
@@ -181,7 +187,7 @@ export function ProjectsScreen(): JSX.Element {
             onSearchChange={setSearch}
             searchLabel="Buscar proyectos"
             primaryAction={
-              <Button onClick={() => setActiveSection("provisioning")}>Nuevo proyecto</Button>
+              <Button onClick={() => setActiveSection("provisioning")}>Nuevo trabajo</Button>
             }
           />
         }
@@ -198,6 +204,9 @@ export function ProjectsScreen(): JSX.Element {
                 path={project.configuration.projectPath}
                 statusLabel={project.state}
                 statusTone={stateTone[project.state]}
+                lastOpenedLabel={`Última actividad: ${new Date(
+                  project.metadata.updatedAt
+                ).toLocaleDateString()}`}
                 onOpen={() => setOpenProjectId(project.id)}
                 actions={
                   <div className="dwm-projects-screen__card-body">

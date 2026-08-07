@@ -60,7 +60,7 @@ describe("ConfiguracionScreen", () => {
     unmount();
   });
 
-  it("agrupa las secciones por categoría real (Sistema/IA/Conocimiento/Workspace/Herramientas/Diagnóstico/Ayuda), no como lista plana", () => {
+  it("agrupa las secciones en las 6 categorías definitivas (Sistema/IA/Conocimiento/Herramientas/Diagnóstico/Ayuda), no como lista plana", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <ConfiguracionScreen />
@@ -68,15 +68,17 @@ describe("ConfiguracionScreen", () => {
     );
 
     const groupTitles = Array.from(container.querySelectorAll("h2")).map((h) => h.textContent);
-    expect(groupTitles).toEqual([
-      "Workspace",
-      "IA",
-      "Conocimiento",
-      "Herramientas",
-      "Sistema",
-      "Diagnóstico",
-      "Ayuda",
-    ]);
+    expect(groupTitles).toEqual(["Sistema", "IA", "Conocimiento", "Herramientas", "Diagnóstico", "Ayuda"]);
+    expect(container.textContent).toContain(
+      "Kits de trabajo y configuración de proveedores/modelos."
+    );
+
+    const sistemaGroup = Array.from(container.querySelectorAll("section")).find(
+      (s) => s.querySelector("h2")?.textContent === "Sistema"
+    ) as HTMLElement;
+    expect(sistemaGroup.textContent).toContain("Workspaces");
+    expect(sistemaGroup.textContent).toContain("Backups");
+    expect(sistemaGroup.textContent).toContain("Configuración avanzada");
 
     const iaGroup = Array.from(container.querySelectorAll("section")).find(
       (s) => s.querySelector("h2")?.textContent === "IA"
@@ -84,6 +86,12 @@ describe("ConfiguracionScreen", () => {
     expect(iaGroup.textContent).toContain("Perfiles");
     expect(iaGroup.textContent).toContain("IA y modelos");
     expect(iaGroup.textContent).not.toContain("Conocimiento");
+
+    const herramientasGroup = Array.from(container.querySelectorAll("section")).find(
+      (s) => s.querySelector("h2")?.textContent === "Herramientas"
+    ) as HTMLElement;
+    expect(herramientasGroup.textContent).toContain("Extensiones de DWM");
+    expect(herramientasGroup.textContent).toContain("Paquetes");
     unmount();
   });
 });

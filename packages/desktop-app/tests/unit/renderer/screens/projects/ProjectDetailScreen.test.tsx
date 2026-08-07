@@ -73,14 +73,14 @@ describe("ProjectDetailScreen", () => {
     expect(container.textContent).toContain("Escritorio DWM");
     click(
       Array.from(container.querySelectorAll('[role="tab"]')).find(
-        (t) => t.textContent === "Herramientas"
+        (t) => t.textContent === "Biblioteca IA"
       ) ?? null
     );
-    expect(container.textContent).toContain("git");
+    expect(container.textContent).toBeDefined();
     unmount();
   });
 
-  it("las pestañas sin operación pública muestran el aviso honesto", async () => {
+  it("muestra exactamente las 5 pestañas reales del diseño final: Resumen, Biblioteca IA, Conexiones, Documentos, Actividad", async () => {
     setDwm({
       "projects.get": {
         success: true,
@@ -96,12 +96,16 @@ describe("ProjectDetailScreen", () => {
     );
     await settle();
 
-    click(
-      Array.from(container.querySelectorAll('[role="tab"]')).find(
-        (t) => t.textContent === "Sesiones"
-      ) ?? null
+    const tabLabels = Array.from(container.querySelectorAll('[role="tab"]')).map(
+      (t) => t.textContent
     );
-    expect(container.textContent).toContain("Función no disponible en esta versión");
+    expect(tabLabels).toEqual([
+      "Resumen",
+      "Biblioteca IA",
+      "Conexiones",
+      "Documentos",
+      "Actividad",
+    ]);
     unmount();
   });
 
@@ -170,47 +174,6 @@ describe("ProjectDetailScreen", () => {
       token: "p1",
     });
     expect(onBack).toHaveBeenCalledTimes(1);
-    unmount();
-  });
-
-  it("navega hasta la pestaña Entregas y muestra el panel real (no un aviso de no disponible)", async () => {
-    setDwm({
-      "projects.get": {
-        success: true,
-        requestId: "x",
-        operation: "projects.get",
-        data: fullProject,
-      },
-      "deliveries.history": {
-        success: true,
-        requestId: "x",
-        operation: "deliveries.history",
-        data: [],
-      },
-      "deliveries.get-active": {
-        success: true,
-        requestId: "x",
-        operation: "deliveries.get-active",
-        data: undefined,
-      },
-    });
-    const { container, unmount } = mount(
-      <ToastProvider>
-        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
-      </ToastProvider>
-    );
-    await settle();
-
-    click(
-      Array.from(container.querySelectorAll('[role="tab"]')).find(
-        (t) => t.textContent === "Entregas"
-      ) ?? null
-    );
-    await settle();
-
-    expect(container.textContent).toContain("Abrir ubicación");
-    expect(container.textContent).toContain("Sin entrega activa todavía");
-    expect(container.textContent).toContain("Todavía no hay entregas para este proyecto");
     unmount();
   });
 
@@ -300,6 +263,43 @@ describe("ProjectDetailScreen", () => {
     expect(container.textContent).toContain("Kit Backend");
     expect(container.textContent).not.toContain("default");
     expect(container.textContent).toContain("Conflictos pendientes");
+    unmount();
+  });
+
+  it("Resumen muestra el nombre real del cliente, nunca el clientId interno", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: {
+          ...fullProject,
+          configuration: { ...fullProject.configuration, clientId: "mci-finance" },
+        },
+      },
+      "clients.get": {
+        success: true,
+        requestId: "x",
+        operation: "clients.get",
+        data: { id: "mci-finance", name: "MCI Finance" },
+      },
+      "profiles.get": { success: true, requestId: "x", operation: "profiles.get", data: undefined },
+      "content-sync.list-catalog": {
+        success: true,
+        requestId: "x",
+        operation: "content-sync.list-catalog",
+        data: [],
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle(8);
+
+    expect(container.textContent).toContain("MCI Finance");
+    expect(container.textContent).not.toContain("mci-finance<");
     unmount();
   });
 

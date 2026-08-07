@@ -157,3 +157,14 @@
   gap: var(--dwm-space-sm);
   margin-bottom: var(--dwm-space-md);
 }
+
+.dwm-client-ficha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+}
+.dwm-client-ficha__header-badges {
+  display: flex;
+  gap: var(--dwm-space-xs);
+  align-items: center;
+}

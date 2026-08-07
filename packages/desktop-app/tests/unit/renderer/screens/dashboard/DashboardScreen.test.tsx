@@ -161,21 +161,19 @@ describe("DashboardScreen — acciones adicionales", () => {
     unmount();
   });
 
-  it("muestra el bloque de bienvenida real y las 5 Cards del flujo recomendado (Cliente → Nuevo trabajo → Biblioteca IA → Centro de trabajo → Configuración)", async () => {
+  it("muestra el bloque de bienvenida real y las 5 Cards del flujo recomendado (Clientes → Nuevo trabajo → Proyectos → Biblioteca IA → Centro de trabajo)", async () => {
     setDwm();
     const { container, unmount } = mountScreen();
     await settle();
 
     expect(container.textContent).toContain("Bienvenido a DWM");
-    expect(container.textContent).toContain(
-      "DWM organiza clientes, proyectos, conocimiento e IA en un único flujo de trabajo."
-    );
+    expect(container.textContent).toContain("Tu espacio de trabajo inteligente");
     for (const title of [
-      "Crear cliente",
+      "Clientes",
       "Nuevo trabajo",
+      "Proyectos",
       "Biblioteca IA",
       "Centro de trabajo",
-      "Configuración",
     ]) {
       expect(container.textContent).toContain(title);
     }
