@@ -8,8 +8,7 @@ import { useNavigation } from "../../shell/NavigationContext.js";
 import type { DesktopNavigationSection } from "../../../shared/types/DesktopConfig.js";
 import "./ConfiguracionScreen.css";
 
-type Category =
-  "Sistema" | "IA" | "Conocimiento" | "Workspace" | "Herramientas" | "Diagnóstico" | "Ayuda";
+type Category = "Sistema" | "IA" | "Conocimiento" | "Herramientas" | "Diagnóstico" | "Ayuda";
 
 interface AdvancedSection {
   readonly id: DesktopNavigationSection;
@@ -19,21 +18,19 @@ interface AdvancedSection {
 }
 
 const CATEGORY_ORDER: readonly Category[] = [
-  "Workspace",
+  "Sistema",
   "IA",
   "Conocimiento",
   "Herramientas",
-  "Sistema",
   "Diagnóstico",
   "Ayuda",
 ];
 
 const CATEGORY_DESCRIPTION: Readonly<Record<Category, string>> = {
-  Workspace: "Dónde vive el Sistema de Trabajo activo.",
+  Sistema: "Dónde vive el Sistema de Trabajo activo, sus copias de seguridad y su configuración avanzada.",
   IA: "Kits de trabajo y configuración de proveedores/modelos.",
-  Conocimiento: "Elementos y paquetes del Workspace.",
-  Herramientas: "Herramientas de desarrollo detectadas.",
-  Sistema: "Extensiones, backups y configuración avanzada.",
+  Conocimiento: "Elementos de conocimiento del Workspace.",
+  Herramientas: "Herramientas de desarrollo, extensiones y paquetes.",
   Diagnóstico: "Estado del sistema y registro de eventos.",
   Ayuda: "Documentación y acerca de DWM.",
 };
@@ -43,18 +40,30 @@ const ADVANCED_SECTIONS: readonly AdvancedSection[] = [
     id: "workspaces",
     title: "Workspaces",
     description: "Sistemas de Trabajo (Workspaces) registrados y activo.",
-    category: "Workspace",
+    category: "Sistema",
   },
   {
-    id: "profiles",
-    title: "Perfiles",
-    description: "Kits de trabajo reutilizables: agentes, skills, reglas, IA y MCP.",
-    category: "IA",
+    id: "backups",
+    title: "Backups",
+    description: "Copias de seguridad del Workspace.",
+    category: "Sistema",
+  },
+  {
+    id: "settings",
+    title: "Configuración avanzada",
+    description: "Editor real de las secciones de configuración (config.*).",
+    category: "Sistema",
   },
   {
     id: "ai",
     title: "IA y modelos",
     description: "Configuración de proveedores y modelos de IA del Workspace.",
+    category: "IA",
+  },
+  {
+    id: "profiles",
+    title: "Perfiles",
+    description: "Kits de trabajo reutilizables: agentes, skills, reglas, IA y MCP.",
     category: "IA",
   },
   {
@@ -73,25 +82,13 @@ const ADVANCED_SECTIONS: readonly AdvancedSection[] = [
     id: "plugins",
     title: "Extensiones de DWM",
     description: "Arquitectura interna para ampliar DWM.",
-    category: "Sistema",
+    category: "Herramientas",
   },
   {
     id: "packages",
     title: "Paquetes",
     description: "Paquetes portables instalados.",
-    category: "Sistema",
-  },
-  {
-    id: "backups",
-    title: "Backups",
-    description: "Copias de seguridad del Workspace.",
-    category: "Sistema",
-  },
-  {
-    id: "settings",
-    title: "Configuración avanzada",
-    description: "Editor real de las secciones de configuración (config.*).",
-    category: "Sistema",
+    category: "Herramientas",
   },
   {
     id: "status",

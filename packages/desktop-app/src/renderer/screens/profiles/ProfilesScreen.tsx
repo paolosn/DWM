@@ -65,6 +65,7 @@ export function ProfilesScreen(): JSX.Element {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<ProfileFormValues | undefined>(undefined);
   const [formSubmitting, setFormSubmitting] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<string | undefined>(undefined);
 
   const [applyTargetProjectId, setApplyTargetProjectId] = useState("");
   const [applyPreview, setApplyPreview] = useState<ProfilePreview | undefined>(undefined);
@@ -206,6 +207,26 @@ export function ProfilesScreen(): JSX.Element {
       });
     } finally {
       setFormSubmitting(false);
+    }
+  }
+
+  async function handleDuplicate(id: string, name: string): Promise<void> {
+    setDuplicatingId(id);
+    try {
+      const duplicated = (await callOperation("profiles.duplicate" as never, {
+        id,
+      } as never)) as { metadata: { name: string } };
+      showToast({
+        title: `«${name}» duplicado como «${duplicated.metadata.name}»`,
+        tone: "success",
+      });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo duplicar el perfil",
+        tone: "danger",
+      });
+    } finally {
+      setDuplicatingId(undefined);
     }
   }
 
@@ -363,9 +384,18 @@ export function ProfilesScreen(): JSX.Element {
                     ) : undefined
                   }
                   primaryActions={
-                    <Button variant="secondary" onClick={() => setDetailId(id)}>
-                      Ver detalle
-                    </Button>
+                    <>
+                      <Button variant="secondary" onClick={() => setDetailId(id)}>
+                        Ver detalle
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        loading={duplicatingId === id}
+                        onClick={() => void handleDuplicate(id, card?.name ?? id)}
+                      >
+                        Duplicar
+                      </Button>
+                    </>
                   }
                 />
               </div>
