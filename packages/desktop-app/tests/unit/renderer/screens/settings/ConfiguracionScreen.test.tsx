@@ -77,6 +77,9 @@ describe("ConfiguracionScreen", () => {
       "Diagnóstico",
       "Ayuda",
     ]);
+    expect(container.textContent).toContain(
+      "Kits de trabajo y configuración de proveedores/modelos."
+    );
 
     const iaGroup = Array.from(container.querySelectorAll("section")).find(
       (s) => s.querySelector("h2")?.textContent === "IA"

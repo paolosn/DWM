@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { NAVIGATION_CATALOG, RESERVED_NAVIGATION_ITEMS } from "./navigationCatalog.js";
 import { useNavigation } from "./NavigationContext.js";
 import { IconButton } from "../design-system/primitives/IconButton/index.js";
@@ -27,7 +28,13 @@ export function Sidebar(): JSX.Element {
         {!collapsed && <span className="dwm-sidebar__brand">DWM</span>}
         <IconButton
           label={collapsed ? "Expandir navegación" : "Contraer navegación"}
-          icon={<span aria-hidden="true">{collapsed ? "»" : "«"}</span>}
+          icon={
+            collapsed ? (
+              <PanelLeftOpen size={16} aria-hidden="true" />
+            ) : (
+              <PanelLeftClose size={16} aria-hidden="true" />
+            )
+          }
           onClick={() => setCollapsed((current) => !current)}
         />
       </div>

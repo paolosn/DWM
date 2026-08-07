@@ -28,6 +28,16 @@ const CATEGORY_ORDER: readonly Category[] = [
   "Ayuda",
 ];
 
+const CATEGORY_DESCRIPTION: Readonly<Record<Category, string>> = {
+  Workspace: "Dónde vive el Sistema de Trabajo activo.",
+  IA: "Kits de trabajo y configuración de proveedores/modelos.",
+  Conocimiento: "Elementos y paquetes del Workspace.",
+  Herramientas: "Herramientas de desarrollo detectadas.",
+  Sistema: "Extensiones, backups y configuración avanzada.",
+  Diagnóstico: "Estado del sistema y registro de eventos.",
+  Ayuda: "Documentación y acerca de DWM.",
+};
+
 const ADVANCED_SECTIONS: readonly AdvancedSection[] = [
   {
     id: "workspaces",
@@ -129,6 +139,7 @@ export function ConfiguracionScreen(): JSX.Element {
           <section key={category} className="dwm-configuracion-screen__group">
             <SectionHeader
               title={category}
+              description={CATEGORY_DESCRIPTION[category]}
               badge={<StatusBadge label={String(sections.length)} tone="neutral" />}
             />
             <DataList

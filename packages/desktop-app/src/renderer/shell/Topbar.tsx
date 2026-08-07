@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Search, Bell, MoreHorizontal } from "lucide-react";
 import { Combobox } from "../design-system/primitives/Combobox/index.js";
 import { IconButton } from "../design-system/primitives/IconButton/index.js";
 import { Drawer } from "../design-system/composites/Drawer/index.js";
@@ -74,7 +75,7 @@ export function Topbar({
       <div className="dwm-topbar__section">
         <IconButton
           label="Buscar en DWM"
-          icon={<span aria-hidden="true">⌕</span>}
+          icon={<Search size={16} aria-hidden="true" />}
           onClick={() => (onOpenSearch ? onOpenSearch() : setSearchOpen(true))}
         />
         <HealthRow
@@ -84,12 +85,12 @@ export function Topbar({
         />
         <IconButton
           label="Notificaciones"
-          icon={<span aria-hidden="true">🔔</span>}
+          icon={<Bell size={16} aria-hidden="true" />}
           onClick={() => setNotificationsOpen(true)}
         />
         <IconButton
           label="Operaciones en curso"
-          icon={<span aria-hidden="true">⋯</span>}
+          icon={<MoreHorizontal size={16} aria-hidden="true" />}
           onClick={() => setOperationsOpen(true)}
         />
       </div>
