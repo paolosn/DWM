@@ -3,6 +3,7 @@ import type { Client } from "@dwm/client-manager";
 import type { Project } from "@dwm/project";
 import { callOperation, useDwmQuery, DwmOperationError } from "../../api-client/index.js";
 import { Tabs } from "../../design-system/composites/Tabs/index.js";
+import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { Spinner } from "../../design-system/primitives/Spinner/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
@@ -45,24 +46,21 @@ function ResumenTab({
   const [extraStats, setExtraStats] = useState<{
     readonly connections: number;
     readonly documents: number;
-    readonly activity: number;
-  }>({ connections: 0, documents: 0, activity: 0 });
+  }>({ connections: 0, documents: 0 });
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [connections, documents, activity] = await Promise.all([
+      const [connections, documents] = await Promise.all([
         callOperation("connections.list-for-client", { clientId: client.id }).catch(
           () => undefined
         ),
         callOperation("clients.documents", { id: client.id }).catch(() => undefined),
-        callOperation("clients.activity", { id: client.id }).catch(() => undefined),
       ]);
       if (!cancelled) {
         setExtraStats({
           connections: (connections ?? []).length,
           documents: (documents ?? []).length,
-          activity: (activity ?? []).length,
         });
       }
     })();
@@ -130,13 +128,9 @@ function ResumenTab({
         <StatCard value={client.references.rules.length} label="Reglas" />
         <StatCard value={extraStats.connections} label="Conexiones" />
         <StatCard value={extraStats.documents} label="Documentos" />
-        <StatCard value={extraStats.activity} label="Actividad" />
       </div>
       <div className="dwm-client-ficha__primary-actions">
         <Button onClick={() => navigateToProvisioning(client.name)}>Nuevo trabajo</Button>
-        <Button variant="secondary" onClick={() => navigateToProvisioning(client.name)}>
-          Crear proyecto
-        </Button>
         <Button variant="secondary" onClick={() => onGoToTab("biblioteca-ia")}>
           Crear con IA
         </Button>
@@ -769,27 +763,41 @@ export function ClientFicha({ clientId }: ClientFichaProps): JSX.Element {
   const client = query.data;
 
   return (
-    <Tabs
-      activeId={activeTab}
-      onChange={setActiveTab}
-      items={[
-        {
-          id: "resumen",
-          label: "Resumen",
-          content: <ResumenTab client={client} onGoToTab={setActiveTab} />,
-        },
-        { id: "proyectos", label: "Proyectos", content: <ProyectosTab client={client} /> },
-        {
-          id: "biblioteca-ia",
-          label: "Biblioteca IA",
-          content: <BibliotecaIaTab client={client} />,
-        },
-        { id: "perfiles", label: "Perfiles", content: <PerfilesTab client={client} /> },
-        { id: "accesos", label: "Accesos y conexiones", content: <AccesosTab client={client} /> },
-        { id: "mcp-ia", label: "MCP e IA", content: <McpIaTab client={client} /> },
-        { id: "documentos", label: "Documentos", content: <DocumentosTab client={client} /> },
-        { id: "actividad", label: "Actividad", content: <ActividadTab client={client} /> },
-      ]}
-    />
+    <div className="dwm-client-ficha">
+      <PageHeader
+        title={client.name}
+        actions={
+          <div className="dwm-client-ficha__header-badges">
+            <StatusBadge label={client.status} tone="accent" />
+            <StatusBadge
+              label={`${client.references.projects.length} proyecto${client.references.projects.length === 1 ? "" : "s"}`}
+              tone="neutral"
+            />
+          </div>
+        }
+      />
+      <Tabs
+        activeId={activeTab}
+        onChange={setActiveTab}
+        items={[
+          {
+            id: "resumen",
+            label: "Resumen",
+            content: <ResumenTab client={client} onGoToTab={setActiveTab} />,
+          },
+          { id: "proyectos", label: "Proyectos", content: <ProyectosTab client={client} /> },
+          {
+            id: "biblioteca-ia",
+            label: "Biblioteca IA",
+            content: <BibliotecaIaTab client={client} />,
+          },
+          { id: "perfiles", label: "Perfiles", content: <PerfilesTab client={client} /> },
+          { id: "accesos", label: "Accesos y conexiones", content: <AccesosTab client={client} /> },
+          { id: "mcp-ia", label: "MCP e IA", content: <McpIaTab client={client} /> },
+          { id: "documentos", label: "Documentos", content: <DocumentosTab client={client} /> },
+          { id: "actividad", label: "Actividad", content: <ActividadTab client={client} /> },
+        ]}
+      />
+    </div>
   );
 }

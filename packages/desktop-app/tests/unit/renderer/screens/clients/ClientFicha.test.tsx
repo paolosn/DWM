@@ -162,6 +162,23 @@ describe("ClientFicha", () => {
     unmount();
   });
 
+  it("muestra la cabecera visual real: nombre del cliente, estado y número de proyectos", async () => {
+    setDwm({ "clients.get": () => success("clients.get", baseClient) });
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ToastProvider>
+          <ClientFicha clientId="mci-finance" />
+        </ToastProvider>
+      </NavigationProvider>
+    );
+    await settle();
+
+    expect(container.querySelector("h1")?.textContent).toBe("MCI Finance");
+    expect(container.textContent).toContain("active");
+    expect(container.textContent).toContain("1 proyecto");
+    unmount();
+  });
+
   it("Resumen muestra las estadísticas rápidas reales (proyectos/agentes/skills/reglas de client.references, conexiones/documentos/actividad reales)", async () => {
     setDwm({
       "clients.get": () => success("clients.get", baseClient),
