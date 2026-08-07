@@ -271,6 +271,26 @@ describe("ProvisioningScreen — elección inicial clara de categoría", () => {
     expect(container.textContent).toContain("Crea el proyecto directamente, sin análisis previo");
     unmount();
   });
+
+  it("cada Card usa la paleta real por categoría (color de icono/etiqueta), Directo comparte el azul de Viabilidad sin trato especial", async () => {
+    setDwm();
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    const eyebrows = Array.from(container.querySelectorAll(".dwm-action-card__eyebrow"));
+    expect(eyebrows.map((e) => e.textContent)).toEqual([
+      "VIABILIDAD",
+      "AUDITORÍA",
+      "SEGURIDAD",
+      "DIRECTO",
+    ]);
+    expect((eyebrows[0] as HTMLElement).style.color).toBe("rgb(33, 72, 199)"); // #2148C7
+    expect((eyebrows[3] as HTMLElement).style.color).toBe("rgb(33, 72, 199)"); // mismo azul, sin trato especial
+
+    const buttons = Array.from(container.querySelectorAll(".dwm-action-card__outline-button"));
+    expect(buttons).toHaveLength(4);
+    unmount();
+  });
 });
 
 describe("ProvisioningScreen — Perfil integrado en la creación", () => {

@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { Lightbulb, ShieldCheck, ShieldAlert, Rocket } from "lucide-react";
 import { callOperation, DwmOperationError } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
-import { ActionCard } from "../../design-system/composites/ActionCard/index.js";
+import {
+  ActionCard,
+  type ActionCardAccent,
+} from "../../design-system/composites/ActionCard/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { TextArea } from "../../design-system/primitives/TextArea/index.js";
@@ -51,6 +55,28 @@ const CATEGORY_DESCRIPTION: Record<Category, string> = {
     "Analiza con IA los riesgos de seguridad de un trabajo antes de comenzar. Recomendado para proyectos que manejarán datos sensibles o accesos críticos.",
   directo:
     "Crea el proyecto directamente, sin análisis previo. Recomendado cuando ya sabes exactamente qué vas a construir.",
+};
+
+/** Paleta real por categoría (encargo "Nuevo trabajo") — única diferencia de color permitida entre las 4 Cards. */
+const CATEGORY_ICON: Record<Category, typeof Lightbulb> = {
+  viabilidad: Lightbulb,
+  auditoria: ShieldCheck,
+  seguridad: ShieldAlert,
+  directo: Rocket,
+};
+
+const CATEGORY_EYEBROW: Record<Category, string> = {
+  viabilidad: "VIABILIDAD",
+  auditoria: "AUDITORÍA",
+  seguridad: "SEGURIDAD",
+  directo: "DIRECTO",
+};
+
+const CATEGORY_ACCENT: Record<Category, ActionCardAccent> = {
+  viabilidad: { color: "#2148C7", iconBackground: "#EAF1FE" },
+  auditoria: { color: "#B5651D", iconBackground: "#FDF0E3" },
+  seguridad: { color: "#B23B3B", iconBackground: "#FBEAEA" },
+  directo: { color: "#2148C7", iconBackground: "#EAF1FE" },
 };
 
 const TIPO_TRABAJO_OPTIONS = [
@@ -445,15 +471,21 @@ export function ProvisioningScreen({
           description="El flujo principal de DWM: sin rutas, sin perfiles técnicos."
         />
         <div className="dwm-provisioning-screen__grid">
-          {(Object.keys(CATEGORY_LABEL) as Category[]).map((cat) => (
-            <ActionCard
-              key={cat}
-              title={CATEGORY_LABEL[cat]}
-              description={CATEGORY_DESCRIPTION[cat]}
-              ctaLabel="Empezar"
-              onAction={() => setCategory(cat)}
-            />
-          ))}
+          {(Object.keys(CATEGORY_LABEL) as Category[]).map((cat) => {
+            const Icon = CATEGORY_ICON[cat];
+            return (
+              <ActionCard
+                key={cat}
+                icon={<Icon size={18} />}
+                eyebrow={CATEGORY_EYEBROW[cat]}
+                title={CATEGORY_LABEL[cat]}
+                description={CATEGORY_DESCRIPTION[cat]}
+                ctaLabel="Empezar"
+                onAction={() => setCategory(cat)}
+                accent={CATEGORY_ACCENT[cat]}
+              />
+            );
+          })}
         </div>
       </div>
     );
