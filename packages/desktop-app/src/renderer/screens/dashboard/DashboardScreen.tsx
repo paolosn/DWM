@@ -9,7 +9,7 @@ import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
 import { Skeleton } from "../../design-system/composites/Skeleton/index.js";
 import { useShellHealth, type ShellHealthStatus } from "../../shell/hooks/useShellHealth.js";
-import { Users, Rocket, Bot, LayoutGrid, Settings } from "lucide-react";
+import { Users, Rocket, FolderKanban, Bot, LayoutGrid } from "lucide-react";
 import type { DesktopNavigationSection } from "../../../shared/types/DesktopConfig.js";
 import "./DashboardScreen.css";
 
@@ -36,37 +36,37 @@ const FLOW_CARDS: readonly FlowCard[] = [
   {
     section: "clients",
     icon: Users,
-    title: "Crear cliente",
-    description: "El punto de partida: cada trabajo real pertenece a un cliente.",
-    cta: "Crear cliente",
+    title: "Clientes",
+    description: "Gestiona clientes, proyectos, accesos e IA.",
+    cta: "Ver clientes",
   },
   {
     section: "provisioning",
     icon: Rocket,
     title: "Nuevo trabajo",
-    description: "Crea el proyecto real, aplica un perfil y abre VS Code en un solo paso.",
+    description: "Viabilidad, auditoría, seguridad o nuevo desarrollo.",
     cta: "Empezar",
+  },
+  {
+    section: "projects",
+    icon: FolderKanban,
+    title: "Proyectos",
+    description: "Abre y continúa trabajos existentes.",
+    cta: "Ver proyectos",
   },
   {
     section: "aiLibrary",
     icon: Bot,
     title: "Biblioteca IA",
-    description: "Agentes, skills y reglas reales — globales, de un cliente o de un proyecto.",
+    description: "Agentes, Skills y Reglas.",
     cta: "Abrir Biblioteca IA",
   },
   {
     section: "workspace",
     icon: LayoutGrid,
     title: "Centro de trabajo",
-    description: "El Sistema de Trabajo activo: dónde vive todo lo que creas.",
+    description: "Acceso rápido al entorno de desarrollo.",
     cta: "Ver Centro de trabajo",
-  },
-  {
-    section: "configuration",
-    icon: Settings,
-    title: "Configuración",
-    description: "Perfiles, Workspaces, IA y el resto de funciones avanzadas.",
-    cta: "Abrir Configuración",
   },
 ];
 
@@ -79,7 +79,7 @@ const FLOW_CARDS: readonly FlowCard[] = [
  * backups que ya existía, sin cambios de comportamiento.
  */
 export function DashboardScreen(): JSX.Element {
-  const { setActiveSection, navigateToClientsAndCreate } = useNavigation();
+  const { setActiveSection } = useNavigation();
   const health = useShellHealth();
   const projectsQuery = useDwmQuery("projects.list", {});
   const backupsQuery = useDwmQuery("backups.list", {});
@@ -92,17 +92,12 @@ export function DashboardScreen(): JSX.Element {
     <div className="dwm-dashboard">
       <div className="dwm-dashboard__welcome">
         <h1 className="dwm-dashboard__welcome-title">Bienvenido a DWM</h1>
-        <p className="dwm-dashboard__welcome-subtitle">
-          DWM organiza clientes, proyectos, conocimiento e IA en un único flujo de trabajo.
-        </p>
+        <p className="dwm-dashboard__welcome-subtitle">Tu espacio de trabajo inteligente</p>
       </div>
 
       <div className="dwm-dashboard__flow">
         {FLOW_CARDS.map((flow) => {
-          const activate =
-            flow.section === "clients"
-              ? navigateToClientsAndCreate
-              : () => setActiveSection(flow.section);
+          const activate = () => setActiveSection(flow.section);
           return (
             <ResourceCard
               key={flow.section}
