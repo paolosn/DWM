@@ -1,24 +1,52 @@
-.dwm-workspace-screen__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--dwm-space-md);
+.dwm-workspace-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.dwm-workspace-screen__grid .dwm-section-header {
+.dwm-workspace-screen__row-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.dwm-workspace-screen__row-2 > .dwm-card {
+  min-width: 0;
+}
+.dwm-workspace-screen .dwm-section-header {
   margin-bottom: var(--dwm-space-sm);
 }
+
+/* Workspace: label/valor */
 .dwm-workspace-screen__facts {
   margin: 0;
-  font-size: var(--dwm-font-size-meta);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .dwm-workspace-screen__facts dt {
   color: var(--dwm-color-text-secondary);
-  margin-top: var(--dwm-space-xs);
+  margin-top: 10px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dwm-workspace-screen__facts dt:first-child {
+  margin-top: 0;
 }
 .dwm-workspace-screen__facts dd {
   margin: 0;
   color: var(--dwm-color-text-primary);
-  word-break: break-all;
+  font-size: 11px;
 }
+.dwm-workspace-screen__mono {
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* Perfil */
 .dwm-workspace-screen__profile {
   display: flex;
   flex-direction: column;
@@ -29,32 +57,124 @@
   font-size: var(--dwm-font-size-meta);
   color: var(--dwm-color-text-secondary);
 }
-.dwm-workspace-screen__tools,
-.dwm-workspace-screen__reports {
+.dwm-workspace-screen__profile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 120px;
+  color: var(--dwm-color-text-secondary);
+}
+.dwm-workspace-screen__profile-empty p {
+  margin: 0;
+  font-size: 11px;
+  color: var(--dwm-color-text-secondary);
+}
+
+/* Herramientas / Estado general: filas */
+.dwm-workspace-screen__rows {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--dwm-space-xs);
+  gap: 7px;
 }
-.dwm-workspace-screen__tools li,
-.dwm-workspace-screen__reports li {
+.dwm-workspace-screen__rows li {
   display: flex;
   align-items: center;
-  gap: var(--dwm-space-xs);
+  justify-content: space-between;
+  gap: var(--dwm-space-sm);
   font-size: var(--dwm-font-size-body);
 }
-.dwm-workspace-screen__tools-empty {
+.dwm-workspace-screen__rows-empty {
   color: var(--dwm-color-text-secondary);
   font-size: var(--dwm-font-size-meta);
 }
-.dwm-workspace-screen__report-message {
-  color: var(--dwm-color-text-secondary);
-  font-size: var(--dwm-font-size-meta);
+.dwm-workspace-screen__badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 9.5px;
+  font-weight: 500;
+}
+.dwm-workspace-screen__more {
+  display: inline-block;
+  margin-top: 8px;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #2148c7;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.dwm-workspace-screen__more:hover {
+  text-decoration: underline;
+}
+.dwm-workspace-screen__more:focus-visible {
+  outline: 2px solid #2148c7;
+  outline-offset: 2px;
+}
+
+/* Acciones */
+.dwm-workspace-screen__actions-card {
+  width: 100%;
 }
 .dwm-workspace-screen__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dwm-space-xs);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--dwm-space-sm);
+}
+.dwm-workspace-screen__action-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--dwm-control-min-height);
+  padding: 0 var(--dwm-space-md);
+  border: 1.2px solid #2148c7;
+  border-radius: 8px;
+  background: transparent;
+  color: #2148c7;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.dwm-workspace-screen__action-outline:hover {
+  background: color-mix(in srgb, #2148c7 8%, transparent);
+}
+.dwm-workspace-screen__action-outline:focus-visible {
+  outline: 2px solid #2148c7;
+  outline-offset: 2px;
+}
+.dwm-workspace-screen__action-disabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--dwm-control-min-height);
+  padding: 0 var(--dwm-space-md);
+  border: none;
+  border-radius: 8px;
+  background: #f3f3f3;
+  color: #999999;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .dwm-workspace-screen__row-2 {
+    grid-template-columns: 1fr;
+  }
+  .dwm-workspace-screen__actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 520px) {
+  .dwm-workspace-screen__actions {
+    grid-template-columns: 1fr;
+  }
 }

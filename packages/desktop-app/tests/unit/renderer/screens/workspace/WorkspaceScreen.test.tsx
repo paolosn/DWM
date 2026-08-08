@@ -170,4 +170,61 @@ describe("WorkspaceScreen", () => {
     expect(container.textContent).toContain("Función no disponible en esta versión");
     unmount();
   });
+
+  it("muestra máximo 8 herramientas inicialmente y '+ N más →' las revela al pulsar", async () => {
+    const manyTools = Array.from({ length: 11 }, (_, i) => ({
+      id: `tool-${i}`,
+      name: `Herramienta ${i}`,
+      category: "otros",
+      status: "available",
+    }));
+    setDwm({
+      "environment.list-tools": {
+        success: true,
+        requestId: "x",
+        operation: "environment.list-tools",
+        data: manyTools,
+      },
+    });
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    expect(container.querySelectorAll(".dwm-workspace-screen__rows li")).toHaveLength(8);
+    expect(container.textContent).toContain("+ 3 más →");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) =>
+        b.textContent?.startsWith("+ 3 más")
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.querySelectorAll(".dwm-workspace-screen__rows li")).toHaveLength(11);
+    unmount();
+  });
+
+  it("estado vacío de Perfil real: sin perfiles disponibles, centrado, sin datos inventados", async () => {
+    setDwm({
+      "profiles.list": { success: true, requestId: "x", operation: "profiles.list", data: [] },
+    });
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    expect(container.querySelector(".dwm-workspace-screen__profile-empty")).not.toBeNull();
+    expect(container.textContent).toContain("Sin perfiles disponibles");
+    unmount();
+  });
+
+  it("'Cambiar IA' sigue deshabilitado visualmente y no dispara ninguna acción", async () => {
+    setDwm();
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    const disabledButton = container.querySelector(
+      ".dwm-workspace-screen__action-disabled"
+    ) as HTMLButtonElement;
+    expect(disabledButton.textContent).toBe("Cambiar IA (sin soporte todavía)");
+    expect(disabledButton.disabled).toBe(true);
+    unmount();
+  });
 });
