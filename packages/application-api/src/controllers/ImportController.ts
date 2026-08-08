@@ -39,6 +39,20 @@ declare module "../ApplicationRequest.js" {
 export interface ImportExecuteResult extends ImportResult {
   readonly rescanned: boolean;
   readonly rescanWarning?: string;
+  /**
+   * client-workflow-v2 (cierre del bug critico: descubrimiento de
+   * contenido .kilo preexistente) — `true` si el destino de esta
+   * importacion se registro ademas como Sistema de Trabajo ACTIVO
+   * (`PortableWorkspaceManager.registerActiveWorkspace`). Sin esto,
+   * `content-scope.resolve-root` en alcance global seguia devolviendo
+   * un root distinto (o ninguno) al recien escaneado, y Biblioteca IA
+   * mostraba "vacio" pese a que los agentes/skills/reglas SI existian
+   * fisicamente y SI habian sido escaneados por PSNAdapter. `false` es
+   * normal para importaciones que no representan un Sistema de Trabajo
+   * completo (p.ej. una carpeta o zip sueltos sin metadata de
+   * Workspace) — no es un error.
+   */
+  readonly activated: boolean;
 }
 
 /**
@@ -158,23 +172,48 @@ export class ImportController implements ApplicationController {
         const result = await manager().importSource(payload);
         const succeeded =
           result.state === "completed" || result.state === "completed_with_warnings";
-        if (!succeeded) return { ...result, rescanned: false };
+        if (!succeeded) return { ...result, rescanned: false, activated: false };
 
         const psnAdapter = this.context.psnAdapter;
-        if (!psnAdapter) return { ...result, rescanned: false };
+        if (!psnAdapter) return { ...result, rescanned: false, activated: false };
 
+        let rescanned = false;
+        let rescanWarning: string | undefined;
         try {
           await psnAdapter.scanWorkspace(result.destinationPath);
-          return { ...result, rescanned: true };
+          rescanned = true;
         } catch (err) {
-          return {
-            ...result,
-            rescanned: false,
-            rescanWarning: `El reescaneo automático de PSN Adapter falló: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          };
+          rescanWarning = `El reescaneo automático de PSN Adapter falló: ${
+            err instanceof Error ? err.message : String(err)
+          }`;
         }
+
+        // client-workflow-v2 (cierre del bug critico: descubrimiento de
+        // contenido .kilo preexistente) — sin esto, PSNAdapter escaneaba
+        // el destino real pero content-scope.resolve-root (alcance
+        // global) seguia devolviendo portableWorkspaceManager.getActiveWorkspace(),
+        // un root DISTINTO (o ninguno). Se intenta registrar el destino
+        // como Workspace activo; si no tiene metadata real de Workspace
+        // (import de una carpeta/zip sueltos, no de un Sistema de
+        // Trabajo completo), esto falla de forma esperada y no se
+        // considera un error.
+        let activated = false;
+        const portableWorkspaceManager = this.context.portableWorkspaceManager;
+        if (portableWorkspaceManager) {
+          try {
+            await portableWorkspaceManager.registerActiveWorkspace(result.destinationPath);
+            activated = true;
+          } catch {
+            // Destino sin metadata de Workspace real: no se fuerza su activación.
+          }
+        }
+
+        return {
+          ...result,
+          rescanned,
+          ...(rescanWarning !== undefined ? { rescanWarning } : {}),
+          activated,
+        };
       },
     });
 
