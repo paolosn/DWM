@@ -31,6 +31,7 @@ import type {
   ProfileSyncService,
 } from "@dwm/project-provisioning";
 import type { AIManager } from "@dwm/ai-manager";
+import type { SecretsManager } from "@dwm/secrets";
 
 /**
  * Referencias, todas opcionales, a las APIs públicas de los managers ya
@@ -68,6 +69,7 @@ export interface ApplicationContextOptions {
   readonly connectionsManager?: ConnectionsManager;
   readonly projectProvisioningService?: ProjectProvisioningService;
   readonly aiManager?: AIManager;
+  readonly secretsManager?: SecretsManager;
   readonly viabilityAnalysisService?: ViabilityAnalysisService;
   readonly contentSyncService?: ContentSyncService;
   readonly contentGenerationService?: ContentGenerationService;
@@ -102,6 +104,7 @@ export class ApplicationContext {
   readonly connectionsManager?: ConnectionsManager;
   readonly projectProvisioningService?: ProjectProvisioningService;
   readonly aiManager?: AIManager;
+  readonly secretsManager?: SecretsManager;
   readonly viabilityAnalysisService?: ViabilityAnalysisService;
   readonly contentSyncService?: ContentSyncService;
   readonly contentGenerationService?: ContentGenerationService;
@@ -140,6 +143,7 @@ export class ApplicationContext {
     if (options.projectProvisioningService)
       this.projectProvisioningService = options.projectProvisioningService;
     if (options.aiManager) this.aiManager = options.aiManager;
+    if (options.secretsManager) this.secretsManager = options.secretsManager;
     if (options.viabilityAnalysisService)
       this.viabilityAnalysisService = options.viabilityAnalysisService;
     if (options.contentSyncService) this.contentSyncService = options.contentSyncService;
@@ -176,6 +180,7 @@ export class ApplicationContext {
     if (this.connectionsManager) connected.push("connections-manager");
     if (this.projectProvisioningService) connected.push("project-provisioning");
     if (this.aiManager) connected.push("ai-manager");
+    if (this.secretsManager) connected.push("secrets-manager");
     if (this.contentSyncService) connected.push("content-sync");
     if (this.contentGenerationService) connected.push("content-generation");
     if (this.profileSyncService) connected.push("profile-sync");

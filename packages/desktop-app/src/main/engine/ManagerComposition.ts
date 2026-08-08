@@ -36,6 +36,7 @@ import {
   ProfileSyncService,
 } from "@dwm/project-provisioning";
 import { AIManager } from "@dwm/ai-manager";
+import { restoreStoredProviders } from "@dwm/application-api";
 
 export interface ManagerCompositionOptions {
   /** Directorio de datos de la app (`app.getPath("userData")`); aquí viven las carpetas propias de cada manager. */
@@ -309,6 +310,11 @@ export async function composeManagers(
       secretsManager,
     })
   );
+  // client-workflow-v2 (cierre de bloqueos funcionales, objetivo 1) —
+  // AIManager no persiste proveedores entre arranques por si mismo;
+  // esta es la reconstruccion real de los ya guardados (ver
+  // AIProviderStore, misma ConfigManager de siempre).
+  await restoreStoredProviders(aiManager, configManager);
   const viabilityAnalysisService = new ViabilityAnalysisService(aiManager);
 
   // kilo-content-integration (Commit 4) — reutiliza tal cual el mismo
@@ -344,6 +350,7 @@ export async function composeManagers(
       connectionsManager,
       projectProvisioningService,
       aiManager,
+      secretsManager,
       viabilityAnalysisService,
       contentSyncService,
       contentGenerationService,

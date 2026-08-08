@@ -135,6 +135,38 @@ declare module "../ApplicationRequest.js" {
       result: readonly string[];
     };
 
+    // -----------------------------------------------------------------
+    // connections.*-global — conexiones/MCP GLOBALES reutilizables
+    // (client-workflow-v2, cierre de bloqueos funcionales, objetivo 3).
+    // Mismo ConnectionsManager, mismo modelo de datos, mismo sistema de
+    // grants que connections.*-for-client — solo cambia la raíz de
+    // persistencia (global, sin cliente concreto).
+    // -----------------------------------------------------------------
+    "connections.list-global": { payload: Record<string, never>; result: Connection[] };
+    "connections.create-global": {
+      payload: {
+        name: string;
+        type: ConnectionType;
+        config?: SafeConnectionConfig;
+        capabilities?: readonly string[];
+        secrets?: Readonly<Record<string, string>>;
+        enabled?: boolean;
+      };
+      result: Connection;
+    };
+    "connections.test-global": { payload: { id: string }; result: ConnectionTestResult };
+    "connections.update-global": {
+      payload: {
+        id: string;
+        name?: string;
+        config?: SafeConnectionConfig;
+        capabilities?: readonly string[];
+        secrets?: Readonly<Record<string, string>>;
+      };
+      result: Connection;
+    };
+    "connections.delete-global": { payload: { id: string }; result: { deleted: true } };
+
     "connection-profiles.list": { payload: { projectId: string }; result: ConnectionProfile[] };
     "connection-profiles.get": {
       payload: { projectId: string; id: string };
@@ -338,6 +370,32 @@ export class ConnectionsController implements ApplicationController {
         });
       }
       return path.join(active.root, "CLIENTES", ".connections", clientId);
+    };
+
+    /**
+     * Raíz de persistencia de las conexiones/MCP GLOBALES, reutilizables
+     * desde cualquier perfil o cliente (client-workflow-v2, cierre de
+     * bloqueos funcionales, objetivo 3). Mismo ConnectionsManager que
+     * las de cliente/proyecto — solo cambia la carpeta: no hay ningún
+     * cliente concreto como espacio de nombres.
+     */
+    const GLOBAL_CONNECTIONS_NAMESPACE = "global";
+    const globalConnectionsRoot = (): string => {
+      const active = requireDependency(
+        this.context.portableWorkspaceManager,
+        "portable-workspace-manager"
+      ).getActiveWorkspace();
+      if (!active) {
+        throw createApplicationError({
+          code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+          message: "No hay ningún Sistema de Trabajo activo.",
+          origin: "validation",
+          category: "not-found",
+          retryable: false,
+          recoverable: true,
+        });
+      }
+      return path.join(active.root, ".connections", "global");
     };
 
     /** Mismo Workspace activo que `clientConnectionsRootFor`, sin el sufijo de carpeta — para "Registrar en Actividad" (item 3). */
@@ -1202,6 +1260,116 @@ export class ConnectionsController implements ApplicationController {
         return grants
           .filter((grant) => grant.capability === CLIENT_CONNECTION_USE_CAPABILITY)
           .map((grant) => grant.granteeId);
+      },
+    });
+
+    // -----------------------------------------------------------------
+    // connections.*-global (client-workflow-v2, objetivo 3). Mismo
+    // manager de arriba; ninguna instancia ni sistema nuevo.
+    // -----------------------------------------------------------------
+
+    permissions.register("connections.list-global", ["read"]);
+    operations.register({
+      name: "connections.list-global",
+      version: "1.0.0",
+      capabilities: ["read"],
+      handler: async () => manager().list(globalConnectionsRoot()),
+    });
+
+    permissions.register("connections.create-global", ["write"]);
+    operations.register({
+      name: "connections.create-global",
+      version: "1.0.0",
+      capabilities: ["write"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const name = requireString(record, "name");
+        const type = record["type"];
+        if (!isConnectionType(type)) {
+          invalidPayload(`El campo "type" no es un tipo de conexión soportado: "${String(type)}".`);
+        }
+        return {
+          name,
+          type: type as ConnectionType,
+          ...(optionalSafeConfig(record, "config") !== undefined
+            ? { config: optionalSafeConfig(record, "config")! }
+            : {}),
+          ...(optionalStringArray(record, "capabilities") !== undefined
+            ? { capabilities: optionalStringArray(record, "capabilities")! }
+            : {}),
+          ...(optionalSecretsRecord(record, "secrets") !== undefined
+            ? { secrets: optionalSecretsRecord(record, "secrets")! }
+            : {}),
+          ...(optionalBoolean(record, "enabled") !== undefined
+            ? { enabled: optionalBoolean(record, "enabled")! }
+            : {}),
+        };
+      },
+      handler: async (payload) =>
+        // El manager solo usa "projectId" como espacio de nombres para los
+        // secretos (@dwm/secrets); aquí el espacio de nombres es el global
+        // fijo — no representa un proyecto ni un cliente real.
+        manager().create(globalConnectionsRoot(), {
+          ...payload,
+          projectId: GLOBAL_CONNECTIONS_NAMESPACE,
+        }),
+    });
+
+    permissions.register("connections.test-global", ["execute"]);
+    operations.register({
+      name: "connections.test-global",
+      version: "1.0.0",
+      capabilities: ["execute"],
+      long: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return { id: requireString(record, "id") };
+      },
+      handler: async (payload) => manager().test(globalConnectionsRoot(), payload.id),
+    });
+
+    permissions.register("connections.update-global", ["write"]);
+    operations.register({
+      name: "connections.update-global",
+      version: "1.0.0",
+      capabilities: ["write"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return {
+          id: requireString(record, "id"),
+          ...(optionalString(record, "name") !== undefined
+            ? { name: optionalString(record, "name")! }
+            : {}),
+          ...(optionalSafeConfig(record, "config") !== undefined
+            ? { config: optionalSafeConfig(record, "config")! }
+            : {}),
+          ...(optionalStringArray(record, "capabilities") !== undefined
+            ? { capabilities: optionalStringArray(record, "capabilities")! }
+            : {}),
+          ...(optionalSecretsRecord(record, "secrets") !== undefined
+            ? { secrets: optionalSecretsRecord(record, "secrets")! }
+            : {}),
+        };
+      },
+      handler: async (payload) => {
+        const { id, ...rest } = payload;
+        return manager().update(globalConnectionsRoot(), id, rest);
+      },
+    });
+
+    permissions.register("connections.delete-global", ["delete"], { destructive: true });
+    operations.register({
+      name: "connections.delete-global",
+      version: "1.0.0",
+      capabilities: ["delete"],
+      destructive: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return { id: requireString(record, "id") };
+      },
+      handler: async (payload) => {
+        await manager().delete(globalConnectionsRoot(), payload.id);
+        return { deleted: true as const };
       },
     });
   }

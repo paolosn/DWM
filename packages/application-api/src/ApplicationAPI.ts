@@ -32,6 +32,7 @@ import { VerificationController } from "./controllers/VerificationController.js"
 import { StatusController } from "./controllers/StatusController.js";
 import { ConfigController } from "./controllers/ConfigController.js";
 import { ProfileController } from "./controllers/ProfileController.js";
+import { AIProviderController } from "./controllers/AIProviderController.js";
 import { PluginController } from "./controllers/PluginController.js";
 import { DeliveryController } from "./controllers/DeliveryController.js";
 import { ConnectionsController } from "./controllers/ConnectionsController.js";
@@ -119,6 +120,7 @@ export class ApplicationAPI implements IModule {
     this.registry.add(new ContentGenerationController(this.context));
     this.registry.add(new ProfileSyncController(this.context));
     this.registry.add(new ContentScopeController(this.context));
+    this.registry.add(new AIProviderController(this.context));
   }
 
   // ---------------------------------------------------------------------
