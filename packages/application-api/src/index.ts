@@ -103,6 +103,7 @@ export { VerificationController } from "./controllers/VerificationController.js"
 export { StatusController } from "./controllers/StatusController.js";
 export { ConfigController } from "./controllers/ConfigController.js";
 export { ProfileController } from "./controllers/ProfileController.js";
+export { AIProviderController } from "./controllers/AIProviderController.js";
 export { PluginController } from "./controllers/PluginController.js";
 export { DeliveryController, type DeliveryDTO } from "./controllers/DeliveryController.js";
 export { ConnectionsController } from "./controllers/ConnectionsController.js";
@@ -117,6 +118,13 @@ export { ContentScopeController } from "./controllers/ContentScopeController.js"
 export { resolveContentRoot, type ContentScope } from "./resolveContentRoot.js";
 export { appendClientActivity, listClientActivity, type ActivityEntry } from "./ActivityLog.js";
 export { indexProjectDocuments, type ClientDocumentEntry } from "./ClientDocumentIndex.js";
+export {
+  loadStoredProviders,
+  saveStoredProviders,
+  buildHttpProvider,
+  restoreStoredProviders,
+  type StoredAIProviderConfig,
+} from "./AIProviderStore.js";
 
 // Adaptador in-process (único adaptador implementado en este módulo)
 export { InProcessAdapter, type InProcessCallOptions } from "./adapters/InProcessAdapter.js";

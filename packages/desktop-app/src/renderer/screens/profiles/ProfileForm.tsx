@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { callOperation, DwmOperationError } from "../../api-client/index.js";
+import { callOperation, DwmOperationError, useDwmQuery } from "../../api-client/index.js";
+import { useNavigation } from "../../shell/NavigationContext.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { TextArea } from "../../design-system/primitives/TextArea/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js";
 import { ErrorState } from "../../design-system/composites/ErrorState/index.js";
+import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
 import { CatalogPicker, type CatalogPickerEntry } from "./CatalogPicker.js";
 import "./ProfileForm.css";
 
@@ -55,6 +57,8 @@ export function ProfileForm({
   onCancel,
   initial,
 }: ProfileFormProps): JSX.Element {
+  const { setActiveSection } = useNavigation();
+  const aiProvidersQuery = useDwmQuery("ai.list-providers", {});
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [color, setColor] = useState(initial?.configuration.color ?? "#4f46e5");
@@ -159,6 +163,16 @@ export function ProfileForm({
               .filter((c) => c.type === "mcp-stdio" || c.type === "mcp-remote")
               .map((c) => ({ id: c.id, name: c.name }))
           );
+        } else if (sourceScope === "global") {
+          const connections = (await callOperation(
+            "connections.list-global" as never,
+            {} as never
+          )) as { id: string; name: string; type: string }[];
+          setMcpEntries(
+            connections
+              .filter((c) => c.type === "mcp-stdio" || c.type === "mcp-remote")
+              .map((c) => ({ id: c.id, name: c.name }))
+          );
         } else {
           setMcpEntries([]);
         }
@@ -234,17 +248,63 @@ export function ProfileForm({
       )}
 
       <div className="dwm-profile-form__ai">
-        <TextField
-          label="Proveedor de IA"
-          value={aiProvider}
-          onChange={(e) => setAiProvider(e.target.value)}
-        />
-        <TextField label="Modelo" value={aiModel} onChange={(e) => setAiModel(e.target.value)} />
-        <TextField
-          label="Modelo de reserva (fallback)"
-          value={aiFallback}
-          onChange={(e) => setAiFallback(e.target.value)}
-        />
+        {aiProvidersQuery.status === "success" && (aiProvidersQuery.data ?? []).length === 0 && (
+          <EmptyState
+            title="No hay proveedores de IA configurados"
+            action={
+              <Button variant="secondary" onClick={() => setActiveSection("ai")}>
+                Configurar IA
+              </Button>
+            }
+          />
+        )}
+        {aiProvidersQuery.status === "success" && (aiProvidersQuery.data ?? []).length > 0 && (
+          <>
+            <Select
+              label="Proveedor"
+              placeholder="Elige un proveedor de IA"
+              options={(aiProvidersQuery.data ?? []).map((p) => ({ value: p.id, label: p.name }))}
+              value={aiProvider}
+              onChange={(e) => {
+                const nextProvider = (aiProvidersQuery.data ?? []).find(
+                  (p) => p.id === e.target.value
+                );
+                setAiProvider(e.target.value);
+                setAiModel(nextProvider?.model ?? "");
+                setAiFallback("");
+              }}
+            />
+            {aiProvider && (
+              <>
+                <Select
+                  label="Modelo"
+                  options={(() => {
+                    const selected = (aiProvidersQuery.data ?? []).find((p) => p.id === aiProvider);
+                    const opts = [{ value: selected?.model ?? "", label: selected?.model ?? "" }];
+                    if (selected?.fallbackModel) {
+                      opts.push({ value: selected.fallbackModel, label: selected.fallbackModel });
+                    }
+                    return opts;
+                  })()}
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                />
+                {(() => {
+                  const selected = (aiProvidersQuery.data ?? []).find((p) => p.id === aiProvider);
+                  return selected?.fallbackModel ? (
+                    <Select
+                      label="Modelo de reserva (fallback)"
+                      placeholder="Sin fallback"
+                      options={[{ value: selected.fallbackModel, label: selected.fallbackModel }]}
+                      value={aiFallback}
+                      onChange={(e) => setAiFallback(e.target.value)}
+                    />
+                  ) : null;
+                })()}
+              </>
+            )}
+          </>
+        )}
       </div>
 
       {catalogError && (

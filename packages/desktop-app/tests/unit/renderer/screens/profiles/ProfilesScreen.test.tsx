@@ -3,6 +3,7 @@ import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProfilesScreen } from "../../../../../src/renderer/screens/profiles/ProfilesScreen.js";
 import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import { NavigationProvider } from "../../../../../src/renderer/shell/NavigationContext.js";
 import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
 
@@ -53,9 +54,11 @@ async function settle(times = 10): Promise<void> {
 
 function mountScreen() {
   return mount(
-    <ToastProvider>
-      <ProfilesScreen />
-    </ToastProvider>
+    <NavigationProvider>
+      <ToastProvider>
+        <ProfilesScreen />
+      </ToastProvider>
+    </NavigationProvider>
   );
 }
 
@@ -285,7 +288,8 @@ describe("ProfilesScreen", () => {
     await settle(8);
 
     click(
-      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Duplicar") ?? null
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Duplicar") ??
+        null
     );
     await settle();
 
