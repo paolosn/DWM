@@ -1,11 +1,73 @@
 .dwm-configuracion-screen {
   display: flex;
   flex-direction: column;
-  gap: var(--dwm-space-lg);
+  gap: 28px;
 }
 
 .dwm-configuracion-screen__group {
   display: flex;
   flex-direction: column;
-  gap: var(--dwm-space-sm);
+  gap: 10px;
+}
+.dwm-configuracion-screen__group .dwm-section-header {
+  margin-bottom: 2px;
+}
+
+.dwm-configuracion-screen__row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.dwm-configuracion-screen__row-3 .dwm-action-card {
+  height: 100%;
+}
+
+/* Fila combinada de 3 columnas (IA + Conocimiento): las 2 cabeceras
+   ocupan la primera fila del grid, las 3 Cards se auto-colocan en la
+   fila siguiente, una por columna -- alineación exacta garantizada
+   por el propio grid, no dos grids independientes. */
+.dwm-configuracion-screen__combined-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  row-gap: 10px;
+}
+.dwm-configuracion-screen__combined-3 .dwm-action-card {
+  height: 100%;
+}
+
+/* Fila combinada de 4 columnas (Diagnóstico + Ayuda), 2+2. */
+.dwm-configuracion-screen__combined-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  row-gap: 10px;
+}
+.dwm-configuracion-screen__combined-4 .dwm-action-card {
+  height: 100%;
+}
+
+.dwm-configuracion-screen__combined-header--span2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 900px) {
+  .dwm-configuracion-screen__row-3,
+  .dwm-configuracion-screen__combined-3,
+  .dwm-configuracion-screen__combined-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dwm-configuracion-screen__combined-header--span2 {
+    grid-column: span 2;
+  }
+}
+@media (max-width: 560px) {
+  .dwm-configuracion-screen__row-3,
+  .dwm-configuracion-screen__combined-3,
+  .dwm-configuracion-screen__combined-4 {
+    grid-template-columns: 1fr;
+  }
+  .dwm-configuracion-screen__combined-header--span2 {
+    grid-column: span 1;
+  }
 }

@@ -13,7 +13,7 @@ function ActiveSectionProbe(): JSX.Element {
 }
 
 describe("ConfiguracionScreen", () => {
-  it("lista las secciones técnicas/avanzadas reales, sin duplicar ninguna pantalla", () => {
+  it("lista las 13 secciones técnicas/avanzadas reales, sin duplicar ninguna pantalla", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <ConfiguracionScreen />
@@ -40,7 +40,7 @@ describe("ConfiguracionScreen", () => {
     unmount();
   });
 
-  it("'Abrir' en cada fila navega a la pantalla real ya existente, reutilizando la misma navegación de toda la app", () => {
+  it("'Abrir' en cada Card navega a la pantalla real ya existente, reutilizando la misma navegación de toda la app", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <ActiveSectionProbe />
@@ -48,10 +48,10 @@ describe("ConfiguracionScreen", () => {
       </NavigationProvider>
     );
 
-    const rows = Array.from(container.querySelectorAll("li"));
-    const profilesRow = rows.find((row) => row.textContent?.includes("Perfiles"));
+    const cards = Array.from(container.querySelectorAll(".dwm-action-card"));
+    const profilesCard = cards.find((card) => card.textContent?.includes("Perfiles"));
     click(
-      Array.from(profilesRow?.querySelectorAll("button") ?? []).find(
+      Array.from(profilesCard?.querySelectorAll("button") ?? []).find(
         (b) => b.textContent === "Abrir"
       ) ?? null
     );
@@ -60,7 +60,7 @@ describe("ConfiguracionScreen", () => {
     unmount();
   });
 
-  it("agrupa las secciones en las 6 categorías definitivas (Sistema/IA/Conocimiento/Herramientas/Diagnóstico/Ayuda), no como lista plana", () => {
+  it("las 6 categorías reales aparecen en el orden exacto de la referencia (Sistema, Herramientas, IA, Conocimiento, Diagnóstico, Ayuda)", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <ConfiguracionScreen />
@@ -68,30 +68,73 @@ describe("ConfiguracionScreen", () => {
     );
 
     const groupTitles = Array.from(container.querySelectorAll("h2")).map((h) => h.textContent);
-    expect(groupTitles).toEqual(["Sistema", "IA", "Conocimiento", "Herramientas", "Diagnóstico", "Ayuda"]);
-    expect(container.textContent).toContain(
-      "Kits de trabajo y configuración de proveedores/modelos."
+    expect(groupTitles).toEqual([
+      "Sistema",
+      "Herramientas",
+      "IA",
+      "Conocimiento",
+      "Diagnóstico",
+      "Ayuda",
+    ]);
+    unmount();
+  });
+
+  it("IA y Conocimiento comparten fila con exactamente 3 columnas reales (mismo contenedor, no dos grids independientes)", () => {
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ConfiguracionScreen />
+      </NavigationProvider>
     );
 
-    const sistemaGroup = Array.from(container.querySelectorAll("section")).find(
-      (s) => s.querySelector("h2")?.textContent === "Sistema"
+    const combinedRow = container.querySelector(
+      ".dwm-configuracion-screen__combined-3"
     ) as HTMLElement;
-    expect(sistemaGroup.textContent).toContain("Workspaces");
-    expect(sistemaGroup.textContent).toContain("Backups");
-    expect(sistemaGroup.textContent).toContain("Configuración avanzada");
+    expect(combinedRow).not.toBeNull();
+    expect(combinedRow.textContent).toContain("IA y modelos");
+    expect(combinedRow.textContent).toContain("Perfiles");
+    expect(combinedRow.textContent).toContain("Conocimiento");
 
-    const iaGroup = Array.from(container.querySelectorAll("section")).find(
-      (s) => s.querySelector("h2")?.textContent === "IA"
-    ) as HTMLElement;
-    expect(iaGroup.textContent).toContain("Perfiles");
-    expect(iaGroup.textContent).toContain("IA y modelos");
-    expect(iaGroup.textContent).not.toContain("Conocimiento");
+    const cardsInRow = combinedRow.querySelectorAll(".dwm-action-card");
+    expect(cardsInRow).toHaveLength(3);
+    unmount();
+  });
 
-    const herramientasGroup = Array.from(container.querySelectorAll("section")).find(
-      (s) => s.querySelector("h2")?.textContent === "Herramientas"
+  it("Diagnóstico y Ayuda comparten fila con exactamente 4 columnas reales (2 + 2)", () => {
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ConfiguracionScreen />
+      </NavigationProvider>
+    );
+
+    const combinedRow = container.querySelector(
+      ".dwm-configuracion-screen__combined-4"
     ) as HTMLElement;
-    expect(herramientasGroup.textContent).toContain("Extensiones de DWM");
-    expect(herramientasGroup.textContent).toContain("Paquetes");
+    expect(combinedRow).not.toBeNull();
+    expect(combinedRow.textContent).toContain("Estado y diagnóstico");
+    expect(combinedRow.textContent).toContain("Logs");
+    expect(combinedRow.textContent).toContain("Acerca de DWM");
+
+    const cardsInRow = combinedRow.querySelectorAll(".dwm-action-card");
+    expect(cardsInRow).toHaveLength(4);
+    unmount();
+  });
+
+  it("cada categoría muestra su contador real como píldora junto al título", () => {
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ConfiguracionScreen />
+      </NavigationProvider>
+    );
+
+    const sistemaHeader = Array.from(container.querySelectorAll(".dwm-section-header")).find(
+      (h) => h.querySelector("h2")?.textContent === "Sistema"
+    ) as HTMLElement;
+    expect(sistemaHeader.textContent).toContain("3");
+
+    const conocimientoHeader = Array.from(container.querySelectorAll(".dwm-section-header")).find(
+      (h) => h.querySelector("h2")?.textContent === "Conocimiento"
+    ) as HTMLElement;
+    expect(conocimientoHeader.textContent).toContain("1");
     unmount();
   });
 });
