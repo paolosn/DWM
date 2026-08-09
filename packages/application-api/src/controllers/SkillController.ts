@@ -3,6 +3,8 @@ import type { ApplicationOperationRegistry } from "../ApplicationOperationRegist
 import type { ApplicationPermissions } from "../ApplicationPermissions.js";
 import type { ApplicationContext } from "../ApplicationContext.js";
 import { requireDependency } from "../requireDependency.js";
+import * as path from "node:path";
+import { promises as fs } from "node:fs";
 import {
   asRecord,
   assertSafeOptionalPath,
@@ -34,6 +36,13 @@ declare module "../ApplicationRequest.js" {
       payload: { id: string; root?: string };
       result: { opened: boolean; message: string };
     };
+    /**
+     * client-workflow "fix/kilo-open-folder" — resuelve la ruta real
+     * de la CARPETA `.kilo/skills` a partir de una raíz ya resuelta
+     * por `content-scope.resolve-root`. Crea la carpeta si todavía no
+     * existe.
+     */
+    "skills.get-folder-path": { payload: { root: string }; result: { path: string } };
     "skills.create": { payload: { id: string; content: string; root?: string }; result: Skill };
     "skills.update": { payload: { id: string; content: string; root?: string }; result: Skill };
     "skills.duplicate": { payload: { id: string; newId: string; root?: string }; result: Skill };
@@ -117,6 +126,24 @@ export class SkillController implements ApplicationController {
           this.context.environmentManager,
           "environment-manager"
         ).openInVSCode(filePath);
+      },
+    });
+
+    permissions.register("skills.get-folder-path", ["read"]);
+    operations.register({
+      name: "skills.get-folder-path",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const root = requireString(record, "root");
+        assertSafeOptionalPath(record, "root", { allowAbsolute: true });
+        return { root };
+      },
+      handler: async (payload) => {
+        const folderPath = path.join(payload.root, ".kilo", "skills");
+        await fs.mkdir(folderPath, { recursive: true });
+        return { path: folderPath };
       },
     });
 
