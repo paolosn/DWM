@@ -438,10 +438,14 @@ function ProjectContentTab({ projectId }: { readonly projectId: string }): JSX.E
 
 export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenProps): JSX.Element {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [confirmArchiveOpen, setConfirmArchiveOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("summary");
   const { showToast } = useToast();
   const query = useDwmQuery("projects.get", { id: projectId });
   const deleteMutation = useDwmMutation("projects.delete", { invalidates: ["projects.list"] });
+  const archiveMutation = useDwmMutation("projects.archive", {
+    invalidates: ["projects.list", "projects.get"],
+  });
 
   if (query.status === "idle" || query.status === "loading") {
     return (
@@ -515,6 +519,11 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
         actions={
           <>
             <StatusBadge label={project.state} tone={stateTone[project.state]} />
+            {project.state !== "closed" && (
+              <Button variant="secondary" onClick={() => setConfirmArchiveOpen(true)}>
+                Archivar
+              </Button>
+            )}
             <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
               Eliminar registro
             </Button>
@@ -542,6 +551,20 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
               setConfirmDeleteOpen(false);
               onBack();
             });
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmArchiveOpen}
+        title={`Archivar «${project.metadata.name}»`}
+        description="El proyecto pasa a estado archivado. No se modifica ningún archivo físico y puede seguir abriéndose desde su ficha."
+        confirmLabel="Archivar"
+        onCancel={() => setConfirmArchiveOpen(false)}
+        onConfirm={() => {
+          void archiveMutation.mutate({ id: project.id }).then(() => {
+            showToast({ title: `«${project.metadata.name}» archivado`, tone: "success" });
+            setConfirmArchiveOpen(false);
+          });
         }}
       />
     </div>

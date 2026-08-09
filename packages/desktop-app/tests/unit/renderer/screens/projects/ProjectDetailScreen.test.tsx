@@ -212,6 +212,47 @@ describe("ProjectDetailScreen", () => {
     unmount();
   });
 
+  it("'Archivar' en la ficha llama a projects.archive real (misma operación que el listado)", async () => {
+    const invoke = setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+      "projects.archive": {
+        success: true,
+        requestId: "x",
+        operation: "projects.archive",
+        data: fullProject,
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle(8);
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Archivar") ??
+        null
+    );
+    await settle();
+    click(
+      Array.from(container.querySelectorAll('[role="dialog"] button')).find(
+        (b) => b.textContent === "Archivar"
+      ) ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.archive"
+    );
+    expect((call?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
+    unmount();
+  });
+
   it("Módulo 36: la pestaña «Conexiones» existe y renderiza vía Application API", async () => {
     setDwm({
       "projects.get": {
