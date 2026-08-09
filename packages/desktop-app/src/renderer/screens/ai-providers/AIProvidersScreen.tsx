@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { callOperation, DwmOperationError, useDwmQuery } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { StatusBadge, STATUS_PRESETS } from "../../design-system/primitives/StatusBadge/index.js";
 import { EmptyState } from "../../design-system/composites/EmptyState/index.js";
@@ -14,6 +15,61 @@ import { Select } from "../../design-system/primitives/Select/index.js";
 import { Switch } from "../../design-system/primitives/Switch/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import "./AIProvidersScreen.css";
+
+/**
+ * fix/library-edit-and-simple-ai (Objetivo 2) — mapeo interno real de
+ * los 4 proveedores simples a la arquitectura ya existente
+ * (HttpAIProvider solo necesita format+baseUrl+model, ya soporta
+ * cualquier endpoint compatible con OpenAI o Anthropic). El usuario
+ * nunca ve baseUrl/format/model: solo elige un botón y pega su API
+ * key. Endpoints oficiales reales, sin URLs inventadas:
+ * - Claude -> Anthropic Messages API real.
+ * - ChatGPT -> OpenAI Chat Completions real.
+ * - Gemini -> endpoint oficial de Google compatible con OpenAI
+ *   (generativelanguage.googleapis.com/v1beta/openai), mismo formato
+ *   "openai" ya soportado -- no hace falta un tercer formato.
+ * - DeepSeek -> endpoint oficial DeepSeek, compatible con OpenAI.
+ */
+type SimpleProviderKey = "claude" | "chatgpt" | "gemini" | "deepseek";
+
+interface SimpleProviderDef {
+  readonly key: SimpleProviderKey;
+  readonly label: string;
+  readonly format: "openai" | "anthropic";
+  readonly baseUrl: string;
+  readonly model: string;
+}
+
+const SIMPLE_PROVIDERS: readonly SimpleProviderDef[] = [
+  {
+    key: "claude",
+    label: "Claude",
+    format: "anthropic",
+    baseUrl: "https://api.anthropic.com/v1",
+    model: "claude-3-5-sonnet-20241022",
+  },
+  {
+    key: "chatgpt",
+    label: "ChatGPT",
+    format: "openai",
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-4o",
+  },
+  {
+    key: "gemini",
+    label: "Gemini",
+    format: "openai",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    model: "gemini-1.5-pro",
+  },
+  {
+    key: "deepseek",
+    label: "DeepSeek",
+    format: "openai",
+    baseUrl: "https://api.deepseek.com",
+    model: "deepseek-chat",
+  },
+];
 
 export interface AIProviderView {
   readonly id: string;
@@ -64,6 +120,153 @@ const connectionStatusPreset = {
  * SecretsManager ya existentes). La API key nunca se muestra ni se
  * devuelve completa: solo "Credencial configurada: sí/no".
  */
+/**
+ * fix/library-edit-and-simple-ai (Objetivo 2) — panel simple: elegir
+ * proveedor (Claude/ChatGPT/Gemini/DeepSeek) + pegar la API key +
+ * Guardar. Establece el proveedor GLOBAL predeterminado. Reutiliza
+ * exactamente las mismas operaciones reales ai.add-provider/
+ * ai.update-provider/ai.delete-provider (ningún backend nuevo). La
+ * key nunca se muestra ni se guarda aquí: solo se envía una vez al
+ * backend, que la persiste vía SecretsManager.
+ */
+function SimpleAISetup({
+  providers,
+  onChanged,
+}: {
+  readonly providers: readonly AIProviderView[];
+  readonly onChanged: () => void | Promise<void>;
+}): JSX.Element {
+  const { showToast } = useToast();
+  const configured = providers.find((p) => SIMPLE_PROVIDERS.some((sp) => sp.key === p.id));
+  const [selected, setSelected] = useState<SimpleProviderKey>(
+    (configured?.id as SimpleProviderKey | undefined) ?? "claude"
+  );
+  const [apiKey, setApiKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+
+  const def = SIMPLE_PROVIDERS.find((sp) => sp.key === selected)!;
+  const alreadyConfiguredForSelected = providers.find((p) => p.id === selected);
+
+  async function handleSave(): Promise<void> {
+    setSaving(true);
+    try {
+      if (alreadyConfiguredForSelected) {
+        await callOperation("ai.update-provider", {
+          id: selected,
+          ...(apiKey ? { apiKey } : {}),
+        });
+        if (!alreadyConfiguredForSelected.isDefault) {
+          await callOperation("ai.set-default-provider", { id: selected });
+        }
+      } else {
+        await callOperation("ai.add-provider", {
+          id: selected,
+          name: def.label,
+          format: def.format,
+          baseUrl: def.baseUrl,
+          model: def.model,
+          apiKey,
+          setDefault: true,
+        });
+      }
+      setApiKey("");
+      showToast({ title: `${def.label} configurado como IA predeterminada`, tone: "success" });
+      await onChanged();
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo guardar la IA",
+        tone: "danger",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(): Promise<void> {
+    if (!alreadyConfiguredForSelected) return;
+    try {
+      await callOperation("ai.delete-provider", { id: selected });
+      showToast({ title: `${def.label} eliminado`, tone: "success" });
+      setPendingDelete(false);
+      await onChanged();
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo eliminar",
+        tone: "danger",
+      });
+    }
+  }
+
+  return (
+    <div className="dwm-ai-providers-screen__simple">
+      <PageHeader title="IA y modelos" description="Configura tu proveedor de IA predeterminado." />
+      <div
+        className="dwm-ai-providers-screen__simple-buttons"
+        role="radiogroup"
+        aria-label="Proveedor de IA"
+      >
+        {SIMPLE_PROVIDERS.map((sp) => (
+          <button
+            key={sp.key}
+            type="button"
+            role="radio"
+            aria-checked={selected === sp.key}
+            className="dwm-ai-providers-screen__simple-button"
+            data-active={selected === sp.key}
+            onClick={() => setSelected(sp.key)}
+          >
+            {sp.label}
+            {providers.find((p) => p.id === sp.key) && (
+              <StatusBadge label="Configurado" tone="success" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      <TextField
+        label="API Key"
+        type="password"
+        value={apiKey}
+        onChange={(e) => setApiKey(e.target.value)}
+        placeholder={
+          alreadyConfiguredForSelected?.hasCredential ? "••••••••••••" : "Pega tu API key aquí"
+        }
+        {...(alreadyConfiguredForSelected?.hasCredential
+          ? {
+              hint: "Ya hay una clave guardada. Escribe una nueva solo si quieres reemplazarla.",
+            }
+          : {})}
+      />
+
+      <div className="dwm-ai-providers-screen__simple-actions">
+        <Button
+          onClick={() => void handleSave()}
+          loading={saving}
+          disabled={!apiKey && !alreadyConfiguredForSelected}
+        >
+          Guardar
+        </Button>
+        {alreadyConfiguredForSelected && (
+          <Button variant="destructive" onClick={() => setPendingDelete(true)}>
+            Eliminar
+          </Button>
+        )}
+      </div>
+
+      <ConfirmDialog
+        open={pendingDelete}
+        title={`Eliminar ${def.label}`}
+        description={`Se eliminará la configuración y la API key de ${def.label} guardada. Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        destructive
+        onCancel={() => setPendingDelete(false)}
+        onConfirm={() => void handleDelete()}
+      />
+    </div>
+  );
+}
+
 export function AIProvidersScreen(): JSX.Element {
   const { showToast } = useToast();
   const listQuery = useDwmQuery("ai.list-providers", {});
@@ -198,10 +401,16 @@ export function AIProvidersScreen(): JSX.Element {
 
   return (
     <div className="dwm-ai-providers-screen">
-      <PageHeader
-        title="IA y modelos"
-        description="Proveedores de IA reales configurados en este Workspace."
-        actions={<Button onClick={openCreate}>Añadir proveedor</Button>}
+      <SimpleAISetup providers={providers} onChanged={() => listQuery.refetch()} />
+
+      <SectionHeader
+        title="Avanzado"
+        description="Añadir otros proveedores u otros parámetros técnicos (base URL, formato, modelo de respaldo)."
+        action={
+          <Button variant="secondary" onClick={openCreate}>
+            Añadir proveedor
+          </Button>
+        }
       />
 
       {(listQuery.status === "idle" || listQuery.status === "loading") && (
