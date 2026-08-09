@@ -80,6 +80,41 @@ describe("ProjectDetailScreen", () => {
     unmount();
   });
 
+  it("las 4 acciones rápidas reales (VS Code/carpeta/Resincronizar/Ver conflictos) están siempre visibles, incluso sin conflictos", async () => {
+    setDwm({
+      "projects.get": {
+        success: true,
+        requestId: "x",
+        operation: "projects.get",
+        data: fullProject,
+      },
+      "profiles.get": { success: true, requestId: "x", operation: "profiles.get", data: undefined },
+      "content-sync.list-catalog": {
+        success: true,
+        requestId: "x",
+        operation: "content-sync.list-catalog",
+        data: [],
+      },
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <ProjectDetailScreen projectId="p1" onBack={vi.fn()} />
+      </ToastProvider>
+    );
+    await settle(8);
+
+    const buttonTexts = Array.from(
+      container.querySelectorAll(".dwm-project-detail__quick-actions button")
+    ).map((b) => b.textContent);
+    expect(buttonTexts).toEqual([
+      "Abrir en VS Code",
+      "Abrir carpeta",
+      "Resincronizar",
+      "Ver conflictos",
+    ]);
+    unmount();
+  });
+
   it("muestra exactamente las 5 pestañas reales del diseño final: Resumen, Biblioteca IA, Conexiones, Documentos, Actividad", async () => {
     setDwm({
       "projects.get": {
@@ -347,7 +382,7 @@ describe("ProjectDetailScreen", () => {
     unmount();
   });
 
-  it("con conflictos reales, ofrece 'Resolver N conflicto(s)' y navega a la pestaña Biblioteca IA", async () => {
+  it("con conflictos reales, 'Ver conflictos' muestra el recuento real y navega a la pestaña Biblioteca IA", async () => {
     setDwm({
       "projects.get": {
         success: true,
@@ -371,9 +406,10 @@ describe("ProjectDetailScreen", () => {
     await settle(8);
 
     const resolveButton = Array.from(container.querySelectorAll("button")).find((b) =>
-      b.textContent?.startsWith("Resolver")
+      b.textContent?.startsWith("Ver conflictos")
     );
     expect(resolveButton).toBeDefined();
+    expect(resolveButton?.textContent).toBe("Ver conflictos (3)");
     expect(container.textContent).toContain("Hay conflictos reales en este proyecto");
 
     click(resolveButton ?? null);

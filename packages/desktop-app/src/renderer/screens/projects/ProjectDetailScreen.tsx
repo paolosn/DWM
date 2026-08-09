@@ -229,13 +229,15 @@ function ProjectSummaryPanel({
           Abrir carpeta
         </Button>
         <Button variant="secondary" onClick={() => onGoToTab("kilo-content")}>
-          Sincronizar
+          Resincronizar
         </Button>
-        {syncSummary && syncSummary.conflicts > 0 && (
-          <Button variant="destructive" onClick={() => onGoToTab("kilo-content")}>
-            Resolver {syncSummary.conflicts} conflicto(s)
-          </Button>
-        )}
+        <Button
+          variant={syncSummary && syncSummary.conflicts > 0 ? "destructive" : "secondary"}
+          onClick={() => onGoToTab("kilo-content")}
+        >
+          Ver conflictos
+          {syncSummary && syncSummary.conflicts > 0 ? ` (${syncSummary.conflicts})` : ""}
+        </Button>
       </div>
 
       <div className="dwm-project-detail__sync-stats">
