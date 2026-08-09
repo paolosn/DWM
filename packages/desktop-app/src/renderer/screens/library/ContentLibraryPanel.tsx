@@ -328,6 +328,30 @@ export function ContentLibraryPanel({
     }
   }
 
+  async function handleOpenScopeFolder(): Promise<void> {
+    if (!root) return;
+    try {
+      // Nunca se construye la ruta en el renderer: el backend resuelve
+      // <root>/.kilo/<agents|skills|rules> a partir del root ya
+      // devuelto por content-scope.resolve-root, y reutiliza
+      // exclusivamente window.dwm.openFolder (shell.openPath) — mismo
+      // mecanismo ya usado para "Abrir archivo real".
+      const resolved = (await callOperation(
+        opName(kind, "get-folder-path") as never,
+        {
+          root,
+        } as never
+      )) as { path: string };
+      const result = await window.dwm.openFolder(resolved.path);
+      showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo abrir la carpeta",
+        tone: "danger",
+      });
+    }
+  }
+
   async function handleWithdraw(): Promise<void> {
     if (!withdrawing || !lockedScope || lockedScope.kind !== "project") return;
     try {
@@ -581,6 +605,11 @@ export function ContentLibraryPanel({
           onChange={(e) => setIncludeArchived(e.target.checked)}
         />
         <div className="dwm-content-library-panel__toolbar-actions">
+          {root && (
+            <Button variant="secondary" onClick={() => void handleOpenScopeFolder()}>
+              Abrir carpeta
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => setCreateManualOpen(true)}>
             Crear manualmente
           </Button>

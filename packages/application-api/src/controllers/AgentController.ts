@@ -3,6 +3,8 @@ import type { ApplicationOperationRegistry } from "../ApplicationOperationRegist
 import type { ApplicationPermissions } from "../ApplicationPermissions.js";
 import type { ApplicationContext } from "../ApplicationContext.js";
 import { requireDependency } from "../requireDependency.js";
+import * as path from "node:path";
+import { promises as fs } from "node:fs";
 import {
   asRecord,
   assertSafeOptionalPath,
@@ -39,6 +41,17 @@ declare module "../ApplicationRequest.js" {
       payload: { id: string; root?: string };
       result: { opened: boolean; message: string };
     };
+    /**
+     * client-workflow "fix/kilo-open-folder" — resuelve la ruta real
+     * de la CARPETA `.kilo/agents` (no de un fichero concreto) a
+     * partir de una raíz ya resuelta por `content-scope.resolve-root`
+     * (global/cliente/proyecto). Nunca construida en el renderer.
+     * Reutiliza la misma convención real ya usada por
+     * `ClientContentPaths.ensureClientKiloSkeleton` — ningún sistema
+     * de resolución de rutas nuevo. Crea la carpeta si todavía no
+     * existe (mismo esqueleto mínimo, idempotente).
+     */
+    "agents.get-folder-path": { payload: { root: string }; result: { path: string } };
     "agents.create": { payload: AgentCreateRequest & { root?: string }; result: Agent };
     "agents.update": {
       payload: { id: string; content: string; root?: string };
@@ -125,6 +138,24 @@ export class AgentController implements ApplicationController {
           this.context.environmentManager,
           "environment-manager"
         ).openInVSCode(filePath);
+      },
+    });
+
+    permissions.register("agents.get-folder-path", ["read"]);
+    operations.register({
+      name: "agents.get-folder-path",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const root = requireString(record, "root");
+        assertSafeOptionalPath(record, "root", { allowAbsolute: true });
+        return { root };
+      },
+      handler: async (payload) => {
+        const folderPath = path.join(payload.root, ".kilo", "agents");
+        await fs.mkdir(folderPath, { recursive: true });
+        return { path: folderPath };
       },
     });
 
