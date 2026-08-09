@@ -1,0 +1,54 @@
+.dwm-effective-ai {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-sm);
+}
+.dwm-effective-ai__facts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dwm-effective-ai__facts dt {
+  color: var(--dwm-color-text-secondary);
+  margin-top: 10px;
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.dwm-effective-ai__facts dt:first-child {
+  margin-top: 0;
+}
+.dwm-effective-ai__facts dd {
+  margin: 0;
+  font-size: var(--dwm-font-size-body);
+}
+.dwm-effective-ai__mono {
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+.dwm-effective-ai__badges {
+  display: flex;
+  gap: var(--dwm-space-xs);
+  flex-wrap: wrap;
+}
+.dwm-effective-ai__actions {
+  display: flex;
+  gap: var(--dwm-space-sm);
+}
+.dwm-effective-ai__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-xs);
+}
+.dwm-effective-ai__response {
+  margin: 0;
+  padding: var(--dwm-space-sm);
+  border: 1px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-control);
+  font-size: var(--dwm-font-size-meta);
+  color: var(--dwm-color-text-secondary);
+}

@@ -11,6 +11,7 @@ import { InlineAlert } from "../../design-system/composites/InlineAlert/index.js
 import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
 import { StatCard } from "../../design-system/composites/StatCard/index.js";
 import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
+import { EffectiveAiModel } from "../ai-providers/EffectiveAiModel.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
@@ -608,23 +609,7 @@ function PerfilesTab({ client }: { readonly client: Client }): JSX.Element {
 function McpIaTab({ client }: { readonly client: Client }): JSX.Element {
   return (
     <div className="dwm-client-ficha__mcp-ia">
-      <section>
-        <SectionHeader title="IA predeterminada del cliente" />
-        {client.defaultAi ? (
-          <dl>
-            <dt>Proveedor</dt>
-            <dd>{client.defaultAi.provider ?? "—"}</dd>
-            <dt>Modelo</dt>
-            <dd>{client.defaultAi.model ?? "—"}</dd>
-            <dt>Modelo de reserva</dt>
-            <dd>{client.defaultAi.fallbackModel ?? "—"}</dd>
-            <dt>Referencia de clave</dt>
-            <dd>{client.defaultAi.secretReference ? "Configurada" : "—"}</dd>
-          </dl>
-        ) : (
-          <EmptyState title="Este cliente no tiene una IA predeterminada configurada todavía" />
-        )}
-      </section>
+      <EffectiveAiModel clientId={client.id} />
       <InlineAlert tone="info" title="Servidores MCP">
         Los servidores MCP son conexiones de tipo «mcp-stdio»/«mcp-remote»: créalos y asígnalos a
         proyectos desde la pestaña «Accesos y conexiones» de esta misma ficha.

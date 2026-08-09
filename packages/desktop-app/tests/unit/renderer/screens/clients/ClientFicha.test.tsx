@@ -335,9 +335,19 @@ describe("ClientFicha", () => {
     unmount();
   });
 
-  it("MCP e IA muestra la IA predeterminada real cuando existe, y un estado vacío honesto cuando no", async () => {
-    const withAi = { ...baseClient, defaultAi: { provider: "openai", model: "gpt-4o" } };
-    setDwm({ "clients.get": () => success("clients.get", withAi) });
+  it("MCP e IA muestra el Modelo efectivo real vía ai.get-effective, con alcance/estado y sin exponer ninguna clave", async () => {
+    setDwm({
+      "clients.get": () => success("clients.get", baseClient),
+      "ai.get-effective": () =>
+        success("ai.get-effective", {
+          origin: "client",
+          provider: "openai-mci",
+          providerName: "OpenAI",
+          model: "gpt-4o",
+          hasCredential: true,
+          status: "ACTIVO",
+        }),
+    });
     const { container, unmount } = mount(
       <NavigationProvider>
         <ToastProvider>
@@ -353,8 +363,11 @@ describe("ClientFicha", () => {
     );
     await settle();
 
-    expect(container.textContent).toContain("openai");
+    expect(container.textContent).toContain("OpenAI");
     expect(container.textContent).toContain("gpt-4o");
+    expect(container.textContent).toContain("Origen: Cliente");
+    expect(container.textContent).toContain("ACTIVO");
+    expect(container.textContent).not.toMatch(/sk-[a-zA-Z0-9]/);
     unmount();
   });
 

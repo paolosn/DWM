@@ -14,6 +14,7 @@ import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { Select } from "../../design-system/primitives/Select/index.js";
 import { Switch } from "../../design-system/primitives/Switch/index.js";
 import { useToast } from "../../design-system/composites/Toast/index.js";
+import { EffectiveAiModel } from "./EffectiveAiModel.js";
 import "./AIProvidersScreen.css";
 
 /**
@@ -402,6 +403,8 @@ export function AIProvidersScreen(): JSX.Element {
   return (
     <div className="dwm-ai-providers-screen">
       <SimpleAISetup providers={providers} onChanged={() => listQuery.refetch()} />
+
+      <EffectiveAiModel />
 
       <SectionHeader
         title="Avanzado"

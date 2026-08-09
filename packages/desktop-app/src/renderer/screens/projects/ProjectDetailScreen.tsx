@@ -20,6 +20,7 @@ import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
 import { ConnectionsPanel } from "./connections/ConnectionsPanel.js";
 import { ContentLibraryPanel } from "../library/ContentLibraryPanel.js";
+import { EffectiveAiModel } from "../ai-providers/EffectiveAiModel.js";
 import "./ProjectDetailScreen.css";
 
 const stateTone: Record<ProjectState, StatusTone> = {
@@ -255,6 +256,8 @@ function ProjectSummaryPanel({
           <StatCard value={profileCounts.aiProvider ?? "Sin IA"} label="IA" />
         </div>
       )}
+
+      <EffectiveAiModel projectId={project.id} />
 
       {syncSummary?.conflicts ? (
         <InlineAlert tone="warning" title="Hay conflictos reales en este proyecto">
