@@ -8,6 +8,8 @@ export interface ProjectCardProps {
   readonly path: string;
   readonly statusLabel: string;
   readonly statusTone: StatusTone;
+  /** Icono real opcional en caja de color (mismo lenguaje visual ya usado en Inicio/Nuevo trabajo/Configuración). Sin él, el comportamiento es idéntico al actual. */
+  readonly icon?: ReactNode;
   readonly lastOpenedLabel?: string;
   readonly onOpen?: () => void;
   readonly actions?: ReactNode;
@@ -23,6 +25,7 @@ export function ProjectCard({
   path,
   statusLabel,
   statusTone,
+  icon,
   lastOpenedLabel,
   onOpen,
   actions,
@@ -30,7 +33,14 @@ export function ProjectCard({
   return (
     <Card className="dwm-project-card">
       <div className="dwm-project-card__header">
-        <h3 className="dwm-project-card__name">{name}</h3>
+        <div className="dwm-project-card__title-row">
+          {icon && (
+            <span className="dwm-project-card__icon" aria-hidden="true">
+              {icon}
+            </span>
+          )}
+          <h3 className="dwm-project-card__name">{name}</h3>
+        </div>
         <StatusBadge label={statusLabel} tone={statusTone} />
       </div>
       <p className="dwm-project-card__path">{path}</p>

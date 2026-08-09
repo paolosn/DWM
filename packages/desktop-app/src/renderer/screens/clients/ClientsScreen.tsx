@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Users } from "lucide-react";
 import type { ClientSummary } from "@dwm/client-manager";
 import { useDwmMutation, useDwmQuery, callOperation } from "../../api-client/index.js";
 import { EntityPage, EntityToolbar, EntityActions } from "../../entities/index.js";
@@ -155,6 +156,22 @@ export function ClientsScreen({ autoOpenCreate = false }: ClientsScreenProps = {
               <EntityCard
                 name={client.name}
                 description={client.slug}
+                icon={
+                  <span
+                    style={{
+                      background: "#F1EAFB",
+                      color: "#6B3FC4",
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "inherit",
+                    }}
+                  >
+                    <Users size={18} />
+                  </span>
+                }
                 status={
                   <div className="dwm-clients-screen__badges">
                     <StatusBadge label={client.status} tone="accent" />
