@@ -165,4 +165,46 @@ describe("Compatibilidad real con PSN-BASE (auditor-seo.md)", () => {
     expect(afterSecondEdit.content).toContain("Revisión programada.");
     expect(afterSecondEdit.content).toContain("- [ ] Sitemap.xml generado y enviado a GSC");
   });
+
+  it("fix/library-edit-and-simple-ai: un agente real con espacios/tildes en el nombre de fichero (habitual en contenido en español) se puede abrir y editar sin crear un duplicado", async () => {
+    const root = tempDir();
+    const agentsDir = path.join(root, ".kilo", "agents");
+    await fs.mkdir(agentsDir, { recursive: true });
+    await fs.mkdir(path.join(root, "PSN-BASE"), { recursive: true });
+    const realFrontmatter = `---\ndescription: Diseña interfaces reales.\nmode: all\n---\n\n# Diseñador Web\n\nContenido real.\n`;
+    await fs.writeFile(path.join(agentsDir, "Diseñador Web.md"), realFrontmatter, "utf-8");
+
+    const psnAdapter = new PSNAdapter();
+    await psnAdapter.scanWorkspace(root);
+    const manager = new AgentManager({ psnAdapter });
+
+    // 1. Aparece en el listado real, sin haber sido creado por DWM.
+    const [summary] = await manager.listAgents();
+    expect(summary?.id).toBe("Diseñador Web");
+
+    // 2. Se puede ABRIR (antes fallaba con AGENT_INVALID_ID).
+    const opened = await manager.getAgent("Diseñador Web");
+    expect(opened.content).toContain("# Diseñador Web");
+
+    // 3. Se puede EDITAR y GUARDAR (antes fallaba igual).
+    const edited = await manager.updateAgent(
+      "Diseñador Web",
+      `${opened.content}\n## Nota\n\nRevisado.\n`
+    );
+    expect(edited.content).toContain("## Nota");
+
+    // 4. Mismo id: no se crea un duplicado.
+    const afterEdit = await manager.listAgents();
+    expect(afterEdit).toHaveLength(1);
+    expect(afterEdit[0]?.id).toBe("Diseñador Web");
+
+    // 5. El archivo físico correcto contiene el cambio real.
+    const raw = await fs.readFile(path.join(agentsDir, "Diseñador Web.md"), "utf-8");
+    expect(raw).toContain("## Nota");
+    expect(raw).toContain("Revisado.");
+
+    // Path traversal real sigue rechazado (la comprobación permisiva
+    // nunca acepta separadores de ruta).
+    await expect(manager.getAgent("../../etc/passwd")).rejects.toThrow();
+  });
 });

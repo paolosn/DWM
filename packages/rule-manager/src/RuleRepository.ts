@@ -30,6 +30,15 @@ export class RuleRepository {
     return path.join(directory, this.fileNameFor(id));
   }
 
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — resolución real
+   * de la ruta absoluta de una regla ya existente (`.kilo/rules/<id>.md`).
+   * Reutiliza exactamente `pathFor()` ya usada internamente.
+   */
+  getFilePath(directory: string, id: string): string {
+    return this.pathFor(directory, id);
+  }
+
   async exists(directory: string, id: string): Promise<boolean> {
     try {
       await fs.access(this.pathFor(directory, id));

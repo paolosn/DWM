@@ -75,6 +75,20 @@ export function isSafeSkillId(value: unknown): value is string {
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(value);
 }
 
+/**
+ * client-workflow "fix/library-edit-and-simple-ai" — comprobación real
+ * usada ÚNICAMENTE para leer/editar/eliminar una skill que YA existe
+ * en disco, nunca para crear una nueva (`createSkill`/`duplicateSkill`
+ * siguen exigiendo `isSafeSkillId`, sin cambios). Sigue siendo segura
+ * frente a path traversal, pero permite cualquier otro carácter real
+ * de un nombre de carpeta legítimo (espacios, tildes, mayúsculas).
+ */
+export function isSafeExistingSkillId(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 255) return false;
+  if (value === "." || value === "..") return false;
+  return !value.includes("/") && !value.includes("\\");
+}
+
 /** Verdadero si `segment` es una ruta relativa segura dentro de una carpeta de skill (sin absolutas, sin escapes `..`). */
 export function isSafeSkillRelativePath(segment: unknown): segment is string {
   if (typeof segment !== "string" || segment.length === 0) return false;

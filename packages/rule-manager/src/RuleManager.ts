@@ -114,9 +114,22 @@ export class RuleManager implements IModule {
   }
 
   async getRule(id: string, root?: string): Promise<Rule> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     const directory = this.resolveDirectory(root);
     return this.readExisting(directory, id);
+  }
+
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — resuelve la
+   * ruta absoluta real del fichero físico de una regla ya existente
+   * (`.kilo/rules/<id>.md`), para que el renderer nunca tenga que
+   * construir la ruta por su cuenta.
+   */
+  async getRuleFilePath(id: string, root?: string): Promise<string> {
+    this.validator.assertExistingId(id);
+    const directory = this.resolveDirectory(root);
+    await this.readExisting(directory, id);
+    return this.repository.getFilePath(directory, id);
   }
 
   async getRuleMetadata(id: string, root?: string): Promise<RuleMetadata> {
@@ -170,7 +183,7 @@ export class RuleManager implements IModule {
 
   /** Edita (sustituye por completo) el contenido de una regla existente y guarda el resultado en disco. */
   async updateRule(id: string, content: string, root?: string): Promise<Rule> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     this.validator.assertValidContent(content);
     const directory = this.resolveDirectory(root);
     const existing = await this.readExisting(directory, id);
@@ -216,7 +229,7 @@ export class RuleManager implements IModule {
   }
 
   async deleteRule(id: string, root?: string): Promise<void> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     const directory = this.resolveDirectory(root);
     const existing = await this.readExisting(directory, id);
     await this.repository.delete(directory, id);

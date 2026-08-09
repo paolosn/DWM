@@ -388,4 +388,36 @@ describe("ContentLibraryPanel (Biblioteca IA — Agentes)", () => {
     expect(textarea.disabled).toBe(true);
     unmount();
   });
+
+  it("'Abrir archivo' pide la ruta real al backend (agents.get-file-path) en vez de construirla en el renderer", async () => {
+    const invoke = setDwm({
+      "agents.get-file-path": () =>
+        success("agents.get-file-path", { path: "/workspace/.kilo/agents/coordinador.md" }),
+    });
+    const originalOpenFolder = window.dwm.openFolder;
+    const openFolderSpy = vi.fn().mockResolvedValue({ opened: true, message: "Abierto" });
+    Object.defineProperty(window.dwm, "openFolder", { value: openFolderSpy, configurable: true });
+
+    const { container, unmount } = mountPanel();
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Abrir archivo real"
+      ) ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "agents.get-file-path"
+    );
+    expect((call?.[0] as { payload: { id: string } }).payload.id).toBe("coordinador");
+    expect(openFolderSpy).toHaveBeenCalledWith("/workspace/.kilo/agents/coordinador.md");
+
+    Object.defineProperty(window.dwm, "openFolder", {
+      value: originalOpenFolder,
+      configurable: true,
+    });
+    unmount();
+  });
 });

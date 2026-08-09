@@ -33,6 +33,18 @@ export class AgentRepository {
     return path.join(directory, this.fileNameFor(id));
   }
 
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — resolución real
+   * de la ruta absoluta de un agente ya existente (`.kilo/agents/<id>.md`),
+   * usada por `AgentManager.getAgentFilePath()` para que el renderer
+   * nunca tenga que construir la ruta por su cuenta. Reutiliza
+   * exactamente `pathFor()`, ya usada internamente por el resto del
+   * repositorio — ninguna lógica de resolución nueva.
+   */
+  getFilePath(directory: string, id: string): string {
+    return this.pathFor(directory, id);
+  }
+
   async exists(directory: string, id: string): Promise<boolean> {
     try {
       await fs.access(this.pathFor(directory, id));

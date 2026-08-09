@@ -61,6 +61,25 @@ export function isSafeAgentId(value: unknown): value is string {
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(value);
 }
 
+/**
+ * client-workflow "fix/library-edit-and-simple-ai" — comprobación real
+ * usada ÚNICAMENTE para leer/editar/eliminar un agente que YA existe
+ * en disco (getAgent/updateAgent/deleteAgent), nunca para crear uno
+ * nuevo (createAgent/duplicateAgent siguen exigiendo `isSafeAgentId`,
+ * sin cambios). Sigue siendo segura frente a path traversal (nunca
+ * `/`, `\`, `.` ni `..` solos, así que `path.join(directory, id +
+ * extensión)` nunca puede escapar `directory`), pero permite
+ * cualquier otro carácter real de un nombre de fichero legítimo
+ * (espacios, tildes, mayúsculas) — el mismo tipo de nombre que ya
+ * podía existir físicamente en PSN-BASE y que `AgentRepository.listIds()`
+ * ya listaba sin exigir este patrón estricto.
+ */
+export function isSafeExistingAgentId(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 255) return false;
+  if (value === "." || value === "..") return false;
+  return !value.includes("/") && !value.includes("\\");
+}
+
 /** Verdadero si `content` es un contenido de agente válido: una cadena de texto Markdown. */
 export function isAgentContent(value: unknown): value is string {
   return typeof value === "string";

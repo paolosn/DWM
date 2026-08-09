@@ -16,6 +16,12 @@ declare module "../ApplicationRequest.js" {
   interface ApplicationOperationMap {
     "rules.list": { payload: { includeArchived?: boolean; root?: string }; result: RuleSummary[] };
     "rules.get": { payload: { id: string; root?: string }; result: Rule };
+    /**
+     * client-workflow "fix/library-edit-and-simple-ai" — resuelve la
+     * ruta absoluta real de una regla ya existente (`.kilo/rules/<id>.md`).
+     * El renderer nunca construye la ruta por su cuenta.
+     */
+    "rules.get-file-path": { payload: { id: string; root?: string }; result: { path: string } };
     "rules.create": { payload: { id: string; content: string; root?: string }; result: Rule };
     "rules.update": { payload: { id: string; content: string; root?: string }; result: Rule };
     "rules.duplicate": { payload: { id: string; newId: string; root?: string }; result: Rule };
@@ -64,6 +70,22 @@ export class RuleController implements ApplicationController {
         return { id, root: optionalString(record, "root") };
       },
       handler: async (payload) => manager().getRule(payload.id, payload.root),
+    });
+
+    permissions.register("rules.get-file-path", ["read"]);
+    operations.register({
+      name: "rules.get-file-path",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const id = requireString(record, "id");
+        assertSafeOptionalPath(record, "root", { allowAbsolute: true });
+        return { id, root: optionalString(record, "root") };
+      },
+      handler: async (payload) => ({
+        path: await manager().getRuleFilePath(payload.id, payload.root),
+      }),
     });
 
     permissions.register("rules.create", ["write"]);

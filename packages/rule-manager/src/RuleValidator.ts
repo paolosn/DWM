@@ -1,5 +1,5 @@
 import { hasDwmBlock, splitFrontmatter } from "./RuleFrontmatter.js";
-import { isSafeRuleId, RULE_DWM_FRONTMATTER_KEY } from "./RuleTypes.js";
+import { isSafeRuleId, isSafeExistingRuleId, RULE_DWM_FRONTMATTER_KEY } from "./RuleTypes.js";
 import type { Rule } from "./RuleTypes.js";
 import { RuleErrorCode } from "./errors/RuleErrorCode.js";
 import { createRuleError } from "./errors/RuleError.js";
@@ -43,6 +43,23 @@ export class RuleValidator {
       throw createRuleError({
         code: RuleErrorCode.RULE_INVALID_ID,
         message: `Identificador de regla inválido: ${result.issues.map((i) => i.message).join("; ")}`,
+        origin: "id",
+        recoverable: true,
+      });
+    }
+  }
+
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — usada solo para
+   * leer/editar/eliminar una regla que ya existe (ver
+   * `isSafeExistingRuleId`). `assertValidId` sigue aplicándose sin
+   * cambios al crear/duplicar un id nuevo.
+   */
+  assertExistingId(id: unknown): void {
+    if (!isSafeExistingRuleId(id)) {
+      throw createRuleError({
+        code: RuleErrorCode.RULE_INVALID_ID,
+        message: `Identificador de regla inválido: "${String(id)}".`,
         origin: "id",
         recoverable: true,
       });

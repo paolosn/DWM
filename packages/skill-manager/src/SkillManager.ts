@@ -113,9 +113,22 @@ export class SkillManager implements IModule {
   }
 
   async getSkill(id: string, root?: string): Promise<Skill> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     const directory = this.resolveDirectory(root);
     return this.readExisting(directory, id);
+  }
+
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — resuelve la
+   * ruta absoluta real del fichero físico de una skill ya existente
+   * (`.kilo/skills/<id>/SKILL.md`), para que el renderer nunca tenga
+   * que construir la ruta por su cuenta.
+   */
+  async getSkillFilePath(id: string, root?: string): Promise<string> {
+    this.validator.assertExistingId(id);
+    const directory = this.resolveDirectory(root);
+    await this.readExisting(directory, id);
+    return this.repository.getFilePath(directory, id);
   }
 
   /** Lee únicamente el texto de `SKILL.md` (sin el bloque de metadatos gestionado por DWM). */
@@ -128,7 +141,7 @@ export class SkillManager implements IModule {
   }
 
   async listAuxFiles(id: string, root?: string): Promise<SkillAuxFile[]> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     const directory = this.resolveDirectory(root);
     await this.assertExists(directory, id);
     return this.repository.listAuxFiles(directory, id);
@@ -136,7 +149,7 @@ export class SkillManager implements IModule {
 
   /** Lee el contenido de un archivo auxiliar concreto de una skill (nunca `SKILL.md`), con protección frente a path traversal. */
   async readAuxFile(id: string, relativePath: string, root?: string): Promise<string> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     this.validator.assertValidAuxRelativePath(relativePath);
     const directory = this.resolveDirectory(root);
     await this.assertExists(directory, id);
@@ -145,7 +158,7 @@ export class SkillManager implements IModule {
 
   /** Detecta, sin lanzar por ausencia o invalidez del propio `SKILL.md`, su estado (`"ok"`, `"missing"` o `"invalid"`). */
   async detectSkillFileIssue(id: string, root?: string): Promise<SkillFileStatus> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     const directory = this.resolveDirectory(root);
     await this.assertExists(directory, id);
     return this.repository.inspectSkillFile(directory, id);
@@ -203,7 +216,7 @@ export class SkillManager implements IModule {
    * la fecha de creación de la carpeta.
    */
   async updateSkill(id: string, content: string, root?: string): Promise<Skill> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     this.validator.assertValidContent(content);
     const directory = this.resolveDirectory(root);
     await this.assertExists(directory, id);
@@ -252,7 +265,7 @@ export class SkillManager implements IModule {
 
   /** Elimina una skill de forma permanente e irreversible. `options.confirmPermanent` debe ser exactamente `true`. */
   async deleteSkill(id: string, options: SkillDeleteOptions, root?: string): Promise<void> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     if (options?.confirmPermanent !== true) {
       throw createSkillError({
         code: SkillErrorCode.SKILL_DELETE_NOT_CONFIRMED,

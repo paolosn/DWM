@@ -19,6 +19,12 @@ declare module "../ApplicationRequest.js" {
       result: SkillSummary[];
     };
     "skills.get": { payload: { id: string; root?: string }; result: Skill };
+    /**
+     * client-workflow "fix/library-edit-and-simple-ai" — resuelve la
+     * ruta absoluta real de una skill ya existente (`.kilo/skills/<id>/SKILL.md`).
+     * El renderer nunca construye la ruta por su cuenta.
+     */
+    "skills.get-file-path": { payload: { id: string; root?: string }; result: { path: string } };
     "skills.create": { payload: { id: string; content: string; root?: string }; result: Skill };
     "skills.update": { payload: { id: string; content: string; root?: string }; result: Skill };
     "skills.duplicate": { payload: { id: string; newId: string; root?: string }; result: Skill };
@@ -67,6 +73,22 @@ export class SkillController implements ApplicationController {
         return { id, root: optionalString(record, "root") };
       },
       handler: async (payload) => manager().getSkill(payload.id, payload.root),
+    });
+
+    permissions.register("skills.get-file-path", ["read"]);
+    operations.register({
+      name: "skills.get-file-path",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const id = requireString(record, "id");
+        assertSafeOptionalPath(record, "root", { allowAbsolute: true });
+        return { id, root: optionalString(record, "root") };
+      },
+      handler: async (payload) => ({
+        path: await manager().getSkillFilePath(payload.id, payload.root),
+      }),
     });
 
     permissions.register("skills.create", ["write"]);

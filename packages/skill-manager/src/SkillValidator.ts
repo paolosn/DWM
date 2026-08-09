@@ -1,5 +1,10 @@
 import { splitFrontmatter, hasDwmBlock } from "./SkillFrontmatter.js";
-import { isSafeSkillId, isSafeSkillRelativePath, SKILL_DWM_FRONTMATTER_KEY } from "./SkillTypes.js";
+import {
+  isSafeSkillId,
+  isSafeExistingSkillId,
+  isSafeSkillRelativePath,
+  SKILL_DWM_FRONTMATTER_KEY,
+} from "./SkillTypes.js";
 import type { Skill } from "./SkillTypes.js";
 import { SkillErrorCode } from "./errors/SkillErrorCode.js";
 import { createSkillError } from "./errors/SkillError.js";
@@ -43,6 +48,23 @@ export class SkillValidator {
       throw createSkillError({
         code: SkillErrorCode.SKILL_INVALID_ID,
         message: `Identificador de skill inválido: ${result.issues.map((i) => i.message).join("; ")}`,
+        origin: "id",
+        recoverable: true,
+      });
+    }
+  }
+
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — usada solo para
+   * leer/editar/eliminar una skill que ya existe (ver
+   * `isSafeExistingSkillId`). `assertValidId` sigue aplicándose sin
+   * cambios al crear/duplicar un id nuevo.
+   */
+  assertExistingId(id: unknown): void {
+    if (!isSafeExistingSkillId(id)) {
+      throw createSkillError({
+        code: SkillErrorCode.SKILL_INVALID_ID,
+        message: `Identificador de skill inválido: "${String(id)}".`,
         origin: "id",
         recoverable: true,
       });

@@ -36,6 +36,15 @@ export class SkillRepository {
     return path.join(this.skillDir(directory, id), SKILL_FILE_NAME);
   }
 
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — resolución real
+   * de la ruta absoluta de una skill ya existente (`.kilo/skills/<id>/SKILL.md`).
+   * Reutiliza exactamente `skillFilePath()` ya usada internamente.
+   */
+  getFilePath(directory: string, id: string): string {
+    return this.skillFilePath(directory, id);
+  }
+
   async exists(directory: string, id: string): Promise<boolean> {
     try {
       const stat = await fs.stat(this.skillDir(directory, id));

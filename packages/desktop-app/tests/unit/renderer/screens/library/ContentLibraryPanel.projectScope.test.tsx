@@ -105,11 +105,15 @@ describe("ContentLibraryPanel — ficha del proyecto (lockedScope de proyecto)",
     unmount();
   });
 
-  it("abrir archivo real: llama a window.dwm.openFolder con la ruta física real", async () => {
+  it("abrir archivo real: llama a window.dwm.openFolder con la ruta física real resuelta por el backend", async () => {
     setDwm({
       "agents.list": () => success("agents.list", [{ id: "coordinador", archived: false }]),
       "content-sync.list-catalog": () => success("content-sync.list-catalog", []),
       "projects.get": () => success("projects.get", { id: "p1", configuration: {} }),
+      "agents.get-file-path": () =>
+        success("agents.get-file-path", {
+          path: "/workspace/PROYECTOS/portal/.kilo/agents/coordinador.md",
+        }),
     });
     const { container, unmount } = mountProjectPanel();
     await settle();
