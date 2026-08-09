@@ -105,9 +105,7 @@ describe("ProfilesScreen", () => {
     await settle();
 
     click(
-      Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Ver detalle"
-      ) ?? null
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Ver") ?? null
     );
     await settle();
 
@@ -180,9 +178,7 @@ describe("ProfilesScreen", () => {
     await settle();
 
     click(
-      Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Ver detalle"
-      ) ?? null
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Ver") ?? null
     );
     await settle();
 
@@ -249,9 +245,7 @@ describe("ProfilesScreen", () => {
     await settle();
 
     click(
-      Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Ver detalle"
-      ) ?? null
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Ver") ?? null
     );
     await settle();
 
