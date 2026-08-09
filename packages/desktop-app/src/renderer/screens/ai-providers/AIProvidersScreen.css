@@ -27,3 +27,41 @@
   flex-direction: column;
   gap: var(--dwm-space-md);
 }
+
+.dwm-ai-providers-screen__simple {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dwm-space-md);
+  margin-bottom: var(--dwm-space-lg);
+}
+.dwm-ai-providers-screen__simple-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--dwm-space-sm);
+}
+.dwm-ai-providers-screen__simple-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--dwm-space-xs);
+  padding: var(--dwm-space-md);
+  border: 1.5px solid var(--dwm-color-border-subtle);
+  border-radius: var(--dwm-radius-card);
+  background: var(--dwm-color-surface);
+  font-size: var(--dwm-font-size-body);
+  font-weight: 500;
+  cursor: pointer;
+}
+.dwm-ai-providers-screen__simple-button[data-active="true"] {
+  border-color: var(--dwm-color-accent);
+  color: var(--dwm-color-accent);
+  background: color-mix(in srgb, var(--dwm-color-accent) 8%, transparent);
+}
+.dwm-ai-providers-screen__simple-button:focus-visible {
+  outline: 2px solid var(--dwm-color-accent);
+  outline-offset: 2px;
+}
+.dwm-ai-providers-screen__simple-actions {
+  display: flex;
+  gap: var(--dwm-space-sm);
+}

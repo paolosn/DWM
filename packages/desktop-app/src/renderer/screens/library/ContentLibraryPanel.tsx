@@ -18,7 +18,7 @@ import { ConfirmDialog } from "../../design-system/composites/ConfirmDialog/inde
 import { useToast } from "../../design-system/composites/Toast/index.js";
 import { ContentForm, type ContentFormValues } from "./ContentForm.js";
 import { CreateWithAiDialog, type LibraryScope } from "./CreateWithAiDialog.js";
-import { type ContentKind, KIND_LABEL, opName, realFilePath } from "./ContentKind.js";
+import { type ContentKind, KIND_LABEL, opName } from "./ContentKind.js";
 import "./ContentLibraryPanel.css";
 
 /** Sistema visual base (Fase 1): color de dominio real por tipo, reutilizando exclusivamente los tonos ya existentes de ResourceCard/StatusBadge. */
@@ -285,7 +285,18 @@ export function ContentLibraryPanel({
   async function handleOpenFile(item: Summary): Promise<void> {
     if (!root) return;
     try {
-      const result = await window.dwm.openFolder(`${root}/${realFilePath(kind, item.id)}`);
+      // Nunca se construye la ruta en el renderer: solo se envían
+      // id/root reales, y el backend (agents.get-file-path /
+      // skills.get-file-path / rules.get-file-path) resuelve y valida
+      // la ruta real, comprobando primero que el elemento existe.
+      const resolved = (await callOperation(
+        opName(kind, "get-file-path") as never,
+        {
+          id: item.id,
+          root,
+        } as never
+      )) as { path: string };
+      const result = await window.dwm.openFolder(resolved.path);
       showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
     } catch (err) {
       showToast({

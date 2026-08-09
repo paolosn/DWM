@@ -55,6 +55,20 @@ export function isSafeRuleId(value: unknown): value is string {
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(value);
 }
 
+/**
+ * client-workflow "fix/library-edit-and-simple-ai" — comprobación real
+ * usada ÚNICAMENTE para leer/editar/eliminar una regla que YA existe
+ * en disco, nunca para crear una nueva (`createRule`/`duplicateRule`
+ * siguen exigiendo `isSafeRuleId`, sin cambios). Sigue siendo segura
+ * frente a path traversal, pero permite cualquier otro carácter real
+ * de un nombre de fichero legítimo (espacios, tildes, mayúsculas).
+ */
+export function isSafeExistingRuleId(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 255) return false;
+  if (value === "." || value === "..") return false;
+  return !value.includes("/") && !value.includes("\\");
+}
+
 /** Verdadero si `content` es un contenido de regla válido: una cadena de texto Markdown. */
 export function isRuleContent(value: unknown): value is string {
   return typeof value === "string";

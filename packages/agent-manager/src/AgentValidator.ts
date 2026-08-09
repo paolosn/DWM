@@ -1,5 +1,5 @@
 import { hasDwmBlock, splitFrontmatter } from "./AgentFrontmatter.js";
-import { isSafeAgentId, AGENT_DWM_FRONTMATTER_KEY } from "./AgentTypes.js";
+import { isSafeAgentId, isSafeExistingAgentId, AGENT_DWM_FRONTMATTER_KEY } from "./AgentTypes.js";
 import type { Agent } from "./AgentTypes.js";
 import { AgentErrorCode } from "./errors/AgentErrorCode.js";
 import { createAgentError } from "./errors/AgentError.js";
@@ -43,6 +43,24 @@ export class AgentValidator {
       throw createAgentError({
         code: AgentErrorCode.AGENT_INVALID_ID,
         message: `Identificador de agente inválido: ${result.issues.map((i) => i.message).join("; ")}`,
+        origin: "id",
+        recoverable: true,
+      });
+    }
+  }
+
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — usada solo para
+   * leer/editar/eliminar un agente que ya existe (ver
+   * `isSafeExistingAgentId`). No exige el patrón estricto de
+   * `assertValidId`, que sigue aplicándose sin cambios al crear/
+   * duplicar un id nuevo.
+   */
+  assertExistingId(id: unknown): void {
+    if (!isSafeExistingAgentId(id)) {
+      throw createAgentError({
+        code: AgentErrorCode.AGENT_INVALID_ID,
+        message: `Identificador de agente inválido: "${String(id)}".`,
         origin: "id",
         recoverable: true,
       });

@@ -19,6 +19,7 @@ function buildApi(overrides: Partial<AgentManager> = {}) {
       .fn()
       .mockResolvedValue({ id: "a1", content: "# a1\n", metadata: { archived: false } }),
     deleteAgent: vi.fn().mockResolvedValue(undefined),
+    getAgentFilePath: vi.fn().mockResolvedValue("/workspace/.kilo/agents/a1.md"),
     ...overrides,
   } as unknown as AgentManager;
 
@@ -113,5 +114,15 @@ describe("AgentController", () => {
       makeRequest("agents.get", { id: "a1", root: "../../etc" }, { caller: admin })
     );
     expect(response.success).toBe(false);
+  });
+
+  it("agents.get-file-path delega en getAgentFilePath y devuelve la ruta real resuelta por el backend", async () => {
+    const { api, fakeManager } = buildApi();
+    const response = await api.execute(
+      makeRequest("agents.get-file-path", { id: "a1" }, { caller: admin })
+    );
+    expect(response.success).toBe(true);
+    if (response.success) expect(response.data.path).toBe("/workspace/.kilo/agents/a1.md");
+    expect(fakeManager.getAgentFilePath).toHaveBeenCalledWith("a1", undefined);
   });
 });

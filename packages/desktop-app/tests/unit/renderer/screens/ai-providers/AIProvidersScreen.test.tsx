@@ -113,7 +113,9 @@ describe("AIProvidersScreen", () => {
     const nameInput = inputs.find((i) => i.previousElementSibling?.textContent === "Nombre");
     const baseUrlInput = inputs.find((i) => i.previousElementSibling?.textContent === "Base URL");
     const modelInput = inputs.find((i) => i.previousElementSibling?.textContent === "Modelo");
-    const apiKeyInput = inputs.find((i) => i.type === "password");
+    const apiKeyInput = inputs.find(
+      (i) => i.type === "password" && i.previousElementSibling?.textContent === "API key"
+    );
 
     act(() => {
       setValue(idInput!, "nuevo");
@@ -125,8 +127,9 @@ describe("AIProvidersScreen", () => {
     await settle();
 
     click(
-      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Guardar") ??
-        null
+      Array.from(container.querySelectorAll('[role="dialog"] button')).find(
+        (b) => b.textContent === "Guardar"
+      ) ?? null
     );
     await settle();
 
@@ -226,6 +229,46 @@ describe("AIProvidersScreen", () => {
       (c) => (c[0] as { operation: string }).operation === "ai.set-default-provider"
     );
     expect((call?.[0] as { payload: { id: string } }).payload.id).toBe("otro");
+    unmount();
+  });
+
+  it("configuración simple: elegir Claude + pegar la API key + Guardar llama a ai.add-provider con el mapeo interno real (nunca baseUrl/format visibles al usuario)", async () => {
+    const invoke = setDwm({
+      "ai.add-provider": () => success("ai.add-provider", { ...oneProvider, id: "claude" }),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <AIProvidersScreen />
+      </ToastProvider>
+    );
+    await settle();
+
+    expect(container.textContent).not.toContain("Base URL");
+    expect(container.querySelector('[role="radiogroup"]')).not.toBeNull();
+
+    const apiKeyInput = Array.from(container.querySelectorAll("input")).find(
+      (i) => i.type === "password" && i.previousElementSibling?.textContent === "API Key"
+    ) as HTMLInputElement;
+    act(() => {
+      setValue(apiKeyInput, "sk-clave-real-claude");
+    });
+    await settle();
+
+    click(
+      Array.from(
+        container.querySelectorAll(".dwm-ai-providers-screen__simple-actions button")
+      ).find((b) => b.textContent === "Guardar") ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "ai.add-provider"
+    );
+    const payload = (call?.[0] as { payload: Record<string, unknown> }).payload;
+    expect(payload.id).toBe("claude");
+    expect(payload.format).toBe("anthropic");
+    expect(payload.apiKey).toBe("sk-clave-real-claude");
+    expect(payload.setDefault).toBe(true);
     unmount();
   });
 });

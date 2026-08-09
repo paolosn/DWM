@@ -19,6 +19,14 @@ declare module "../ApplicationRequest.js" {
       result: AgentSummary[];
     };
     "agents.get": { payload: { id: string; root?: string }; result: Agent };
+    /**
+     * client-workflow "fix/library-edit-and-simple-ai" — resuelve la
+     * ruta absoluta real del fichero físico de un agente ya existente
+     * (`.kilo/agents/<id>.md`). El renderer nunca construye la ruta
+     * por su cuenta: solo envía `id`/`root`, y el backend la resuelve
+     * y valida que el agente existe de verdad antes de devolverla.
+     */
+    "agents.get-file-path": { payload: { id: string; root?: string }; result: { path: string } };
     "agents.create": { payload: AgentCreateRequest & { root?: string }; result: Agent };
     "agents.update": {
       payload: { id: string; content: string; root?: string };
@@ -70,6 +78,22 @@ export class AgentController implements ApplicationController {
         return { id, root: optionalString(record, "root") };
       },
       handler: async (payload) => manager().getAgent(payload.id, payload.root),
+    });
+
+    permissions.register("agents.get-file-path", ["read"]);
+    operations.register({
+      name: "agents.get-file-path",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const id = requireString(record, "id");
+        assertSafeOptionalPath(record, "root", { allowAbsolute: true });
+        return { id, root: optionalString(record, "root") };
+      },
+      handler: async (payload) => ({
+        path: await manager().getAgentFilePath(payload.id, payload.root),
+      }),
     });
 
     permissions.register("agents.create", ["write"]);

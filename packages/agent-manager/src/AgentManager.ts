@@ -108,9 +108,25 @@ export class AgentManager implements IModule {
   }
 
   async getAgent(id: string, root?: string): Promise<Agent> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     const directory = this.resolveDirectory(root);
     return this.readExisting(directory, id);
+  }
+
+  /**
+   * client-workflow "fix/library-edit-and-simple-ai" — resuelve la
+   * ruta absoluta real del fichero físico de un agente ya existente
+   * (`.kilo/agents/<id>.md`), para que el renderer nunca tenga que
+   * construir la ruta por su cuenta (nunca envía una ruta libre: solo
+   * `id`/`root`, y el backend resuelve). Comprueba primero que el
+   * agente existe de verdad (mismo `readExisting` de siempre) antes de
+   * devolver la ruta.
+   */
+  async getAgentFilePath(id: string, root?: string): Promise<string> {
+    this.validator.assertExistingId(id);
+    const directory = this.resolveDirectory(root);
+    await this.readExisting(directory, id);
+    return this.repository.getFilePath(directory, id);
   }
 
   /** Lee un agente que ya se sabe debería existir en `directory` (un directorio ya resuelto, nunca una raíz sin resolver). */
@@ -178,7 +194,7 @@ export class AgentManager implements IModule {
 
   /** Edita (sustituye por completo) el contenido de un agente existente y guarda el resultado en disco. */
   async updateAgent(id: string, content: string, root?: string): Promise<Agent> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     this.validator.assertValidContent(content);
     const directory = this.resolveDirectory(root);
     const existing = await this.readExisting(directory, id);
@@ -224,7 +240,7 @@ export class AgentManager implements IModule {
   }
 
   async deleteAgent(id: string, root?: string): Promise<void> {
-    this.validator.assertValidId(id);
+    this.validator.assertExistingId(id);
     const directory = this.resolveDirectory(root);
     const existing = await this.readExisting(directory, id);
     await this.repository.delete(directory, id);

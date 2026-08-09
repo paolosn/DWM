@@ -45,7 +45,16 @@ export function realFilePath(kind: ContentKind, id: string): string {
  */
 export function opName(
   kind: ContentKind,
-  action: "list" | "get" | "create" | "update" | "duplicate" | "archive" | "restore" | "delete"
+  action:
+    | "list"
+    | "get"
+    | "get-file-path"
+    | "create"
+    | "update"
+    | "duplicate"
+    | "archive"
+    | "restore"
+    | "delete"
 ): string {
   return `${RESOURCE[kind]}.${action}`;
 }
