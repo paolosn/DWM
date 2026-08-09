@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { FolderKanban } from "lucide-react";
 import type { Project, ProjectState } from "@dwm/project";
 import { useDwmMutation, callOperation } from "../../api-client/index.js";
 import { EntityPage, EntityToolbar, EntityActions } from "../../entities/index.js";
@@ -202,6 +203,22 @@ export function ProjectsScreen(): JSX.Element {
               <ProjectCard
                 name={project.metadata.name}
                 path={project.configuration.projectPath}
+                icon={
+                  <span
+                    style={{
+                      background: "#E1F2ED",
+                      color: "#1D8A6E",
+                      width: "100%",
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "inherit",
+                    }}
+                  >
+                    <FolderKanban size={18} />
+                  </span>
+                }
                 statusLabel={project.state}
                 statusTone={stateTone[project.state]}
                 lastOpenedLabel={`Última actividad: ${new Date(

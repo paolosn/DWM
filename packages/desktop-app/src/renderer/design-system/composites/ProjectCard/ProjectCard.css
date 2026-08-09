@@ -4,6 +4,21 @@
   justify-content: space-between;
   gap: var(--dwm-space-xs);
 }
+.dwm-project-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--dwm-space-sm);
+  min-width: 0;
+}
+.dwm-project-card__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+}
 .dwm-project-card__name {
   margin: 0;
   font-size: var(--dwm-font-size-section-title);

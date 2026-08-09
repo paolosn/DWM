@@ -10,6 +10,8 @@ export interface EntityCardStat {
 export interface EntityCardProps {
   readonly name: string;
   readonly description?: string;
+  /** Icono real opcional en caja de color (mismo lenguaje visual ya usado en Inicio/Nuevo trabajo/Configuración). Sin él, el comportamiento es idéntico al actual. */
+  readonly icon?: ReactNode;
   /** Estadísticas reales de la entidad (p. ej. proyectos/agentes/conexiones para un Cliente). */
   readonly stats?: readonly EntityCardStat[];
   /** Estado real, normalmente un `<StatusBadge>` con un preset de `STATUS_PRESETS`. */
@@ -31,6 +33,7 @@ export interface EntityCardProps {
 export function EntityCard({
   name,
   description,
+  icon,
   stats,
   status,
   lastActivityLabel,
@@ -55,9 +58,16 @@ export function EntityCard({
       }
     >
       <div className="dwm-entity-card__header">
-        <div>
-          <h3 className="dwm-entity-card__name">{name}</h3>
-          {description && <p className="dwm-entity-card__description">{description}</p>}
+        <div className="dwm-entity-card__title-row">
+          {icon && (
+            <span className="dwm-entity-card__icon" aria-hidden="true">
+              {icon}
+            </span>
+          )}
+          <div>
+            <h3 className="dwm-entity-card__name">{name}</h3>
+            {description && <p className="dwm-entity-card__description">{description}</p>}
+          </div>
         </div>
         {status}
       </div>
