@@ -7,6 +7,7 @@ import { asRecord, requireString, optionalString } from "../payloadHelpers.js";
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
 import type { HttpAIProviderFormat, ConnectionStatus } from "@dwm/ai-manager";
+import { resolveAiConfig } from "../resolveAiConfig.js";
 import {
   loadStoredProviders,
   saveStoredProviders,
@@ -102,6 +103,44 @@ declare module "../ApplicationRequest.js" {
     "ai.test-connection": {
       payload: { id: string };
       result: { success: boolean; message: string };
+    };
+    /**
+     * client-workflow "fix/kilo-file-editing-and-ai-status" —
+     * "Probar modelo" real: llamada mínima real vía
+     * AIManager.sendRequest() (nunca simulada, nunca otro cliente
+     * HTTP). Nunca devuelve la API key, solo el resultado.
+     */
+    "ai.test-model": {
+      payload: { id: string; model?: string };
+      result:
+        | {
+            success: true;
+            provider: string;
+            model: string | undefined;
+            latencyMs: number;
+            response: string;
+          }
+        | { success: false; message: string };
+    };
+    /**
+     * client-workflow "fix/kilo-file-editing-and-ai-status" — "Modelo
+     * efectivo" real: resuelve qué proveedor/modelo aplicaría DWM en
+     * un contexto dado (proyecto/cliente/global), reutilizando el
+     * único resolutor compartido `resolveAiConfig` (antes duplicado
+     * entre ProvisioningController y ContentGenerationController).
+     */
+    "ai.get-effective": {
+      payload: { projectId?: string; clientId?: string };
+      result: {
+        readonly origin: "project" | "client" | "global";
+        readonly provider?: string;
+        readonly providerName?: string;
+        readonly model?: string;
+        readonly fallbackModel?: string;
+        readonly baseUrl?: string;
+        readonly hasCredential: boolean;
+        readonly status: "ACTIVO" | "INACTIVO" | "ERROR";
+      };
     };
   }
 }
@@ -360,6 +399,126 @@ export class AIProviderController implements ApplicationController {
             message: err instanceof Error ? err.message : "No se pudo conectar con el proveedor.",
           };
         }
+      },
+    });
+
+    permissions.register("ai.test-model", ["read"]);
+    operations.register({
+      name: "ai.test-model",
+      version: "1.0.0",
+      capabilities: ["read"],
+      long: true,
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        return {
+          id: requireString(record, "id"),
+          ...(optionalString(record, "model") !== undefined
+            ? { model: optionalString(record, "model")! }
+            : {}),
+        };
+      },
+      handler: async (payload) => {
+        try {
+          const response = await aiManager().sendRequest(
+            {
+              prompt: "Responde únicamente con la palabra: OK.",
+              maxTokens: 20,
+              temperature: 0,
+              ...(payload.model ? { model: payload.model } : {}),
+            },
+            payload.id
+          );
+          return {
+            success: true as const,
+            provider: response.providerId,
+            model: response.model,
+            latencyMs: response.latencyMs,
+            response: response.content.slice(0, 200),
+          };
+        } catch (err) {
+          return {
+            success: false as const,
+            message: err instanceof Error ? err.message : "No se pudo probar el modelo.",
+          };
+        }
+      },
+    });
+
+    permissions.register("ai.get-effective", ["read"]);
+    operations.register({
+      name: "ai.get-effective",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload ?? {});
+        return {
+          ...(optionalString(record, "projectId") !== undefined
+            ? { projectId: optionalString(record, "projectId")! }
+            : {}),
+          ...(optionalString(record, "clientId") !== undefined
+            ? { clientId: optionalString(record, "clientId")! }
+            : {}),
+        };
+      },
+      handler: async (payload) => {
+        const resolved = await resolveAiConfig(this.context, payload.projectId, payload.clientId);
+
+        // Alcance global: el "efectivo" es el proveedor real marcado
+        // como predeterminado en ai.list-providers (mismo mecanismo,
+        // ningún resolutor paralelo).
+        if (resolved.origin === "global" && !resolved.provider) {
+          const stored = await loadStoredProviders(configManager());
+          const active = stored.find((p) => p.isDefault);
+          if (!active) {
+            return { origin: "global" as const, hasCredential: false, status: "INACTIVO" as const };
+          }
+          const hasCredential = await secretsManager().hasSecret(active.credentialKey);
+          const connection = aiManager().getConnection(active.id);
+          return {
+            origin: "global" as const,
+            provider: active.id,
+            providerName: active.name,
+            model: active.model,
+            ...(active.fallbackModel !== undefined ? { fallbackModel: active.fallbackModel } : {}),
+            baseUrl: active.baseUrl,
+            hasCredential,
+            status: connection?.status === "error" ? ("ERROR" as const) : ("ACTIVO" as const),
+          };
+        }
+
+        // Alcance cliente/proyecto: el nombre visible se resuelve
+        // contra los proveedores globales conocidos si el `provider`
+        // coincide con uno real; si no, se muestra tal cual (sigue
+        // siendo un dato real, nunca inventado).
+        const stored = await loadStoredProviders(configManager());
+        const matching = resolved.provider
+          ? stored.find((p) => p.id === resolved.provider)
+          : undefined;
+        const hasCredential = resolved.secretReference
+          ? await secretsManager().hasSecret(resolved.secretReference)
+          : matching
+            ? await secretsManager().hasSecret(matching.credentialKey)
+            : false;
+        const connection = resolved.provider
+          ? aiManager().getConnection(resolved.provider)
+          : undefined;
+
+        return {
+          origin: resolved.origin,
+          ...(resolved.provider !== undefined ? { provider: resolved.provider } : {}),
+          ...(matching ? { providerName: matching.name } : {}),
+          ...(resolved.model !== undefined ? { model: resolved.model } : {}),
+          ...(resolved.fallbackModel !== undefined
+            ? { fallbackModel: resolved.fallbackModel }
+            : {}),
+          ...(resolved.baseUrl !== undefined ? { baseUrl: resolved.baseUrl } : {}),
+          hasCredential,
+          status: !resolved.provider
+            ? ("INACTIVO" as const)
+            : connection?.status === "error"
+              ? ("ERROR" as const)
+              : ("ACTIVO" as const),
+        };
       },
     });
   }

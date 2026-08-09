@@ -7,6 +7,7 @@ import { asRecord, optionalString, requireString } from "../payloadHelpers.js";
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
 import { resolveContentRoot } from "../resolveContentRoot.js";
+import { resolveAiConfig as resolveAiConfigShared } from "../resolveAiConfig.js";
 import type { GenerationKind, GenerationResult, ResolvedAiConfig } from "@dwm/project-provisioning";
 
 declare module "../ApplicationRequest.js" {
@@ -122,31 +123,14 @@ export class ContentGenerationController implements ApplicationController {
   }
 
   /**
-   * Mismo esquema de prioridad que `ProvisioningController.resolveAiConfig`
-   * (override de proyecto → `defaultAi` del cliente → IA global): se
-   * repite aquí, deliberadamente pequeño, en vez de acoplar dos
-   * controladores entre sí; no hay ninguna lógica de IA en este método,
-   * solo arma el `ResolvedAiConfig` que ya consume `ContentGenerationService`.
+   * client-workflow "fix/kilo-file-editing-and-ai-status" — delega
+   * íntegramente en `resolveAiConfig` (único punto compartido real,
+   * antes duplicado aquí y en `ProvisioningController`).
    */
   private async resolveAiConfig(
     projectId: string | undefined,
     existingClientId: string | undefined
   ): Promise<ResolvedAiConfig> {
-    if (projectId) {
-      const project = this.context.projectManager?.getProject(projectId);
-      const projectAi = project?.configuration.settings?.["ai"];
-      if (projectAi && typeof projectAi === "object") {
-        return projectAi as ResolvedAiConfig;
-      }
-    }
-    if (existingClientId && this.context.clientManager) {
-      try {
-        const client = await this.context.clientManager.getClient(existingClientId);
-        if (client.defaultAi) return client.defaultAi;
-      } catch {
-        // Cliente no encontrado o error de lectura: se cae al fallback global, nunca se rompe la generación.
-      }
-    }
-    return {};
+    return resolveAiConfigShared(this.context, projectId, existingClientId);
   }
 }

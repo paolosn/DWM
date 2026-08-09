@@ -7,6 +7,7 @@ import { asRecord, optionalString, optionalStringArray, requireString } from "..
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
 import { appendClientActivity } from "../ActivityLog.js";
+import { resolveAiConfig as resolveAiConfigShared } from "../resolveAiConfig.js";
 import {
   PROJECT_PROVISIONING_CATEGORIES,
   type ClientIntakeData,
@@ -322,31 +323,14 @@ export class ProvisioningController implements ApplicationController {
   }
 
   /**
-   * Único punto de resolución de la configuración de IA a usar (encargo,
-   * item 6: "override de proyecto → defaultAi del cliente → IA global").
-   * No es un resolutor paralelo: solo arma el `ResolvedAiConfig` real que
-   * ya consume `ViabilityAnalysisService`; nunca decide nada por su
-   * cuenta ni retiene un valor de secreto (solo su referencia).
+   * client-workflow "fix/kilo-file-editing-and-ai-status" — delega
+   * íntegramente en `resolveAiConfig` (único punto compartido real,
+   * antes duplicado aquí y en `ContentGenerationController`).
    */
   private async resolveAiConfig(
     projectId: string | undefined,
     existingClientId: string | undefined
   ): Promise<ResolvedAiConfig> {
-    if (projectId) {
-      const project = this.context.projectManager?.getProject(projectId);
-      const projectAi = project?.configuration.settings?.["ai"];
-      if (projectAi && typeof projectAi === "object") {
-        return projectAi as ResolvedAiConfig;
-      }
-    }
-    if (existingClientId && this.context.clientManager) {
-      try {
-        const client = await this.context.clientManager.getClient(existingClientId);
-        if (client.defaultAi) return client.defaultAi;
-      } catch {
-        // Cliente no encontrado o error de lectura: se cae al fallback global, nunca se rompe el análisis.
-      }
-    }
-    return {};
+    return resolveAiConfigShared(this.context, projectId, existingClientId);
   }
 }
