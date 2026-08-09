@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Layers } from "lucide-react";
 import { callOperation, useDwmQuery, DwmOperationError } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { FilterBar } from "../../design-system/composites/FilterBar/index.js";
@@ -358,6 +359,24 @@ export function ProfilesScreen(): JSX.Element {
                   name={card?.name ?? id}
                   description={card?.description || "Sin descripción."}
                   onClick={() => setDetailId(id)}
+                  icon={
+                    <span
+                      style={{
+                        background: card?.color
+                          ? `color-mix(in srgb, ${card.color} 15%, white)`
+                          : "var(--dwm-color-surface-muted)",
+                        color: card?.color ?? "var(--dwm-color-text-secondary)",
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: "inherit",
+                      }}
+                    >
+                      <Layers size={18} />
+                    </span>
+                  }
                   {...(card
                     ? {
                         stats: [
