@@ -68,7 +68,15 @@ describe("ConfiguracionScreen", () => {
     );
 
     const groupTitles = Array.from(container.querySelectorAll("h2")).map((h) => h.textContent);
-    expect(groupTitles).toEqual(["Sistema", "IA", "Conocimiento", "Herramientas", "Diagnóstico", "Ayuda"]);
+    expect(groupTitles).toEqual([
+      "Sistema",
+      "Workspace",
+      "IA",
+      "Conocimiento",
+      "Herramientas",
+      "Diagnóstico",
+      "Ayuda",
+    ]);
     expect(container.textContent).toContain(
       "Kits de trabajo y configuración de proveedores/modelos."
     );
@@ -76,9 +84,13 @@ describe("ConfiguracionScreen", () => {
     const sistemaGroup = Array.from(container.querySelectorAll("section")).find(
       (s) => s.querySelector("h2")?.textContent === "Sistema"
     ) as HTMLElement;
-    expect(sistemaGroup.textContent).toContain("Workspaces");
-    expect(sistemaGroup.textContent).toContain("Backups");
     expect(sistemaGroup.textContent).toContain("Configuración avanzada");
+
+    const workspaceGroup = Array.from(container.querySelectorAll("section")).find(
+      (s) => s.querySelector("h2")?.textContent === "Workspace"
+    ) as HTMLElement;
+    expect(workspaceGroup.textContent).toContain("Workspaces");
+    expect(workspaceGroup.textContent).toContain("Backups");
 
     const iaGroup = Array.from(container.querySelectorAll("section")).find(
       (s) => s.querySelector("h2")?.textContent === "IA"

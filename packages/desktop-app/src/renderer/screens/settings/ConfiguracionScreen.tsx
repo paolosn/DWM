@@ -8,7 +8,8 @@ import { useNavigation } from "../../shell/NavigationContext.js";
 import type { DesktopNavigationSection } from "../../../shared/types/DesktopConfig.js";
 import "./ConfiguracionScreen.css";
 
-type Category = "Sistema" | "IA" | "Conocimiento" | "Herramientas" | "Diagnóstico" | "Ayuda";
+type Category =
+  "Sistema" | "Workspace" | "IA" | "Conocimiento" | "Herramientas" | "Diagnóstico" | "Ayuda";
 
 interface AdvancedSection {
   readonly id: DesktopNavigationSection;
@@ -19,6 +20,7 @@ interface AdvancedSection {
 
 const CATEGORY_ORDER: readonly Category[] = [
   "Sistema",
+  "Workspace",
   "IA",
   "Conocimiento",
   "Herramientas",
@@ -27,7 +29,8 @@ const CATEGORY_ORDER: readonly Category[] = [
 ];
 
 const CATEGORY_DESCRIPTION: Readonly<Record<Category, string>> = {
-  Sistema: "Dónde vive el Sistema de Trabajo activo, sus copias de seguridad y su configuración avanzada.",
+  Sistema: "Configuración avanzada del sistema.",
+  Workspace: "Dónde vive el Sistema de Trabajo activo y sus copias de seguridad.",
   IA: "Kits de trabajo y configuración de proveedores/modelos.",
   Conocimiento: "Elementos de conocimiento del Workspace.",
   Herramientas: "Herramientas de desarrollo, extensiones y paquetes.",
@@ -40,13 +43,13 @@ const ADVANCED_SECTIONS: readonly AdvancedSection[] = [
     id: "workspaces",
     title: "Workspaces",
     description: "Sistemas de Trabajo (Workspaces) registrados y activo.",
-    category: "Sistema",
+    category: "Workspace",
   },
   {
     id: "backups",
     title: "Backups",
     description: "Copias de seguridad del Workspace.",
-    category: "Sistema",
+    category: "Workspace",
   },
   {
     id: "settings",
