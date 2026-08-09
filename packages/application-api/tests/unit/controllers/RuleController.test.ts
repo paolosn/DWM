@@ -19,9 +19,17 @@ function buildApi() {
       .fn()
       .mockResolvedValue({ id: "r1", content: "x", metadata: { archived: false } }),
     deleteRule: vi.fn().mockResolvedValue(undefined),
+    getRuleFilePath: vi.fn().mockResolvedValue("/workspace/.kilo/rules/r1.md"),
   } as unknown as RuleManager;
+  const environmentManager = {
+    openInVSCode: vi.fn().mockResolvedValue({ opened: true, message: "VS Code abierto." }),
+  } as unknown as import("@dwm/environment-manager").EnvironmentManager;
 
-  return { api: new ApplicationAPI({ ruleManager: fakeManager }), fakeManager };
+  return {
+    api: new ApplicationAPI({ ruleManager: fakeManager, environmentManager }),
+    fakeManager,
+    environmentManager,
+  };
 }
 
 describe("RuleController", () => {
@@ -66,5 +74,19 @@ describe("RuleController", () => {
     );
     expect(ok.success).toBe(true);
     expect(fakeManager.deleteRule).toHaveBeenCalledWith("r1", undefined);
+  });
+
+  it("rules.edit-file resuelve la ruta real (.kilo/rules/<id>.md) y reutiliza EnvironmentManager.openInVSCode()", async () => {
+    const { api, fakeManager, environmentManager } = buildApi();
+    const response = await api.execute(
+      makeRequest(
+        "rules.edit-file",
+        { id: "r1", root: "/workspace/CLIENTES/acme" },
+        { caller: admin }
+      )
+    );
+    expect(response.success).toBe(true);
+    expect(fakeManager.getRuleFilePath).toHaveBeenCalledWith("r1", "/workspace/CLIENTES/acme");
+    expect(environmentManager.openInVSCode).toHaveBeenCalledWith("/workspace/.kilo/rules/r1.md");
   });
 });

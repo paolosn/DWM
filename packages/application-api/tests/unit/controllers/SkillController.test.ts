@@ -19,9 +19,17 @@ function buildApi() {
       .fn()
       .mockResolvedValue({ id: "s1", content: "x", metadata: { archived: false } }),
     deleteSkill: vi.fn().mockResolvedValue(undefined),
+    getSkillFilePath: vi.fn().mockResolvedValue("/workspace/.kilo/skills/s1/SKILL.md"),
   } as unknown as SkillManager;
+  const environmentManager = {
+    openInVSCode: vi.fn().mockResolvedValue({ opened: true, message: "VS Code abierto." }),
+  } as unknown as import("@dwm/environment-manager").EnvironmentManager;
 
-  return { api: new ApplicationAPI({ skillManager: fakeManager }), fakeManager };
+  return {
+    api: new ApplicationAPI({ skillManager: fakeManager, environmentManager }),
+    fakeManager,
+    environmentManager,
+  };
 }
 
 describe("SkillController", () => {
@@ -87,6 +95,22 @@ describe("SkillController", () => {
       "s1",
       { confirmPermanent: true },
       undefined
+    );
+  });
+
+  it("skills.edit-file resuelve la ruta real (.kilo/skills/<id>/SKILL.md) y reutiliza EnvironmentManager.openInVSCode()", async () => {
+    const { api, fakeManager, environmentManager } = buildApi();
+    const response = await api.execute(
+      makeRequest(
+        "skills.edit-file",
+        { id: "s1", root: "/workspace/PROYECTOS/p1" },
+        { caller: admin }
+      )
+    );
+    expect(response.success).toBe(true);
+    expect(fakeManager.getSkillFilePath).toHaveBeenCalledWith("s1", "/workspace/PROYECTOS/p1");
+    expect(environmentManager.openInVSCode).toHaveBeenCalledWith(
+      "/workspace/.kilo/skills/s1/SKILL.md"
     );
   });
 });

@@ -420,4 +420,30 @@ describe("ContentLibraryPanel (Biblioteca IA — Agentes)", () => {
     });
     unmount();
   });
+
+  it("'Editar archivo' llama a agents.edit-file (abre el fichero real directamente en VS Code, backend resuelve la ruta)", async () => {
+    const invoke = setDwm({
+      "agents.edit-file": () =>
+        success("agents.edit-file", {
+          opened: true,
+          message: 'VS Code abierto en "coordinador.md".',
+        }),
+    });
+    const { container, unmount } = mountPanel();
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Editar archivo"
+      ) ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "agents.edit-file"
+    );
+    expect((call?.[0] as { payload: { id: string } }).payload.id).toBe("coordinador");
+    expect(container.textContent).toContain('VS Code abierto en "coordinador.md".');
+    unmount();
+  });
 });

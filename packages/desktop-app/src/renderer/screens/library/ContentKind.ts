@@ -49,6 +49,7 @@ export function opName(
     | "list"
     | "get"
     | "get-file-path"
+    | "edit-file"
     | "create"
     | "update"
     | "duplicate"

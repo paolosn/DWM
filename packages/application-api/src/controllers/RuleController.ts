@@ -22,6 +22,15 @@ declare module "../ApplicationRequest.js" {
      * El renderer nunca construye la ruta por su cuenta.
      */
     "rules.get-file-path": { payload: { id: string; root?: string }; result: { path: string } };
+    /**
+     * client-workflow "fix/kilo-file-editing-and-ai-status" — abre el
+     * fichero real (`.kilo/rules/<id>.md`) directamente en VS Code,
+     * reutilizando EnvironmentManager.openInVSCode() tal cual.
+     */
+    "rules.edit-file": {
+      payload: { id: string; root?: string };
+      result: { opened: boolean; message: string };
+    };
     "rules.create": { payload: { id: string; content: string; root?: string }; result: Rule };
     "rules.update": { payload: { id: string; content: string; root?: string }; result: Rule };
     "rules.duplicate": { payload: { id: string; newId: string; root?: string }; result: Rule };
@@ -86,6 +95,26 @@ export class RuleController implements ApplicationController {
       handler: async (payload) => ({
         path: await manager().getRuleFilePath(payload.id, payload.root),
       }),
+    });
+
+    permissions.register("rules.edit-file", ["read"]);
+    operations.register({
+      name: "rules.edit-file",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const id = requireString(record, "id");
+        assertSafeOptionalPath(record, "root", { allowAbsolute: true });
+        return { id, root: optionalString(record, "root") };
+      },
+      handler: async (payload) => {
+        const filePath = await manager().getRuleFilePath(payload.id, payload.root);
+        return requireDependency(
+          this.context.environmentManager,
+          "environment-manager"
+        ).openInVSCode(filePath);
+      },
     });
 
     permissions.register("rules.create", ["write"]);

@@ -6,6 +6,9 @@ import { makeRequest } from "../support/fixtures.js";
 const admin = { grantedCapabilities: ["read", "write", "archive", "restore", "delete"] as const };
 
 function buildApi(overrides: Partial<AgentManager> = {}) {
+  const environmentManager = {
+    openInVSCode: vi.fn().mockResolvedValue({ opened: true, message: "VS Code abierto." }),
+  } as unknown as import("@dwm/environment-manager").EnvironmentManager;
   const fakeManager = {
     listAgents: vi.fn().mockResolvedValue([{ id: "a1", archived: false }]),
     getAgent: vi.fn().mockResolvedValue({ id: "a1", content: "# a1\n", metadata: {} }),
@@ -23,8 +26,8 @@ function buildApi(overrides: Partial<AgentManager> = {}) {
     ...overrides,
   } as unknown as AgentManager;
 
-  const api = new ApplicationAPI({ agentManager: fakeManager });
-  return { api, fakeManager };
+  const api = new ApplicationAPI({ agentManager: fakeManager, environmentManager });
+  return { api, fakeManager, environmentManager };
 }
 
 describe("AgentController", () => {
@@ -124,5 +127,46 @@ describe("AgentController", () => {
     expect(response.success).toBe(true);
     if (response.success) expect(response.data.path).toBe("/workspace/.kilo/agents/a1.md");
     expect(fakeManager.getAgentFilePath).toHaveBeenCalledWith("a1", undefined);
+  });
+
+  it("agents.edit-file resuelve la ruta real y reutiliza EnvironmentManager.openInVSCode() tal cual, en cualquier alcance (root)", async () => {
+    const { api, fakeManager, environmentManager } = buildApi();
+
+    const global = await api.execute(
+      makeRequest("agents.edit-file", { id: "a1" }, { caller: admin })
+    );
+    expect(global.success).toBe(true);
+    if (global.success) expect(global.data.opened).toBe(true);
+
+    const scoped = await api.execute(
+      makeRequest(
+        "agents.edit-file",
+        { id: "a1", root: "/workspace/CLIENTES/acme" },
+        { caller: admin }
+      )
+    );
+    expect(scoped.success).toBe(true);
+    expect(fakeManager.getAgentFilePath).toHaveBeenCalledWith("a1", "/workspace/CLIENTES/acme");
+    expect(environmentManager.openInVSCode).toHaveBeenCalledWith("/workspace/.kilo/agents/a1.md");
+  });
+
+  it("agents.edit-file con un agente inexistente devuelve un error real (nunca simulado)", async () => {
+    const { api } = buildApi({
+      getAgentFilePath: vi
+        .fn()
+        .mockRejectedValue(new Error('No existe ningún agente con id "no-existe".')),
+    });
+    const response = await api.execute(
+      makeRequest("agents.edit-file", { id: "no-existe" }, { caller: admin })
+    );
+    expect(response.success).toBe(false);
+  });
+
+  it("agents.edit-file rechaza path traversal real en el campo root, igual que el resto de operaciones", async () => {
+    const { api } = buildApi();
+    const response = await api.execute(
+      makeRequest("agents.edit-file", { id: "a1", root: "../../etc" }, { caller: admin })
+    );
+    expect(response.success).toBe(false);
   });
 });

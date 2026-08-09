@@ -27,6 +27,18 @@ declare module "../ApplicationRequest.js" {
      * y valida que el agente existe de verdad antes de devolverla.
      */
     "agents.get-file-path": { payload: { id: string; root?: string }; result: { path: string } };
+    /**
+     * client-workflow "fix/kilo-file-editing-and-ai-status" — abre el
+     * fichero real (`.kilo/agents/<id>.md`) directamente en VS Code,
+     * reutilizando EnvironmentManager.openInVSCode() tal cual (el CLI
+     * `code` acepta un fichero igual que una carpeta) y la misma
+     * resolución de ruta real que `agents.get-file-path`. Ningún
+     * editor Markdown paralelo.
+     */
+    "agents.edit-file": {
+      payload: { id: string; root?: string };
+      result: { opened: boolean; message: string };
+    };
     "agents.create": { payload: AgentCreateRequest & { root?: string }; result: Agent };
     "agents.update": {
       payload: { id: string; content: string; root?: string };
@@ -94,6 +106,26 @@ export class AgentController implements ApplicationController {
       handler: async (payload) => ({
         path: await manager().getAgentFilePath(payload.id, payload.root),
       }),
+    });
+
+    permissions.register("agents.edit-file", ["read"]);
+    operations.register({
+      name: "agents.edit-file",
+      version: "1.0.0",
+      capabilities: ["read"],
+      validatePayload: (payload) => {
+        const record = asRecord(payload);
+        const id = requireString(record, "id");
+        assertSafeOptionalPath(record, "root", { allowAbsolute: true });
+        return { id, root: optionalString(record, "root") };
+      },
+      handler: async (payload) => {
+        const filePath = await manager().getAgentFilePath(payload.id, payload.root);
+        return requireDependency(
+          this.context.environmentManager,
+          "environment-manager"
+        ).openInVSCode(filePath);
+      },
     });
 
     permissions.register("agents.create", ["write"]);

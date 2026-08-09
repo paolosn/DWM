@@ -306,6 +306,28 @@ export function ContentLibraryPanel({
     }
   }
 
+  async function handleEditFile(item: Summary): Promise<void> {
+    if (!root) return;
+    try {
+      // Abre el fichero real directamente en VS Code (backend reutiliza
+      // EnvironmentManager.openInVSCode() ya existente, con la ruta
+      // real ya resuelta) — nunca un editor Markdown paralelo.
+      const result = (await callOperation(
+        opName(kind, "edit-file") as never,
+        {
+          id: item.id,
+          root,
+        } as never
+      )) as { opened: boolean; message: string };
+      showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo editar el archivo",
+        tone: "danger",
+      });
+    }
+  }
+
   async function handleWithdraw(): Promise<void> {
     if (!withdrawing || !lockedScope || lockedScope.kind !== "project") return;
     try {
@@ -649,9 +671,14 @@ export function ContentLibraryPanel({
                       </Button>
                     )}
                     {root && (
-                      <Button variant="secondary" onClick={() => void handleOpenFile(item)}>
-                        Abrir archivo real
-                      </Button>
+                      <>
+                        <Button variant="secondary" onClick={() => void handleEditFile(item)}>
+                          Editar archivo
+                        </Button>
+                        <Button variant="secondary" onClick={() => void handleOpenFile(item)}>
+                          Abrir archivo real
+                        </Button>
+                      </>
                     )}
                     {lockedScope?.kind === "project" ? (
                       <>
