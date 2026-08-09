@@ -213,9 +213,12 @@ export function ProfilesScreen(): JSX.Element {
   async function handleDuplicate(id: string, name: string): Promise<void> {
     setDuplicatingId(id);
     try {
-      const duplicated = (await callOperation("profiles.duplicate" as never, {
-        id,
-      } as never)) as { metadata: { name: string } };
+      const duplicated = (await callOperation(
+        "profiles.duplicate" as never,
+        {
+          id,
+        } as never
+      )) as { metadata: { name: string } };
       showToast({
         title: `«${name}» duplicado como «${duplicated.metadata.name}»`,
         tone: "success",
@@ -386,7 +389,7 @@ export function ProfilesScreen(): JSX.Element {
                   primaryActions={
                     <>
                       <Button variant="secondary" onClick={() => setDetailId(id)}>
-                        Ver detalle
+                        Ver
                       </Button>
                       <Button
                         variant="secondary"
