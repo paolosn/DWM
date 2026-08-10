@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   callOperation,
   DwmOperationError,
@@ -62,17 +62,42 @@ export function OnboardingScreen(): JSX.Element {
   const [validating, setValidating] = useState(false);
   const workspaceQuery = useDwmQuery("workspace.get", {});
 
-  // Paso 5: perfil.
+  // Paso 5: perfil. Se cargan por nombre real (nunca el id técnico),
+  // mismo patrón ya usado en ProvisioningScreen.tsx.
   const profilesQuery = useDwmQuery("profiles.list", {});
+  const [profileNames, setProfileNames] = useState<Readonly<Record<string, string>>>({});
   const [selectedProfile, setSelectedProfile] = useState("");
   const [activatedProfile, setActivatedProfile] = useState<string | undefined>(undefined);
   const activateMutation = useDwmMutation("profiles.activate", {});
 
-  // Paso 6: proyecto inicial.
+  useEffect(() => {
+    const ids = profilesQuery.data ?? [];
+    if (ids.length === 0) return;
+    void (async () => {
+      const entries = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const profile = (await callOperation("profiles.get", { id })) as { name?: string };
+            return [id, profile.name ?? id] as const;
+          } catch {
+            return [id, id] as const;
+          }
+        })
+      );
+      setProfileNames(Object.fromEntries(entries));
+    })();
+  }, [profilesQuery.data]);
+
+  // Paso 6: proyecto inicial. Reutiliza exactamente el mismo pipeline
+  // real que "Nuevo trabajo → Nuevo proyecto directo"
+  // (provisioning.create-project + profile-sync.apply): nunca pide una
+  // ruta manual, y el perfil elegido se materializa de verdad en el
+  // .kilo del proyecto, no solo como metadata.
   const [projectName, setProjectName] = useState("");
-  const [projectPath, setProjectPath] = useState("");
   const [createdProjectId, setCreatedProjectId] = useState<string | undefined>(undefined);
-  const createProjectMutation = useDwmMutation("projects.create", {});
+  const [createdProjectName, setCreatedProjectName] = useState<string | undefined>(undefined);
+  const [creatingProject, setCreatingProject] = useState(false);
+  const [projectError, setProjectError] = useState<string | undefined>(undefined);
 
   async function saveAppearance(): Promise<void> {
     await configMutation.mutate({ namespace: "onboarding-preferences", value: { language } });
@@ -131,19 +156,28 @@ export function OnboardingScreen(): JSX.Element {
   }
 
   async function createInitialProject(): Promise<void> {
-    if (!projectName.trim() || !projectPath.trim() || !activatedProfile) return;
-    const result = await createProjectMutation.mutate({
-      name: projectName.trim(),
-      description: "Proyecto inicial creado durante el primer inicio.",
-      configuration: {
-        projectPath: projectPath.trim(),
+    if (!projectName.trim() || !activatedProfile) return;
+    setCreatingProject(true);
+    setProjectError(undefined);
+    try {
+      const result = (await callOperation("provisioning.create-project", {
+        category: "directo",
+        client: { name: projectName.trim() },
+        project: { name: projectName.trim() },
+      })) as { projectId: string };
+      await callOperation("profile-sync.apply", {
         profileId: activatedProfile,
-        usedTools: [],
-        usedAdapters: [],
-      },
-    });
-    setCreatedProjectId(result.id);
-    showToast({ title: `Proyecto «${projectName.trim()}» creado`, tone: "success" });
+        targetProjectId: result.projectId,
+        confirmOverwrite: true,
+      });
+      setCreatedProjectId(result.projectId);
+      setCreatedProjectName(projectName.trim());
+      showToast({ title: `Proyecto «${projectName.trim()}» creado`, tone: "success" });
+    } catch (error) {
+      setProjectError(error instanceof DwmOperationError ? error.message : "Error desconocido.");
+    } finally {
+      setCreatingProject(false);
+    }
   }
 
   return (
@@ -292,7 +326,10 @@ export function OnboardingScreen(): JSX.Element {
               <>
                 <Select
                   label="Perfil"
-                  options={(profilesQuery.data ?? []).map((id) => ({ value: id, label: id }))}
+                  options={(profilesQuery.data ?? []).map((id) => ({
+                    value: id,
+                    label: profileNames[id] ?? id,
+                  }))}
                   placeholder="Elige un perfil"
                   value={selectedProfile}
                   onChange={(e) => setSelectedProfile(e.target.value)}
@@ -305,7 +342,10 @@ export function OnboardingScreen(): JSX.Element {
                   Activar perfil
                 </Button>
                 {activatedProfile && (
-                  <InlineAlert tone="success" title={`Perfil activado: ${activatedProfile}`} />
+                  <InlineAlert
+                    tone="success"
+                    title={`Perfil activado: ${profileNames[activatedProfile] ?? activatedProfile}`}
+                  />
                 )}
               </>
             )}
@@ -324,20 +364,18 @@ export function OnboardingScreen(): JSX.Element {
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
             />
-            <TextField
-              label="Ruta del proyecto"
-              value={projectPath}
-              onChange={(e) => setProjectPath(e.target.value)}
-            />
             <Button
               onClick={() => void createInitialProject()}
-              disabled={!activatedProfile || !projectName.trim() || !projectPath.trim()}
-              loading={createProjectMutation.status === "loading"}
+              disabled={!activatedProfile || !projectName.trim()}
+              loading={creatingProject}
             >
               Crear proyecto inicial
             </Button>
             {createdProjectId && (
-              <InlineAlert tone="success" title={`Proyecto creado: ${createdProjectId}`} />
+              <InlineAlert tone="success" title={`Proyecto creado: ${createdProjectName ?? projectName}`} />
+            )}
+            {projectError && (
+              <ErrorState title="No se pudo crear el proyecto inicial" technicalDetail={projectError} />
             )}
           </div>
         )}
@@ -354,9 +392,9 @@ export function OnboardingScreen(): JSX.Element {
                 {validation ? (validation.valid ? "Válido" : "Con problemas") : "No comprobado"}
               </dd>
               <dt>Perfil activado</dt>
-              <dd>{activatedProfile ?? "Ninguno"}</dd>
+              <dd>{activatedProfile ? (profileNames[activatedProfile] ?? activatedProfile) : "Ninguno"}</dd>
               <dt>Proyecto inicial</dt>
-              <dd>{createdProjectId ?? "No creado"}</dd>
+              <dd>{createdProjectName ?? "No creado"}</dd>
             </dl>
           </div>
         )}

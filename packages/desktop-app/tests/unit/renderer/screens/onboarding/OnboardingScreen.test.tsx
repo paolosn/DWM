@@ -213,7 +213,7 @@ describe("OnboardingScreen — pasos con operaciones reales", () => {
     unmount();
   });
 
-  it("pasos 5 y 6: activa un perfil y crea el proyecto inicial con operaciones reales", async () => {
+  it("pasos 5 y 6: activa un perfil por su NOMBRE real y crea el proyecto inicial reutilizando el mismo pipeline real que 'Nuevo trabajo' (provisioning.create-project + profile-sync.apply), sin pedir ninguna ruta manual ni exponer IDs técnicos", async () => {
     const invoke = setDwmWith({
       "profiles.list": {
         success: true,
@@ -221,33 +221,37 @@ describe("OnboardingScreen — pasos con operaciones reales", () => {
         operation: "profiles.list",
         data: ["default"],
       },
+      "profiles.get": {
+        success: true,
+        requestId: "x",
+        operation: "profiles.get",
+        data: { id: "default", name: "Kit WordPress" },
+      },
       "profiles.activate": {
         success: true,
         requestId: "x",
         operation: "profiles.activate",
         data: { activated: true },
       },
-      "projects.create": {
+      "provisioning.create-project": {
         success: true,
         requestId: "x",
-        operation: "projects.create",
+        operation: "provisioning.create-project",
         data: {
-          id: "proj-1",
-          metadata: {
-            id: "proj-1",
-            name: "Mi proyecto",
-            description: "x",
-            createdAt: "x",
-            updatedAt: "x",
-          },
-          configuration: {
-            projectPath: "/x/p",
-            profileId: "default",
-            usedTools: [],
-            usedAdapters: [],
-          },
-          state: "created",
+          projectId: "proj-1",
+          clientId: "client-1",
+          clientCreated: true,
+          projectPath: "/workspace/PROYECTOS/mi-proyecto",
+          briefingGenerated: false,
+          vsCodeOpened: false,
+          vsCodeMessage: "",
         },
+      },
+      "profile-sync.apply": {
+        success: true,
+        requestId: "x",
+        operation: "profile-sync.apply",
+        data: { applied: [], hasConflicts: false },
       },
     });
     const { container, unmount } = mount(
@@ -269,7 +273,9 @@ describe("OnboardingScreen — pasos con operaciones reales", () => {
       ) ?? null
     );
     await settle();
-    expect(container.textContent).toContain("Perfil activado: default");
+    // Nunca el id técnico "default": el nombre real del perfil.
+    expect(container.textContent).toContain("Perfil activado: Kit WordPress");
+    expect(container.textContent).not.toContain("Perfil activado: default");
 
     click(
       Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Siguiente") ??
@@ -277,13 +283,13 @@ describe("OnboardingScreen — pasos con operaciones reales", () => {
     );
     await settle();
 
+    // Un único campo real: el nombre del proyecto. Nunca una ruta manual.
     const inputs = container.querySelectorAll("input");
+    expect(inputs).toHaveLength(1);
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
     act(() => {
       setter?.call(inputs[0], "Mi proyecto");
       inputs[0]?.dispatchEvent(new Event("input", { bubbles: true }));
-      setter?.call(inputs[1], "/x/p");
-      inputs[1]?.dispatchEvent(new Event("input", { bubbles: true }));
     });
     click(
       Array.from(container.querySelectorAll("button")).find(
@@ -293,10 +299,24 @@ describe("OnboardingScreen — pasos con operaciones reales", () => {
     await settle();
 
     const createCall = invoke.mock.calls.find(
-      (c) => (c[0] as { operation: string }).operation === "projects.create"
+      (c) => (c[0] as { operation: string }).operation === "provisioning.create-project"
     );
     expect(createCall).toBeDefined();
-    expect(container.textContent).toContain("proj-1");
+    expect(
+      invoke.mock.calls.some((c) => (c[0] as { operation: string }).operation === "projects.create")
+    ).toBe(false);
+
+    const applyCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "profile-sync.apply"
+    );
+    expect(applyCall).toBeDefined();
+    expect(
+      (applyCall?.[0] as { payload: { profileId: string; targetProjectId: string } }).payload
+    ).toEqual({ profileId: "default", targetProjectId: "proj-1", confirmOverwrite: true });
+
+    // Nunca el UUID crudo "proj-1" visible: el nombre real del proyecto.
+    expect(container.textContent).toContain("Proyecto creado: Mi proyecto");
+    expect(container.textContent).not.toContain("proj-1");
     unmount();
   });
 
