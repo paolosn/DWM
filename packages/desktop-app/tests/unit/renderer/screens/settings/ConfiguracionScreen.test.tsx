@@ -40,7 +40,7 @@ describe("ConfiguracionScreen", () => {
     unmount();
   });
 
-  it("'Abrir' en cada fila navega a la pantalla real ya existente, reutilizando la misma navegación de toda la app", () => {
+  it("'Abrir' en la tarjeta de Perfiles navega a la pantalla real ya existente, reutilizando la misma navegación de toda la app", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <ActiveSectionProbe />
@@ -48,10 +48,10 @@ describe("ConfiguracionScreen", () => {
       </NavigationProvider>
     );
 
-    const rows = Array.from(container.querySelectorAll("li"));
-    const profilesRow = rows.find((row) => row.textContent?.includes("Perfiles"));
+    const cards = Array.from(container.querySelectorAll(".dwm-configuracion-screen__card"));
+    const profilesCard = cards.find((c) => c.textContent?.includes("Perfiles"));
     click(
-      Array.from(profilesRow?.querySelectorAll("button") ?? []).find(
+      Array.from(profilesCard?.querySelectorAll("button") ?? []).find(
         (b) => b.textContent === "Abrir"
       ) ?? null
     );
@@ -60,50 +60,36 @@ describe("ConfiguracionScreen", () => {
     unmount();
   });
 
-  it("agrupa las secciones en las 6 categorías definitivas (Sistema/IA/Conocimiento/Herramientas/Diagnóstico/Ayuda), no como lista plana", () => {
+  it("agrupa las secciones reales en 4 bloques (Sistema, Herramientas, IA+Conocimiento combinadas, Diagnóstico+Ayuda), no como lista plana de 6-7 secciones", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <ConfiguracionScreen />
       </NavigationProvider>
     );
 
-    const groupTitles = Array.from(container.querySelectorAll("h2")).map((h) => h.textContent);
-    expect(groupTitles).toEqual([
-      "Sistema",
-      "Workspace",
-      "IA",
-      "Conocimiento",
-      "Herramientas",
-      "Diagnóstico",
-      "Ayuda",
-    ]);
+    const groupTitles = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
+    expect(groupTitles).toEqual(["Sistema", "Herramientas", "IA", "Conocimiento", "Diagnóstico", "Ayuda"]);
     expect(container.textContent).toContain(
       "Kits de trabajo y configuración de proveedores/modelos."
     );
 
-    const sistemaGroup = Array.from(container.querySelectorAll("section")).find(
-      (s) => s.querySelector("h2")?.textContent === "Sistema"
-    ) as HTMLElement;
-    expect(sistemaGroup.textContent).toContain("Configuración avanzada");
+    const cards = Array.from(container.querySelectorAll(".dwm-configuracion-screen__card"));
+    const sistemaTitles = ["Workspaces", "Backups", "Configuración avanzada"];
+    for (const title of sistemaTitles) {
+      expect(cards.some((c) => c.textContent?.includes(title))).toBe(true);
+    }
 
-    const workspaceGroup = Array.from(container.querySelectorAll("section")).find(
-      (s) => s.querySelector("h2")?.textContent === "Workspace"
-    ) as HTMLElement;
-    expect(workspaceGroup.textContent).toContain("Workspaces");
-    expect(workspaceGroup.textContent).toContain("Backups");
+    const herramientasTitles = ["Herramientas", "Extensiones de DWM", "Paquetes"];
+    for (const title of herramientasTitles) {
+      expect(cards.some((c) => c.textContent?.includes(title))).toBe(true);
+    }
 
-    const iaGroup = Array.from(container.querySelectorAll("section")).find(
-      (s) => s.querySelector("h2")?.textContent === "IA"
-    ) as HTMLElement;
-    expect(iaGroup.textContent).toContain("Perfiles");
-    expect(iaGroup.textContent).toContain("IA y modelos");
-    expect(iaGroup.textContent).not.toContain("Conocimiento");
+    // Bloque 3: IA + Conocimiento comparten UNA sola rejilla de 3 columnas real.
+    const iaConocimientoRow = Array.from(
+      container.querySelectorAll(".dwm-configuracion-screen__row-3")
+    ).find((row) => row.textContent?.includes("Conocimiento") && row.textContent?.includes("Perfiles"));
+    expect(iaConocimientoRow).toBeDefined();
 
-    const herramientasGroup = Array.from(container.querySelectorAll("section")).find(
-      (s) => s.querySelector("h2")?.textContent === "Herramientas"
-    ) as HTMLElement;
-    expect(herramientasGroup.textContent).toContain("Extensiones de DWM");
-    expect(herramientasGroup.textContent).toContain("Paquetes");
     unmount();
   });
 });

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { UserCircle } from "lucide-react";
 import { useDwmMutation, useDwmQuery } from "../../api-client/index.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
@@ -40,6 +41,8 @@ export function WorkspaceScreen(): JSX.Element {
   const [selectedProfile, setSelectedProfile] = useState<string | undefined>(undefined);
   const [activatedProfile, setActivatedProfile] = useState<string | undefined>(undefined);
   const [unavailableAction, setUnavailableAction] = useState<string | undefined>(undefined);
+  const [showAllTools, setShowAllTools] = useState(false);
+  const [showAllReports, setShowAllReports] = useState(false);
   const { showToast } = useToast();
 
   const workspaceQuery = useDwmQuery("workspace.get", {});
@@ -117,7 +120,10 @@ export function WorkspaceScreen(): JSX.Element {
             />
           )}
           {profilesQuery.status === "success" && (profilesQuery.data ?? []).length === 0 && (
-            <EmptyState title="Sin perfiles disponibles" />
+            <div className="dwm-workspace-screen__profile-empty">
+              <UserCircle size={32} aria-hidden="true" />
+              <p>Sin perfiles disponibles</p>
+            </div>
           )}
           {profilesQuery.status === "success" && (profilesQuery.data ?? []).length > 0 && (
             <div className="dwm-workspace-screen__profile">
@@ -157,17 +163,28 @@ export function WorkspaceScreen(): JSX.Element {
           )}
           {toolsQuery.status === "success" && (
             <ul className="dwm-workspace-screen__tools">
-              {(toolsQuery.data ?? []).map((tool) => (
-                <li key={tool.id}>
-                  <span>{tool.name}</span>
-                  <StatusBadge
-                    label={tool.status}
-                    tone={toolStatusTone[tool.status] ?? "neutral"}
-                  />
-                </li>
-              ))}
+              {(showAllTools ? (toolsQuery.data ?? []) : (toolsQuery.data ?? []).slice(0, 8)).map(
+                (tool) => (
+                  <li key={tool.id}>
+                    <span>{tool.name}</span>
+                    <StatusBadge
+                      label={tool.status}
+                      tone={toolStatusTone[tool.status] ?? "neutral"}
+                    />
+                  </li>
+                )
+              )}
               {(toolsQuery.data ?? []).length === 0 && (
                 <li className="dwm-workspace-screen__tools-empty">Sin herramientas detectadas.</li>
+              )}
+              {!showAllTools && (toolsQuery.data ?? []).length > 8 && (
+                <button
+                  type="button"
+                  className="dwm-workspace-screen__more"
+                  onClick={() => setShowAllTools(true)}
+                >
+                  + {(toolsQuery.data ?? []).length - 8} más →
+                </button>
               )}
             </ul>
           )}
@@ -193,35 +210,47 @@ export function WorkspaceScreen(): JSX.Element {
                 tone={statusLevelTone[statusQuery.data.level] ?? "neutral"}
               />
               <ul className="dwm-workspace-screen__reports">
-                {statusQuery.data.reports.map((report) => (
-                  <li key={report.providerId}>
-                    <StatusBadge
-                      label={report.level}
-                      tone={statusLevelTone[report.level] ?? "neutral"}
-                    />
-                    <span>{report.providerId}</span>
-                    <span className="dwm-workspace-screen__report-message">{report.message}</span>
-                  </li>
-                ))}
+                {(showAllReports ? statusQuery.data.reports : statusQuery.data.reports.slice(0, 8)).map(
+                  (report) => (
+                    <li key={report.providerId}>
+                      <StatusBadge
+                        label={report.level}
+                        tone={statusLevelTone[report.level] ?? "neutral"}
+                      />
+                      <span>{report.providerId}</span>
+                      <span className="dwm-workspace-screen__report-message">{report.message}</span>
+                    </li>
+                  )
+                )}
+                {!showAllReports && statusQuery.data.reports.length > 8 && (
+                  <button
+                    type="button"
+                    className="dwm-workspace-screen__more"
+                    onClick={() => setShowAllReports(true)}
+                  >
+                    + {statusQuery.data.reports.length - 8} más →
+                  </button>
+                )}
               </ul>
             </>
           )}
         </Card>
 
-        <Card>
+        <Card className="dwm-workspace-screen__actions-card">
           <SectionHeader title="Acciones" />
           <div className="dwm-workspace-screen__actions">
-            <Button variant="secondary" disabled>
+            <button type="button" className="dwm-workspace-screen__action-disabled" disabled>
               Cambiar IA (sin soporte todavía)
-            </Button>
+            </button>
             {unavailableActions.map((action) => (
-              <Button
+              <button
                 key={action.id}
-                variant="secondary"
+                type="button"
+                className="dwm-workspace-screen__action-outline"
                 onClick={() => setUnavailableAction(action.label)}
               >
                 {action.label}
-              </Button>
+              </button>
             ))}
           </div>
         </Card>

@@ -1,10 +1,13 @@
 .dwm-workspace-screen__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: var(--dwm-space-md);
 }
 .dwm-workspace-screen__grid .dwm-section-header {
   margin-bottom: var(--dwm-space-sm);
+}
+.dwm-workspace-screen__actions-card {
+  grid-column: 1 / -1;
 }
 .dwm-workspace-screen__facts {
   margin: 0;
@@ -13,16 +16,35 @@
 .dwm-workspace-screen__facts dt {
   color: var(--dwm-color-text-secondary);
   margin-top: var(--dwm-space-xs);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .dwm-workspace-screen__facts dd {
   margin: 0;
   color: var(--dwm-color-text-primary);
   word-break: break-all;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 .dwm-workspace-screen__profile {
   display: flex;
   flex-direction: column;
   gap: var(--dwm-space-sm);
+}
+.dwm-workspace-screen__profile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dwm-space-xs);
+  padding: var(--dwm-space-lg) 0;
+  color: var(--dwm-color-text-secondary);
+  text-align: center;
+}
+.dwm-workspace-screen__profile-empty p {
+  margin: 0;
+  font-size: var(--dwm-font-size-body);
 }
 .dwm-workspace-screen__active-profile {
   margin: 0;
@@ -42,6 +64,7 @@
 .dwm-workspace-screen__reports li {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--dwm-space-xs);
   font-size: var(--dwm-font-size-body);
 }
@@ -53,8 +76,42 @@
   color: var(--dwm-color-text-secondary);
   font-size: var(--dwm-font-size-meta);
 }
+.dwm-workspace-screen__more {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 2px;
+  color: #2148c7;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
 .dwm-workspace-screen__actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dwm-space-xs);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--dwm-space-sm);
+}
+.dwm-workspace-screen__action-outline {
+  background: transparent;
+  border: 1.2px solid #2148c7;
+  color: #2148c7;
+  border-radius: var(--dwm-radius-control);
+  padding: 10px 14px;
+  font-size: var(--dwm-font-size-body);
+  font-weight: 500;
+  cursor: pointer;
+}
+.dwm-workspace-screen__action-outline:focus-visible {
+  outline: 2px solid #2148c7;
+  outline-offset: 2px;
+}
+.dwm-workspace-screen__action-disabled {
+  background: #f3f3f3;
+  border: none;
+  color: #999999;
+  border-radius: var(--dwm-radius-control);
+  padding: 10px 14px;
+  font-size: var(--dwm-font-size-body);
+  cursor: default;
 }
