@@ -134,6 +134,118 @@ describe("ImportWorkspacePanel", () => {
     expect(container.textContent).toContain("reescaneado");
   });
 
+  it("Windows: activa el Workspace en la RUTA REAL original con espacios elegida por el usuario, no en el destino interno reconstruido", async () => {
+    const winSourcePath = "C:\\Users\\paolo\\Documents\\SISTEMA DE TRABAJO";
+    const invoke = vi.fn().mockImplementation((request: { operation: string; payload: unknown }) => {
+      switch (request.operation) {
+        case "import.inspect":
+          return success("import.inspect", scanResult);
+        case "import.preview":
+          return success("import.preview", { ...previewResult, sourcePath: winSourcePath });
+        case "import.execute":
+          return success("import.execute", {
+            ...executeResult,
+            sourcePath: winSourcePath,
+            // El backend real sigue reconstruyendo un destino interno distinto
+            // (bug de origen); el componente ya NO debe usarlo para activar.
+            destinationPath: "C:\\Program Files\\DWM\\workspace\\SISTEMA DE TRABAJO",
+          });
+        case "workspace.initialize":
+        case "workspace.register":
+          return success(request.operation, { root: (request.payload as { root: string }).root });
+        default:
+          return success(request.operation, undefined);
+      }
+    });
+    setDwm({ invoke });
+    Object.defineProperty(window.dwm, "selectImportFolder", {
+      value: vi.fn().mockResolvedValue({ canceled: false, path: winSourcePath }),
+      configurable: true,
+    });
+    const { container } = mountPanel();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Importar carpeta…"
+      ) ?? null
+    );
+    await settle();
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Confirmar importación"
+      ) ?? null
+    );
+    await settle();
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Importar ahora"
+      ) ?? null
+    );
+    await settle(10);
+
+    const registerCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "workspace.register"
+    );
+    expect((registerCall?.[0] as { payload: { root: string } }).payload.root).toBe(winSourcePath);
+    const initCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "workspace.initialize"
+    );
+    expect((initCall?.[0] as { payload: { root: string } }).payload.root).toBe(winSourcePath);
+  });
+
+  it("macOS/portable: activa el Workspace en la ruta real original (p. ej. un USB), no en el destino interno reconstruido", async () => {
+    const macSourcePath = "/Volumes/USB PORTABLE/SISTEMA DE TRABAJO";
+    const invoke = vi.fn().mockImplementation((request: { operation: string; payload: unknown }) => {
+      switch (request.operation) {
+        case "import.inspect":
+          return success("import.inspect", scanResult);
+        case "import.preview":
+          return success("import.preview", { ...previewResult, sourcePath: macSourcePath });
+        case "import.execute":
+          return success("import.execute", {
+            ...executeResult,
+            sourcePath: macSourcePath,
+            destinationPath: "/Applications/DWM.app/Contents/Resources/workspace/SISTEMA DE TRABAJO",
+          });
+        case "workspace.initialize":
+        case "workspace.register":
+          return success(request.operation, { root: (request.payload as { root: string }).root });
+        default:
+          return success(request.operation, undefined);
+      }
+    });
+    setDwm({ invoke });
+    Object.defineProperty(window.dwm, "selectImportFolder", {
+      value: vi.fn().mockResolvedValue({ canceled: false, path: macSourcePath }),
+      configurable: true,
+    });
+    const { container } = mountPanel();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Importar carpeta…"
+      ) ?? null
+    );
+    await settle();
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Confirmar importación"
+      ) ?? null
+    );
+    await settle();
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Importar ahora"
+      ) ?? null
+    );
+    await settle(10);
+
+    const registerCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "workspace.register"
+    );
+    expect((registerCall?.[0] as { payload: { root: string } }).payload.root).toBe(macSourcePath);
+  });
+
   it("cancelar el selector nativo no dispara ninguna operación", async () => {
     const invoke = vi.fn();
     setDwm({ invoke });
