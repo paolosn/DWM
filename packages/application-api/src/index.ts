@@ -125,6 +125,7 @@ export {
   restoreStoredProviders,
   type StoredAIProviderConfig,
 } from "./AIProviderStore.js";
+export { ensureWorkspaceSkeleton, ensureWorkspaceSkeletonAndScan } from "./ensureWorkspaceSkeleton.js";
 
 // Adaptador in-process (único adaptador implementado en este módulo)
 export { InProcessAdapter, type InProcessCallOptions } from "./adapters/InProcessAdapter.js";

@@ -36,7 +36,7 @@ import {
   ProfileSyncService,
 } from "@dwm/project-provisioning";
 import { AIManager } from "@dwm/ai-manager";
-import { restoreStoredProviders } from "@dwm/application-api";
+import { restoreStoredProviders, ensureWorkspaceSkeleton } from "@dwm/application-api";
 
 export interface ManagerCompositionOptions {
   /** Directorio de datos de la app (`app.getPath("userData")`); aquí viven las carpetas propias de cada manager. */
@@ -66,39 +66,13 @@ export interface ManagerCompositionResult {
  * devuelven el error real de "Workspace no localizado" hasta que el
  * usuario valide o cree uno (Onboarding / Workspaces, Módulo 33B).
  *
- * No incluye `importManager`→`psnAdapter` como disparador automático de
- * un nuevo escaneo cuando el usuario valida un Workspace distinto desde
- * la UI en caliente: eso exigiría un ciclo de vida de "Workspace activo"
- * más elaborado que no existe todavía en ningún módulo anterior. Documentado
- * como limitación real en LIMITATIONS-v1.0.0.md, no simulado.
+ * client-workflow "fix/kilo-clients-psnadapter-init" — activar un
+ * Workspace distinto desde la UI en caliente (`workspace.register`)
+ * ahora SÍ reescanea de verdad (mismo `ensureWorkspaceSkeletonAndScan`
+ * compartido que usa este arranque, ver `WorkspaceController.ts`):
+ * limitación cerrada, ya no es "Workspace no localizado" hasta
+ * reiniciar DWM.
  */
-/**
- * Módulo 34 — bug de integración real encontrado al escribir la primera
- * prueba de integración con managers reales: `PortableWorkspaceManager
- * .initializeWorkspace()` crea el layout nativo de DWM (`config/`,
- * `profiles/`, `backups/`, ...) pero NUNCA la estructura heredada del
- * antiguo SISTEMA-DE-TRABAJO (`.kilo/agents`, `.kilo/skills`, ...) que
- * `PSNAdapter.scanWorkspace()` necesita para reconocer agentes, skills,
- * reglas, conocimiento y clientes. Sin esto, un Workspace recién creado
- * quedaba "activo" pero con las cinco pantallas de recursos PSN
- * completamente inoperativas. No duplica la lógica de escaneo de
- * `@dwm/psn-adapter` (que sigue siendo la única fuente de verdad para
- * leer/interpretar esos recursos): solo garantiza que las carpetas que
- * el escáner ya sabe reconocer existan antes de escanear.
- */
-async function ensurePsnSkeleton(root: string): Promise<void> {
-  const directories = [
-    path.join(root, ".kilo", "agents"),
-    path.join(root, ".kilo", "skills"),
-    path.join(root, ".kilo", "rules"),
-    path.join(root, "PSN-KNOWLEDGE-GLOBAL"),
-    path.join(root, "CLIENTES"),
-    path.join(root, "PSN-BASE"),
-  ];
-  for (const dir of directories) {
-    await fs.mkdir(dir, { recursive: true });
-  }
-}
 
 /**
  * Módulo 36 — Connections & MCP Manager necesita una única instancia real
@@ -151,7 +125,7 @@ export async function composeManagers(
     await portableWorkspaceManager.locateOrRecoverActiveWorkspace(workspaceStartDir);
   if (locatedRoot) {
     await portableWorkspaceManager.registerActiveWorkspace(locatedRoot);
-    await ensurePsnSkeleton(locatedRoot);
+    await ensureWorkspaceSkeleton(locatedRoot);
     await psnAdapter.scanWorkspace(locatedRoot);
     workspaceLocated = true;
   }
