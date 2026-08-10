@@ -172,13 +172,27 @@ export function ImportWorkspacePanel({ onImported }: ImportWorkspacePanelProps =
       if (succeeded) {
         setRegistering(true);
         try {
-          // El destino importado es una copia física de contenido, no un
-          // Workspace portable todavía: primero hay que inicializarlo
-          // (crea la metadata `.dwm/workspace.json` que `workspace.register`
-          // exige) antes de poder activarlo, igual que hace la vía manual
-          // de "Crear Workspace vacío" de este mismo paso.
-          await callOperation("workspace.initialize", { root: result.destinationPath });
-          await callOperation("workspace.register", { root: result.destinationPath });
+          // client-workflow "fix/kilo-workspace-root-resolution" — el
+          // Workspace real debe activarse en su ubicación ORIGINAL
+          // cuando el origen ya es una carpeta real (pendingSource.sourcePath:
+          // la carpeta que el usuario seleccionó de verdad, p. ej. una
+          // ruta portable en un USB o en Documents), nunca en
+          // `result.destinationPath`. Para `sourceType: "folder"`,
+          // `ImportManager.resolveDestination()` reconstruye el
+          // destino tomando solo `path.basename(sourcePath)` dentro de
+          // la carpeta interna de instalación de DWM — perdiendo la
+          // ruta real del padre y rompiendo la portabilidad del
+          // Sistema de Trabajo. `workspace.initialize`/
+          // `workspace.register` son idempotentes sobre una carpeta ya
+          // inicializada, así que activar directamente el origen real
+          // es seguro. Un `.zip` no puede activarse in situ: para ese
+          // caso sí se usa la ruta real donde `import.execute` lo
+          // extrajo (`result.destinationPath`), la única raíz real
+          // posible.
+          const activationRoot =
+            pendingSource.sourceType === "folder" ? pendingSource.sourcePath : result.destinationPath;
+          await callOperation("workspace.initialize", { root: activationRoot });
+          await callOperation("workspace.register", { root: activationRoot });
           onImported?.();
         } finally {
           setRegistering(false);
