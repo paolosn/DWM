@@ -30,7 +30,15 @@ describe("ContentSyncController", () => {
     await fs.mkdir(path.join(root, ".kilo", "agents"), { recursive: true });
     await fs.mkdir(path.join(root, ".kilo", "skills"), { recursive: true });
     await fs.mkdir(path.join(root, ".kilo", "rules"), { recursive: true });
-    await fs.mkdir(path.join(root, "PSN-BASE"), { recursive: true });
+    return root;
+  }
+
+  /** Sistema de Trabajo real: la Biblioteca IA global vive en <root>/PSN-BASE/.kilo, nunca en <root>/.kilo directamente. */
+  async function makeGlobalWorkspaceRoot(): Promise<string> {
+    const root = tempDir("dwm-content-sync-ctrl-ws-");
+    await fs.mkdir(path.join(root, "PSN-BASE", ".kilo", "agents"), { recursive: true });
+    await fs.mkdir(path.join(root, "PSN-BASE", ".kilo", "skills"), { recursive: true });
+    await fs.mkdir(path.join(root, "PSN-BASE", ".kilo", "rules"), { recursive: true });
     return root;
   }
 
@@ -45,11 +53,11 @@ describe("ContentSyncController", () => {
   }
 
   async function buildApi() {
-    const workspaceRoot = await makeKiloRoot();
+    const workspaceRoot = await makeGlobalWorkspaceRoot();
     const projectPath = await makeKiloRoot();
 
     const psnAdapter = new PSNAdapter();
-    await psnAdapter.scanWorkspace(workspaceRoot);
+    await psnAdapter.scanWorkspace(path.join(workspaceRoot, "PSN-BASE"));
     await psnAdapter.scanWorkspace(projectPath);
 
     const agentManager = new AgentManager({ psnAdapter });
@@ -81,10 +89,10 @@ describe("ContentSyncController", () => {
 
   /** Variante con ProjectManager real (varios proyectos dinámicos) y psnAdapter expuesto, para los tests de alcance de cliente — no toca `buildApi()`, que ya usan los tests existentes con su proyecto fijo "p1". */
   async function buildApiWithRealProjects() {
-    const workspaceRoot = await makeKiloRoot();
+    const workspaceRoot = await makeGlobalWorkspaceRoot();
     await fs.mkdir(path.join(workspaceRoot, "CLIENTES"), { recursive: true });
     const psnAdapter = new PSNAdapter();
-    await psnAdapter.scanWorkspace(workspaceRoot);
+    await psnAdapter.scanWorkspace(path.join(workspaceRoot, "PSN-BASE"));
 
     const agentManager = new AgentManager({ psnAdapter });
     const skillManager = new SkillManager({ psnAdapter });
@@ -127,7 +135,7 @@ describe("ContentSyncController", () => {
     const { api, agentManager, workspaceRoot } = await buildApi();
     await agentManager.createAgent(
       { id: "coordinador", content: "# Coordinador\n" },
-      workspaceRoot
+      path.join(workspaceRoot, "PSN-BASE")
     );
 
     const response = await api.execute(
@@ -149,7 +157,7 @@ describe("ContentSyncController", () => {
     const { api, agentManager, workspaceRoot, projectPath } = await buildApi();
     await agentManager.createAgent(
       { id: "coordinador", content: "# Coordinador\n" },
-      workspaceRoot
+      path.join(workspaceRoot, "PSN-BASE")
     );
 
     const response = await api.execute(
@@ -172,7 +180,10 @@ describe("ContentSyncController", () => {
 
   it("un conflicto real se rechaza sin confirmOverwrite, y el catálogo lo refleja como 'conflict'", async () => {
     const { api, agentManager, workspaceRoot, projectPath } = await buildApi();
-    await agentManager.createAgent({ id: "coordinador", content: "# Origen\n" }, workspaceRoot);
+    await agentManager.createAgent(
+      { id: "coordinador", content: "# Origen\n" },
+      path.join(workspaceRoot, "PSN-BASE")
+    );
     await fs.writeFile(
       path.join(projectPath, ".kilo", "agents", "coordinador.md"),
       "# Editado a mano en el proyecto\n",
@@ -212,7 +223,10 @@ describe("ContentSyncController", () => {
 
   it("confirmOverwrite: true aplica la sobrescritura real del conflicto", async () => {
     const { api, agentManager, workspaceRoot, projectPath } = await buildApi();
-    await agentManager.createAgent({ id: "coordinador", content: "# Origen\n" }, workspaceRoot);
+    await agentManager.createAgent(
+      { id: "coordinador", content: "# Origen\n" },
+      path.join(workspaceRoot, "PSN-BASE")
+    );
     await fs.writeFile(
       path.join(projectPath, ".kilo", "agents", "coordinador.md"),
       "# Anterior\n",
@@ -239,7 +253,7 @@ describe("ContentSyncController", () => {
     const { api, agentManager, workspaceRoot, projectPath } = await buildApi();
     await agentManager.createAgent(
       { id: "coordinador", content: "# Coordinador\n" },
-      workspaceRoot
+      path.join(workspaceRoot, "PSN-BASE")
     );
     await api.execute(
       makeRequest(
@@ -282,7 +296,7 @@ describe("ContentSyncController", () => {
     const { api, agentManager, workspaceRoot } = await buildApi();
     await agentManager.createAgent(
       { id: "coordinador", content: "# Coordinador\n" },
-      workspaceRoot
+      path.join(workspaceRoot, "PSN-BASE")
     );
 
     const response = await api.execute(
@@ -421,7 +435,7 @@ describe("ContentSyncController", () => {
       );
       await agentManager.createAgent(
         { id: "coordinador-global", content: "# Global\n" },
-        workspaceRoot
+        path.join(workspaceRoot, "PSN-BASE")
       );
 
       const project = await makeProject();
