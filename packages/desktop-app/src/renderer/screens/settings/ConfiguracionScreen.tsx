@@ -1,127 +1,196 @@
+import type { ReactNode } from "react";
+import {
+  Layers,
+  Database,
+  SlidersHorizontal,
+  Wrench,
+  Puzzle,
+  Package,
+  Award,
+  UserCircle,
+  BookOpen,
+  Activity,
+  FileText,
+  CircleHelp,
+  Info,
+} from "lucide-react";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
-import { DataList } from "../../design-system/composites/DataList/index.js";
-import { ResourceCard } from "../../design-system/composites/ResourceCard/index.js";
-import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
-import { StatusBadge } from "../../design-system/primitives/StatusBadge/index.js";
-import { Button } from "../../design-system/primitives/Button/index.js";
+import { Card } from "../../design-system/primitives/Card/index.js";
 import { useNavigation } from "../../shell/NavigationContext.js";
 import type { DesktopNavigationSection } from "../../../shared/types/DesktopConfig.js";
 import "./ConfiguracionScreen.css";
 
-type Category =
-  "Sistema" | "Workspace" | "IA" | "Conocimiento" | "Herramientas" | "Diagnóstico" | "Ayuda";
-
-interface AdvancedSection {
-  readonly id: DesktopNavigationSection;
-  readonly title: string;
-  readonly description: string;
-  readonly category: Category;
+interface Accent {
+  readonly color: string;
+  readonly iconBackground: string;
 }
 
-const CATEGORY_ORDER: readonly Category[] = [
-  "Sistema",
-  "Workspace",
-  "IA",
-  "Conocimiento",
-  "Herramientas",
-  "Diagnóstico",
-  "Ayuda",
-];
+const ACCENT = {
+  blue: { color: "#2148C7", iconBackground: "#EAF1FE" },
+  amber: { color: "#B5651D", iconBackground: "#FDF0E3" },
+  purple: { color: "#6B3FC4", iconBackground: "#F1EAFB" },
+  teal: { color: "#1D8A6E", iconBackground: "#E1F2ED" },
+  slate: { color: "#3E5578", iconBackground: "#E8EDF4" },
+  pink: { color: "#C2255C", iconBackground: "#FBE7EF" },
+} as const satisfies Record<string, Accent>;
 
-const CATEGORY_DESCRIPTION: Readonly<Record<Category, string>> = {
-  Sistema: "Configuración avanzada del sistema.",
-  Workspace: "Dónde vive el Sistema de Trabajo activo y sus copias de seguridad.",
-  IA: "Kits de trabajo y configuración de proveedores/modelos.",
-  Conocimiento: "Elementos de conocimiento del Workspace.",
-  Herramientas: "Herramientas de desarrollo, extensiones y paquetes.",
-  Diagnóstico: "Estado del sistema y registro de eventos.",
-  Ayuda: "Documentación y acerca de DWM.",
-};
+interface SectionEntry {
+  readonly id: DesktopNavigationSection;
+  readonly icon: typeof Layers;
+  readonly title: string;
+  readonly description: string;
+}
 
-const ADVANCED_SECTIONS: readonly AdvancedSection[] = [
+function SettingsCard({
+  entry,
+  accent,
+  onOpen,
+}: {
+  readonly entry: SectionEntry;
+  readonly accent: Accent;
+  readonly onOpen: (id: DesktopNavigationSection) => void;
+}): JSX.Element {
+  const Icon = entry.icon;
+  return (
+    <Card className="dwm-configuracion-screen__card">
+      <span
+        className="dwm-configuracion-screen__card-icon"
+        aria-hidden="true"
+        style={{ background: accent.iconBackground, color: accent.color }}
+      >
+        <Icon size={14} />
+      </span>
+      <h4 className="dwm-configuracion-screen__card-title">{entry.title}</h4>
+      <p className="dwm-configuracion-screen__card-description">{entry.description}</p>
+      <button
+        type="button"
+        className="dwm-configuracion-screen__card-button"
+        style={{ borderColor: accent.color, color: accent.color }}
+        onClick={() => onOpen(entry.id)}
+      >
+        Abrir
+      </button>
+    </Card>
+  );
+}
+
+function GroupHeading({
+  title,
+  count,
+  description,
+}: {
+  readonly title: string;
+  readonly count: number;
+  readonly description: string;
+}): ReactNode {
+  return (
+    <div className="dwm-configuracion-screen__heading">
+      <div className="dwm-configuracion-screen__heading-title-row">
+        <h3>{title}</h3>
+        <span className="dwm-configuracion-screen__count-pill">{count}</span>
+      </div>
+      <p>{description}</p>
+    </div>
+  );
+}
+
+const SISTEMA: readonly SectionEntry[] = [
   {
     id: "workspaces",
+    icon: Layers,
     title: "Workspaces",
-    description: "Sistemas de Trabajo (Workspaces) registrados y activo.",
-    category: "Workspace",
+    description: "Sistemas de Trabajo registrados y activo.",
   },
   {
     id: "backups",
+    icon: Database,
     title: "Backups",
     description: "Copias de seguridad del Workspace.",
-    category: "Workspace",
   },
   {
     id: "settings",
+    icon: SlidersHorizontal,
     title: "Configuración avanzada",
     description: "Editor real de las secciones de configuración (config.*).",
-    category: "Sistema",
   },
-  {
-    id: "ai",
-    title: "IA y modelos",
-    description: "Configuración de proveedores y modelos de IA del Workspace.",
-    category: "IA",
-  },
-  {
-    id: "profiles",
-    title: "Perfiles",
-    description: "Kits de trabajo reutilizables: agentes, skills, reglas, IA y MCP.",
-    category: "IA",
-  },
-  {
-    id: "knowledge",
-    title: "Conocimiento",
-    description: "Elementos de conocimiento reales del Workspace.",
-    category: "Conocimiento",
-  },
+];
+
+const HERRAMIENTAS: readonly SectionEntry[] = [
   {
     id: "tools",
+    icon: Wrench,
     title: "Herramientas",
-    description: "Herramientas de desarrollo detectadas en el sistema.",
-    category: "Herramientas",
+    description: "Herramientas detectadas en el sistema.",
   },
   {
     id: "plugins",
+    icon: Puzzle,
     title: "Extensiones de DWM",
     description: "Arquitectura interna para ampliar DWM.",
-    category: "Herramientas",
   },
   {
     id: "packages",
+    icon: Package,
     title: "Paquetes",
     description: "Paquetes portables instalados.",
-    category: "Herramientas",
   },
+];
+
+const IA: readonly SectionEntry[] = [
+  {
+    id: "ai",
+    icon: Award,
+    title: "IA y modelos",
+    description: "Proveedores y modelos del Workspace.",
+  },
+  {
+    id: "profiles",
+    icon: UserCircle,
+    title: "Perfiles",
+    description: "Agentes, skills, reglas y MCP.",
+  },
+];
+
+const CONOCIMIENTO: readonly SectionEntry[] = [
+  {
+    id: "knowledge",
+    icon: BookOpen,
+    title: "Conocimiento",
+    description: "Elementos reales del Workspace.",
+  },
+];
+
+const DIAGNOSTICO: readonly SectionEntry[] = [
   {
     id: "status",
+    icon: Activity,
     title: "Estado y diagnóstico",
-    description: "Estado real de los módulos del sistema.",
-    category: "Diagnóstico",
+    description: "Estado de los módulos del sistema.",
   },
+  { id: "logs", icon: FileText, title: "Logs", description: "Registro real de eventos de DWM." },
+];
+
+const AYUDA: readonly SectionEntry[] = [
   {
-    id: "logs",
-    title: "Logs",
-    description: "Registro real de eventos de DWM.",
-    category: "Diagnóstico",
+    id: "help",
+    icon: CircleHelp,
+    title: "Ayuda",
+    description: "Documentación y ayuda de DWM.",
   },
-  { id: "help", title: "Ayuda", description: "Documentación y ayuda de DWM.", category: "Ayuda" },
   {
     id: "about",
+    icon: Info,
     title: "Acerca de DWM",
-    description: "Versión y componentes reales del sistema.",
-    category: "Ayuda",
+    description: "Versión y componentes del sistema.",
   },
 ];
 
 /**
- * Configuración — punto único de entrada a todo lo técnico/avanzado
- * (encargo: "El sidebar principal debe quedar únicamente con..." — todo
- * lo demás pasa aquí dentro), agrupado por categorías reales en vez de
- * una lista plana. No es una pantalla nueva por cada sección: reutiliza
- * exactamente las pantallas ya existentes (IMPLEMENTED_SCREENS en
- * ContentArea, sin tocar), navegando con el mismo `useNavigation()` ya
- * usado en el resto de la app — ninguna ruta se elimina ni se duplica.
+ * Configuración — punto único de entrada a todo lo técnico/avanzado,
+ * agrupado en 4 bloques visuales reales (Sistema, Herramientas,
+ * IA+Conocimiento combinadas, Diagnóstico+Ayuda), reutilizando
+ * exactamente las pantallas ya existentes (`useNavigation()`), sin
+ * ninguna ruta nueva ni eliminada.
  */
 export function ConfiguracionScreen(): JSX.Element {
   const { setActiveSection } = useNavigation();
@@ -132,37 +201,78 @@ export function ConfiguracionScreen(): JSX.Element {
         title="Configuración"
         description="Funciones avanzadas y técnicas de DWM, fuera del flujo diario de trabajo."
       />
-      {CATEGORY_ORDER.map((category) => {
-        const sections = ADVANCED_SECTIONS.filter((section) => section.category === category);
-        if (sections.length === 0) return null;
-        return (
-          <section key={category} className="dwm-configuracion-screen__group">
-            <SectionHeader
-              title={category}
-              description={CATEGORY_DESCRIPTION[category]}
-              badge={<StatusBadge label={String(sections.length)} tone="neutral" />}
-            />
-            <DataList
-              ariaLabel={`Sección ${category}`}
-              items={sections}
-              getItemId={(section) => section.id}
-              renderItem={(section) => (
-                <ResourceCard
-                  title={section.title}
-                  description={section.description}
-                  onClick={() => setActiveSection(section.id)}
-                  accentColor="neutral"
-                  trailing={
-                    <Button variant="secondary" onClick={() => setActiveSection(section.id)}>
-                      Abrir
-                    </Button>
-                  }
-                />
-              )}
-            />
-          </section>
-        );
-      })}
+
+      <section className="dwm-configuracion-screen__block">
+        <GroupHeading
+          title="Sistema"
+          count={SISTEMA.length}
+          description="Dónde vive el Sistema de Trabajo activo, sus copias y su configuración avanzada."
+        />
+        <div className="dwm-configuracion-screen__row-3">
+          {SISTEMA.map((entry) => (
+            <SettingsCard key={entry.id} entry={entry} accent={ACCENT.blue} onOpen={setActiveSection} />
+          ))}
+        </div>
+      </section>
+
+      <section className="dwm-configuracion-screen__block">
+        <GroupHeading
+          title="Herramientas"
+          count={HERRAMIENTAS.length}
+          description="Herramientas de desarrollo, extensiones y paquetes."
+        />
+        <div className="dwm-configuracion-screen__row-3">
+          {HERRAMIENTAS.map((entry) => (
+            <SettingsCard key={entry.id} entry={entry} accent={ACCENT.amber} onOpen={setActiveSection} />
+          ))}
+        </div>
+      </section>
+
+      <section className="dwm-configuracion-screen__block">
+        <div className="dwm-configuracion-screen__combined-headers">
+          <GroupHeading
+            title="IA"
+            count={IA.length}
+            description="Kits de trabajo y configuración de proveedores/modelos."
+          />
+          <GroupHeading
+            title="Conocimiento"
+            count={CONOCIMIENTO.length}
+            description="Elementos de conocimiento del Workspace."
+          />
+        </div>
+        <div className="dwm-configuracion-screen__row-3">
+          {IA.map((entry) => (
+            <SettingsCard key={entry.id} entry={entry} accent={ACCENT.purple} onOpen={setActiveSection} />
+          ))}
+          {CONOCIMIENTO.map((entry) => (
+            <SettingsCard key={entry.id} entry={entry} accent={ACCENT.teal} onOpen={setActiveSection} />
+          ))}
+        </div>
+      </section>
+
+      <section className="dwm-configuracion-screen__block dwm-configuracion-screen__split">
+        <div>
+          <GroupHeading
+            title="Diagnóstico"
+            count={DIAGNOSTICO.length}
+            description="Estado del sistema y registro de eventos."
+          />
+          <div className="dwm-configuracion-screen__row-2">
+            {DIAGNOSTICO.map((entry) => (
+              <SettingsCard key={entry.id} entry={entry} accent={ACCENT.slate} onOpen={setActiveSection} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <GroupHeading title="Ayuda" count={AYUDA.length} description="Documentación y acerca de DWM." />
+          <div className="dwm-configuracion-screen__row-2">
+            {AYUDA.map((entry) => (
+              <SettingsCard key={entry.id} entry={entry} accent={ACCENT.pink} onOpen={setActiveSection} />
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

@@ -71,9 +71,9 @@
   outline-offset: -2px;
 }
 .dwm-sidebar__item[data-active="true"] {
-  background: color-mix(in srgb, var(--dwm-color-accent) 10%, transparent);
-  color: var(--dwm-color-accent);
-  font-weight: 600;
+  background: #eaf1fe;
+  color: #2148c7;
+  font-weight: 500;
 }
 .dwm-sidebar__item--reserved {
   color: var(--dwm-color-text-disabled);

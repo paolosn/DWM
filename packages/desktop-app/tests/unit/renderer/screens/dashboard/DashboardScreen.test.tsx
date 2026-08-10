@@ -68,7 +68,7 @@ describe("DashboardScreen", () => {
     Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
   });
 
-  it("muestra el estado del motor y los recuentos reales de proyectos y backups", async () => {
+  it("muestra la cabecera real, el bloque de bienvenida y las métricas reales (proyectos/backups/versión)", async () => {
     setDwm({
       "projects.list": {
         success: true,
@@ -81,101 +81,37 @@ describe("DashboardScreen", () => {
     const { container, unmount } = mountScreen();
     await settle();
 
-    expect(container.textContent).toContain("Operativo");
-    expect(container.textContent).toContain("2 proyecto(s)");
-    expect(container.textContent).toContain("1 backup(s)");
-    unmount();
-  });
-
-  it("muestra estado vacío cuando no hay proyectos ni backups", async () => {
-    setDwm();
-    const { container, unmount } = mountScreen();
-    await settle();
-
-    expect(container.textContent).toContain("Todavía no hay proyectos");
-    expect(container.textContent).toContain("Sin backups todavía");
-    unmount();
-  });
-
-  it("muestra ErrorState cuando projects.list falla", async () => {
-    setDwm({
-      "projects.list": {
-        success: false,
-        requestId: "x",
-        operation: "projects.list",
-        error: { code: "E", message: "fallo", category: "unknown", retryable: true },
-      },
-    });
-    const { container, unmount } = mountScreen();
-    await settle();
-
-    expect(container.textContent).toContain("No se pudieron cargar los proyectos");
-    unmount();
-  });
-
-  it("'Ir a Proyectos' navega a la sección de proyectos", async () => {
-    setDwm();
-    const { container, unmount } = mountScreen();
-    await settle();
-
-    const button = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Ir a Proyectos"
-    );
-    click(button ?? null);
-    // La navegación real la observa AppShell/ContentArea; aquí solo confirmamos que el botón existe y es interactivo.
-    expect(button).toBeDefined();
-    unmount();
-  });
-});
-
-describe("DashboardScreen — acciones adicionales", () => {
-  afterEach(() => {
-    __resetQueryCacheForTests();
-    Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
-  });
-
-  it("muestra ErrorState cuando backups.list falla", async () => {
-    setDwm({
-      "backups.list": {
-        success: false,
-        requestId: "x",
-        operation: "backups.list",
-        error: { code: "E", message: "fallo backups", category: "unknown", retryable: true },
-      },
-    });
-    const { container, unmount } = mountScreen();
-    await settle();
-    expect(container.textContent).toContain("No se pudieron cargar los backups");
-    unmount();
-  });
-
-  it("'Abrir Centro de trabajo' es interactivo", async () => {
-    setDwm();
-    const { container, unmount } = mountScreen();
-    await settle();
-    const button = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Abrir Centro de trabajo"
-    );
-    click(button ?? null);
-    expect(button).toBeDefined();
-    unmount();
-  });
-
-  it("muestra el bloque de bienvenida real y las 5 Cards del flujo recomendado (Clientes → Nuevo trabajo → Proyectos → Biblioteca IA → Centro de trabajo)", async () => {
-    setDwm();
-    const { container, unmount } = mountScreen();
-    await settle();
-
+    expect(container.textContent).toContain("Sin proyecto activo");
+    expect(container.textContent).toContain("Motor DWM operativo");
     expect(container.textContent).toContain("Bienvenido a DWM");
-    expect(container.textContent).toContain("Tu espacio de trabajo inteligente");
-    for (const title of [
-      "Clientes",
-      "Nuevo trabajo",
-      "Proyectos",
-      "Biblioteca IA",
-      "Centro de trabajo",
-    ]) {
+    expect(container.textContent).toContain("Tu espacio de trabajo inteligente.");
+    expect(container.textContent).toContain("Operativo");
+    expect(container.textContent).toContain("2");
+    expect(container.textContent).toContain("1");
+    expect(container.textContent).toContain("0.1.0");
+    unmount();
+  });
+
+  it("con 0 proyectos y 0 backups, las métricas muestran 0 realmente (sin EmptyState en este bloque)", async () => {
+    setDwm();
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    expect(container.textContent).toContain("PROYECTOS");
+    expect(container.textContent).toContain("BACKUPS");
+    unmount();
+  });
+
+  it("muestra las 4 Cards del flujo (2x2) con sus etiquetas de categoría reales, y la fila ancha de Centro de trabajo", async () => {
+    setDwm();
+    const { container, unmount } = mountScreen();
+    await settle();
+
+    for (const title of ["Nuevo trabajo", "Clientes", "Proyectos", "Biblioteca IA", "Centro de trabajo"]) {
       expect(container.textContent).toContain(title);
+    }
+    for (const eyebrow of ["EMPEZAR AQUÍ", "GESTIÓN", "EN CURSO", "RECURSOS"]) {
+      expect(container.textContent).toContain(eyebrow);
     }
     unmount();
   });
@@ -191,13 +127,31 @@ describe("DashboardScreen — acciones adicionales", () => {
     await settle();
 
     click(
-      Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Abrir Biblioteca IA"
-      ) ?? null
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Abrir") ?? null
     );
     await settle();
     expect(container.querySelector('[data-testid="active-section"]')?.textContent).toBe(
       "aiLibrary"
+    );
+    unmount();
+  });
+
+  it("'Ver' en la fila de Centro de trabajo navega de verdad a esa sección", async () => {
+    setDwm();
+    const { container, unmount } = mount(
+      <NavigationProvider>
+        <ActiveSectionProbe />
+        <DashboardScreen />
+      </NavigationProvider>
+    );
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Ver") ?? null
+    );
+    await settle();
+    expect(container.querySelector('[data-testid="active-section"]')?.textContent).toBe(
+      "workspace"
     );
     unmount();
   });

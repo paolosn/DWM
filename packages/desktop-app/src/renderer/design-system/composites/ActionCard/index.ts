@@ -1,1 +1,1 @@
-export { ActionCard, type ActionCardProps } from "./ActionCard.js";
+export { ActionCard, type ActionCardProps, type ActionCardAccent } from "./ActionCard.js";
