@@ -1,3 +1,5 @@
+import { promises as fs } from "node:fs";
+import * as path from "node:path";
 import { resolveClientContentRoot, ensureClientKiloSkeleton } from "@dwm/project-provisioning";
 import { isSafeClientId } from "@dwm/client-manager";
 import type { ApplicationContext } from "./ApplicationContext.js";
@@ -20,16 +22,33 @@ function notFound(message: string): never {
   });
 }
 
+async function pathExists(target: string): Promise<boolean> {
+  try {
+    await fs.access(target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
- * client-workflow "kilo-content-integration-completion" — único punto
- * de resolución del alcance real (global/cliente/proyecto) para
+ * client-workflow "fix/kilo-psn-base-global-root" — único punto de
+ * resolución del alcance real (global/cliente/proyecto) para
  * Agentes/Skills/Reglas, reutilizado por `ContentScopeController`,
  * `ContentSyncController` y `ContentGenerationController`. Nunca
  * decide nada de sincronización por su cuenta: solo calcula qué `root`
  * real pasar a `AgentManager`/`SkillManager`/`RuleManager`, que ya
  * aceptaban un `root` arbitrario.
  *
- * - Sin `clientId` ni `projectId`: alcance global (Workspace activo).
+ * - Sin `clientId` ni `projectId`: alcance GLOBAL. La raíz del
+ *   Workspace (`active.root`) es solo la raíz del SISTEMA — la
+ *   Biblioteca IA global real vive dentro de `PSN-BASE`
+ *   (`<active.root>/PSN-BASE`, la plantilla que se duplica al crear
+ *   cada proyecto). Nunca `<active.root>/.kilo` directamente: eso
+ *   ignoraría por completo el contenido real ya existente en
+ *   PSN-BASE. Si `PSN-BASE` no existe físicamente en la raíz activa,
+ *   se lanza un error real y claro — nunca se inventa
+ *   `<active.root>/.kilo` en su lugar.
  * - `projectId`: la ruta real del proyecto ya registrado (su `.kilo`
  *   ya existe siempre, duplicado de PSN-BASE al crearse).
  * - `clientId`: `CLIENTES/<clientId>/.kilo/...` (ver
@@ -72,5 +91,15 @@ export async function resolveContentRoot(
     }
     return clientRoot;
   }
-  return active.root;
+
+  const psnBaseRoot = path.join(active.root, "PSN-BASE");
+  if (!(await pathExists(psnBaseRoot))) {
+    notFound(
+      `No se encontró "PSN-BASE" en el Sistema de Trabajo activo ("${active.root}"). La Biblioteca IA global vive en <Sistema de Trabajo>/PSN-BASE — comprueba que la carpeta existe físicamente.`
+    );
+  }
+  if (context.psnAdapter && !context.psnAdapter.getModel(psnBaseRoot)) {
+    await context.psnAdapter.scanWorkspace(psnBaseRoot);
+  }
+  return psnBaseRoot;
 }

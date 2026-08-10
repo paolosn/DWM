@@ -61,10 +61,9 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
     const source = tempDir("dwm-e2e-source-");
     const sourceWorkspaceManager = new PortableWorkspaceManager({ startDir: dataDir });
     await sourceWorkspaceManager.initializeWorkspace(source);
-    await fs.mkdir(path.join(source, "PSN-BASE"), { recursive: true });
-    const agentsDir = path.join(source, ".kilo", "agents");
-    const skillsDir = path.join(source, ".kilo", "skills", "auditoria-web");
-    const rulesDir = path.join(source, ".kilo", "rules");
+    const agentsDir = path.join(source, "PSN-BASE", ".kilo", "agents");
+    const skillsDir = path.join(source, "PSN-BASE", ".kilo", "skills", "auditoria-web");
+    const rulesDir = path.join(source, "PSN-BASE", ".kilo", "rules");
     await fs.mkdir(agentsDir, { recursive: true });
     await fs.mkdir(skillsDir, { recursive: true });
     await fs.mkdir(rulesDir, { recursive: true });
@@ -108,6 +107,9 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
     expect(executed.success).toBe(true);
     if (!executed.success) return;
     expect(executed.data.rescanned).toBe(true);
@@ -123,12 +125,13 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
     );
     expect(scopeResponse.success).toBe(true);
     if (!scopeResponse.success) return;
-    expect(scopeResponse.data.root).toBe(destination);
+    const globalRoot = scopeResponse.data.root;
+    expect(globalRoot).toBe(path.join(destination, "PSN-BASE"));
 
     const [agents, skills, rules] = await Promise.all([
-      api.execute(makeRequest("agents.list", { root: destination }, { caller: admin })),
-      api.execute(makeRequest("skills.list", { root: destination }, { caller: admin })),
-      api.execute(makeRequest("rules.list", { root: destination }, { caller: admin })),
+      api.execute(makeRequest("agents.list", { root: globalRoot }, { caller: admin })),
+      api.execute(makeRequest("skills.list", { root: globalRoot }, { caller: admin })),
+      api.execute(makeRequest("rules.list", { root: globalRoot }, { caller: admin })),
     ]);
     expect(agents.success && agents.data).toHaveLength(1);
     expect(skills.success && skills.data).toHaveLength(1);
@@ -137,9 +140,11 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
     if (skills.success) expect(skills.data[0]?.id).toBe("auditoria-web");
     if (rules.success) expect(rules.data[0]?.id).toBe("seguridad");
 
-    // La misma consulta funciona SIN pasar root explícito, tal como lo
-    // haría Biblioteca IA tras resolver el alcance global una vez.
-    const globalAgents = await api.execute(makeRequest("agents.list", {}, { caller: admin }));
+    // Biblioteca IA siempre pasa el root ya resuelto por
+    // content-scope.resolve-root a cada llamada subsecuente.
+    const globalAgents = await api.execute(
+      makeRequest("agents.list", { root: globalRoot }, { caller: admin })
+    );
     expect(globalAgents.success && globalAgents.data).toHaveLength(1);
   });
 
@@ -155,9 +160,12 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
 
     const list = await api.execute(
-      makeRequest("agents.list", { root: destination }, { caller: admin })
+      makeRequest("agents.list", { root: path.join(destination, "PSN-BASE") }, { caller: admin })
     );
     expect(list.success).toBe(true);
     if (!list.success) return;
@@ -182,9 +190,16 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
 
     const opened = await api.execute(
-      makeRequest("agents.get", { id: "programador", root: destination }, { caller: admin })
+      makeRequest(
+        "agents.get",
+        { id: "programador", root: path.join(destination, "PSN-BASE") },
+        { caller: admin }
+      )
     );
     expect(opened.success).toBe(true);
     if (!opened.success) return;
@@ -195,7 +210,7 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
     const saved = await api.execute(
       makeRequest(
         "agents.update",
-        { id: "programador", root: destination, content: edited },
+        { id: "programador", root: path.join(destination, "PSN-BASE"), content: edited },
         {
           caller: admin,
         }
@@ -204,7 +219,7 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
     expect(saved.success).toBe(true);
 
     const raw = await fs.readFile(
-      path.join(destination, ".kilo", "agents", "programador.md"),
+      path.join(destination, "PSN-BASE", ".kilo", "agents", "programador.md"),
       "utf-8"
     );
     expect(raw).toContain("# Programador");
@@ -224,9 +239,16 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
 
     const opened = await api.execute(
-      makeRequest("skills.get", { id: "auditoria-web", root: destination }, { caller: admin })
+      makeRequest(
+        "skills.get",
+        { id: "auditoria-web", root: path.join(destination, "PSN-BASE") },
+        { caller: admin }
+      )
     );
     expect(opened.success).toBe(true);
     if (!opened.success) return;
@@ -235,20 +257,20 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
     const saved = await api.execute(
       makeRequest(
         "skills.update",
-        { id: "auditoria-web", root: destination, content: edited },
+        { id: "auditoria-web", root: path.join(destination, "PSN-BASE"), content: edited },
         { caller: admin }
       )
     );
     expect(saved.success).toBe(true);
 
     const skillMd = await fs.readFile(
-      path.join(destination, ".kilo", "skills", "auditoria-web", "SKILL.md"),
+      path.join(destination, "PSN-BASE", ".kilo", "skills", "auditoria-web", "SKILL.md"),
       "utf-8"
     );
     expect(skillMd).toContain("Revisar SEO técnico");
     // El fichero auxiliar real de la skill sigue intacto.
     const csv = await fs.readFile(
-      path.join(destination, ".kilo", "skills", "auditoria-web", "checklist.csv"),
+      path.join(destination, "PSN-BASE", ".kilo", "skills", "auditoria-web", "checklist.csv"),
       "utf-8"
     );
     expect(csv).toBe("item,ok\ncwv,no\n");
@@ -266,9 +288,16 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
 
     const opened = await api.execute(
-      makeRequest("rules.get", { id: "seguridad", root: destination }, { caller: admin })
+      makeRequest(
+        "rules.get",
+        { id: "seguridad", root: path.join(destination, "PSN-BASE") },
+        { caller: admin }
+      )
     );
     expect(opened.success).toBe(true);
     if (!opened.success) return;
@@ -277,7 +306,7 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
     const saved = await api.execute(
       makeRequest(
         "rules.update",
-        { id: "seguridad", root: destination, content: edited },
+        { id: "seguridad", root: path.join(destination, "PSN-BASE"), content: edited },
         {
           caller: admin,
         }
@@ -286,7 +315,7 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
     expect(saved.success).toBe(true);
 
     const raw = await fs.readFile(
-      path.join(destination, ".kilo", "rules", "seguridad.md"),
+      path.join(destination, "PSN-BASE", ".kilo", "rules", "seguridad.md"),
       "utf-8"
     );
     expect(raw).toContain("Revisa dependencias con vulnerabilidades conocidas.");
@@ -304,22 +333,25 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
 
     // Se añade un agente manualmente, como haría un usuario desde VS Code/Explorer.
     await fs.writeFile(
-      path.join(destination, ".kilo", "agents", "revisor.md"),
+      path.join(destination, "PSN-BASE", ".kilo", "agents", "revisor.md"),
       "---\ndescription: Revisa el trabajo de otros.\n---\n\n# Revisor\n",
       "utf-8"
     );
     const afterAdd = await api.execute(
-      makeRequest("agents.list", { root: destination }, { caller: admin })
+      makeRequest("agents.list", { root: path.join(destination, "PSN-BASE") }, { caller: admin })
     );
     expect(afterAdd.success && afterAdd.data).toHaveLength(2);
 
     // Se borra físicamente el original.
-    await fs.rm(path.join(destination, ".kilo", "agents", "programador.md"));
+    await fs.rm(path.join(destination, "PSN-BASE", ".kilo", "agents", "programador.md"));
     const afterDelete = await api.execute(
-      makeRequest("agents.list", { root: destination }, { caller: admin })
+      makeRequest("agents.list", { root: path.join(destination, "PSN-BASE") }, { caller: admin })
     );
     expect(afterDelete.success).toBe(true);
     if (!afterDelete.success) return;
@@ -339,12 +371,15 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
 
     // "Reinicio": instancias completamente nuevas, sin ningún estado en memoria compartido.
     const freshPsnAdapter = new PSNAdapter();
-    await freshPsnAdapter.scanWorkspace(destination);
+    await freshPsnAdapter.scanWorkspace(path.join(destination, "PSN-BASE"));
     const freshAgentManager = new AgentManager({ psnAdapter: freshPsnAdapter });
-    const agents = await freshAgentManager.listAgents({ root: destination });
+    const agents = await freshAgentManager.listAgents({ root: path.join(destination, "PSN-BASE") });
     expect(agents).toHaveLength(1);
     expect(agents[0]?.id).toBe("programador");
   });
@@ -361,22 +396,33 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
 
     const opened = await api.execute(
-      makeRequest("agents.get", { id: "programador", root: destination }, { caller: admin })
+      makeRequest(
+        "agents.get",
+        { id: "programador", root: path.join(destination, "PSN-BASE") },
+        { caller: admin }
+      )
     );
     expect(opened.success).toBe(true);
     if (!opened.success) return;
     await api.execute(
       makeRequest(
         "agents.update",
-        { id: "programador", root: destination, content: opened.data.content },
+        {
+          id: "programador",
+          root: path.join(destination, "PSN-BASE"),
+          content: opened.data.content,
+        },
         { caller: admin }
       )
     );
 
     const raw = await fs.readFile(
-      path.join(destination, ".kilo", "agents", "programador.md"),
+      path.join(destination, "PSN-BASE", ".kilo", "agents", "programador.md"),
       "utf-8"
     );
     expect(raw).toContain("description: Escribe y revisa código real del proyecto.");
@@ -395,6 +441,9 @@ describe("Descubrimiento real de contenido .kilo preexistente (bug crítico Bibl
         { caller: admin, confirmation: { confirmed: true } }
       )
     );
+    // Dispara el escaneo real de PSN-BASE, tal como hace Biblioteca IA
+    // (siempre resuelve el alcance antes de listar/abrir).
+    await api.execute(makeRequest("content-scope.resolve-root", {}, { caller: admin }));
     expect(JSON.stringify(executed)).not.toMatch(/secret|password|apikey/i);
   });
 

@@ -33,11 +33,11 @@ describe("ContentScopeController", () => {
 
   async function buildApi() {
     const workspaceRoot = tempDir("dwm-content-scope-ctrl-");
-    await fs.mkdir(path.join(workspaceRoot, ".kilo", "agents"), { recursive: true });
+    await fs.mkdir(path.join(workspaceRoot, "PSN-BASE", ".kilo", "agents"), { recursive: true });
     await fs.mkdir(path.join(workspaceRoot, "CLIENTES"), { recursive: true });
 
     const psnAdapter = new PSNAdapter();
-    await psnAdapter.scanWorkspace(workspaceRoot);
+    await psnAdapter.scanWorkspace(path.join(workspaceRoot, "PSN-BASE"));
     const projectManager = new ProjectManager({
       projectsDir: tempDir("dwm-content-scope-ctrl-projects-"),
     });
@@ -50,13 +50,35 @@ describe("ContentScopeController", () => {
     return { api, workspaceRoot, projectManager };
   }
 
-  it("sin clientId ni projectId: devuelve la raíz global real del Workspace activo", async () => {
+  it("sin clientId ni projectId: devuelve la raíz global real dentro de PSN-BASE (no la raíz del Sistema, no <workspace>/.kilo)", async () => {
     const { api, workspaceRoot } = await buildApi();
     const response = await api.execute(
       makeRequest("content-scope.resolve-root", {}, { caller: admin })
     );
     expect(response.success).toBe(true);
-    if (response.success) expect((response.data as { root: string }).root).toBe(workspaceRoot);
+    if (response.success) {
+      expect((response.data as { root: string }).root).toBe(path.join(workspaceRoot, "PSN-BASE"));
+    }
+  });
+
+  it("si PSN-BASE no existe físicamente, falla con un error real y claro (nunca inventa <workspace>/.kilo)", async () => {
+    const workspaceRoot = tempDir("dwm-content-scope-no-psnbase-");
+    await fs.mkdir(path.join(workspaceRoot, "CLIENTES"), { recursive: true });
+    const psnAdapter = new PSNAdapter();
+    const projectManager = new ProjectManager({
+      projectsDir: tempDir("dwm-content-scope-projects-"),
+    });
+    const api = new ApplicationAPI({
+      psnAdapter,
+      projectManager,
+      portableWorkspaceManager: fakeWorkspaceManager(workspaceRoot),
+    });
+
+    const response = await api.execute(
+      makeRequest("content-scope.resolve-root", {}, { caller: admin })
+    );
+    expect(response.success).toBe(false);
+    if (!response.success) expect(response.error.message).toContain("PSN-BASE");
   });
 
   it("con clientId: devuelve CLIENTES/<clientId> real y crea el esqueleto .kilo la primera vez", async () => {

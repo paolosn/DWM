@@ -31,7 +31,15 @@ describe("ProfileSyncController", () => {
     await fs.mkdir(path.join(root, ".kilo", "agents"), { recursive: true });
     await fs.mkdir(path.join(root, ".kilo", "skills"), { recursive: true });
     await fs.mkdir(path.join(root, ".kilo", "rules"), { recursive: true });
-    await fs.mkdir(path.join(root, "PSN-BASE"), { recursive: true });
+    return root;
+  }
+
+  /** Sistema de Trabajo real: la Biblioteca IA global vive en <root>/PSN-BASE/.kilo, nunca en <root>/.kilo directamente. */
+  async function makeGlobalWorkspaceRoot(): Promise<string> {
+    const root = tempDir("dwm-profile-sync-ctrl-ws-");
+    await fs.mkdir(path.join(root, "PSN-BASE", ".kilo", "agents"), { recursive: true });
+    await fs.mkdir(path.join(root, "PSN-BASE", ".kilo", "skills"), { recursive: true });
+    await fs.mkdir(path.join(root, "PSN-BASE", ".kilo", "rules"), { recursive: true });
     return root;
   }
 
@@ -46,10 +54,10 @@ describe("ProfileSyncController", () => {
   }
 
   async function buildApi() {
-    const workspaceRoot = await makeKiloRoot();
+    const workspaceRoot = await makeGlobalWorkspaceRoot();
     const projectPath = await makeKiloRoot();
     const psnAdapter = new PSNAdapter();
-    await psnAdapter.scanWorkspace(workspaceRoot);
+    await psnAdapter.scanWorkspace(path.join(workspaceRoot, "PSN-BASE"));
     await psnAdapter.scanWorkspace(projectPath);
 
     const agentManager = new AgentManager({ psnAdapter });
@@ -107,7 +115,7 @@ describe("ProfileSyncController", () => {
     const { api, agentManager, projectId, profileId, workspaceRoot } = await buildApi();
     await agentManager.createAgent(
       { id: "coordinador", content: "# Coordinador\n" },
-      workspaceRoot
+      path.join(workspaceRoot, "PSN-BASE")
     );
 
     const response = await api.execute(
@@ -130,7 +138,7 @@ describe("ProfileSyncController", () => {
       await buildApi();
     await agentManager.createAgent(
       { id: "coordinador", content: "# Coordinador\n" },
-      workspaceRoot
+      path.join(workspaceRoot, "PSN-BASE")
     );
 
     const response = await api.execute(
