@@ -34,6 +34,7 @@ export interface GenerationResult {
 const DEFAULT_BASE_URL: Readonly<Record<HttpAIProviderFormat, string>> = {
   openai: "https://api.openai.com/v1",
   anthropic: "https://api.anthropic.com/v1",
+  gemini: "https://generativelanguage.googleapis.com/v1beta",
 };
 
 const FORMAT_INSTRUCTIONS: Readonly<Record<GenerationKind, string>> = {
