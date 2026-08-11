@@ -194,6 +194,106 @@ export function ProvisioningScreen({
   const [profileError, setProfileError] = useState<string | undefined>(undefined);
   const [profileApplied, setProfileApplied] = useState(false);
 
+  // client-workflow "feature/requirement-workflow" (Commit 4) — "¿Este
+  // trabajo pertenece a un proyecto existente?": solo tiene sentido
+  // cuando el nombre de cliente escrito coincide con un cliente REAL
+  // ya existente (buscado por nombre, nunca UUID). Reutiliza
+  // exclusivamente projects.list/projects.get/requirements.link-to-project/
+  // profile-sync.apply/projects.open-in-vscode ya existentes — ningún
+  // ProjectManager ni provisioning nuevo, PSN-BASE nunca se duplica
+  // en esta ruta.
+  const [projectMode, setProjectMode] = useState<"new" | "existing" | undefined>(undefined);
+  const [existingClientId, setExistingClientId] = useState<string | undefined>(undefined);
+  const [existingProjects, setExistingProjects] = useState<
+    readonly { id: string; name: string; status: string }[]
+  >([]);
+  const [existingProjectId, setExistingProjectId] = useState("");
+  const [reusingProject, setReusingProject] = useState(false);
+  const [reuseError, setReuseError] = useState<string | undefined>(undefined);
+  const [reuseResult, setReuseResult] = useState<
+    { projectName: string; vsCodeOpened: boolean; vsCodeMessage: string } | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (projectMode !== "existing" || !fields.cliente.trim()) return;
+    void (async () => {
+      const clients = (await callOperation("clients.list", {}).catch(() => [])) as {
+        id: string;
+        name: string;
+      }[];
+      const match = clients.find(
+        (c) => c.name.trim().toLowerCase() === fields.cliente.trim().toLowerCase()
+      );
+      setExistingClientId(match?.id);
+      if (!match) {
+        setExistingProjects([]);
+        return;
+      }
+      const ids = (await callOperation("projects.list", {}).catch(() => [])) as string[];
+      const projects = await Promise.all(
+        ids.map((id) =>
+          callOperation("projects.get", { id }).catch(() => undefined)
+        )
+      );
+      setExistingProjects(
+        (
+          projects.filter(Boolean) as {
+            id: string;
+            metadata: { name: string };
+            state: string;
+            configuration: { clientId?: string };
+          }[]
+        )
+          .filter((p) => p.configuration.clientId === match.id)
+          .map((p) => ({ id: p.id, name: p.metadata.name, status: p.state }))
+      );
+    })();
+  }, [projectMode, fields.cliente]);
+
+  const selectedExistingProject = existingProjects.find((p) => p.id === existingProjectId);
+
+  /**
+   * "Usar proyecto existente": nunca crea nada ni duplica PSN-BASE —
+   * solo vincula el perfil elegido (si hay) al proyecto real ya
+   * existente y abre VS Code. Reutiliza exactamente los mismos
+   * operaciones ya probadas que la ruta de "crear nuevo".
+   */
+  async function useExistingProject(): Promise<void> {
+    if (!existingProjectId) return;
+    setReusingProject(true);
+    setReuseError(undefined);
+    try {
+      if (profileId) {
+        await callOperation("profile-sync.apply", {
+          profileId,
+          targetProjectId: existingProjectId,
+          confirmOverwrite: false,
+        }).catch(async (err) => {
+          if (err instanceof DwmOperationError && err.message.includes("conflict")) return;
+          throw err;
+        });
+      }
+      const opened = (await callOperation("projects.open-in-vscode", {
+        id: existingProjectId,
+      })) as { opened: boolean; message: string };
+      setReuseResult({
+        projectName: selectedExistingProject?.name ?? existingProjectId,
+        vsCodeOpened: opened.opened,
+        vsCodeMessage: opened.message,
+      });
+      showToast({
+        title: `Trabajo vinculado a «${selectedExistingProject?.name ?? existingProjectId}»`,
+        tone: "success",
+      });
+    } catch (err) {
+      setReuseError(
+        err instanceof DwmOperationError ? err.message : "No se pudo usar el proyecto existente."
+      );
+    } finally {
+      setReusingProject(false);
+    }
+  }
+
   useEffect(() => {
     void (async () => {
       try {
@@ -674,6 +774,79 @@ export function ProvisioningScreen({
             </Button>
           </div>
 
+          {!reuseResult && (
+            <div className="dwm-provisioning-screen__project-mode-step">
+              <SectionHeader title="¿Este trabajo pertenece a un proyecto que ya existe?" />
+              <div className="dwm-provisioning-screen__project-mode-buttons">
+                <Button
+                  variant={projectMode === "existing" ? "primary" : "secondary"}
+                  onClick={() => setProjectMode("existing")}
+                >
+                  Usar proyecto existente
+                </Button>
+                <Button
+                  variant={projectMode === "new" || !projectMode ? "primary" : "secondary"}
+                  onClick={() => setProjectMode("new")}
+                >
+                  Crear proyecto nuevo
+                </Button>
+              </div>
+
+              {projectMode === "existing" && (
+                <div className="dwm-provisioning-screen__existing-project">
+                  {!existingClientId && fields.cliente.trim() && (
+                    <InlineAlert tone="warning" title="No se encontró ningún cliente con ese nombre">
+                      Solo se pueden reutilizar proyectos de un cliente ya existente.
+                    </InlineAlert>
+                  )}
+                  {existingClientId && existingProjects.length === 0 && (
+                    <InlineAlert tone="info" title="Este cliente todavía no tiene proyectos">
+                      Crea un proyecto nuevo para este trabajo.
+                    </InlineAlert>
+                  )}
+                  {existingProjects.length > 0 && (
+                    <>
+                      <Select
+                        label="Proyecto"
+                        placeholder="Elige un proyecto"
+                        options={existingProjects.map((p) => ({
+                          value: p.id,
+                          label: `${p.name} (${p.status})`,
+                        }))}
+                        value={existingProjectId}
+                        onChange={(e) => setExistingProjectId(e.target.value)}
+                      />
+                      <Button
+                        onClick={() => void useExistingProject()}
+                        loading={reusingProject}
+                        disabled={!existingProjectId}
+                      >
+                        Usar este proyecto
+                      </Button>
+                    </>
+                  )}
+                  {reuseError && (
+                    <ErrorState title="No se pudo usar el proyecto existente" technicalDetail={reuseError} />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {reuseResult && (
+            <Card>
+              <InlineAlert tone="success" title={`Trabajo vinculado a «${reuseResult.projectName}»`}>
+                {profileId ? "Perfil aplicado. " : ""}Nunca se duplicó PSN-BASE: es el mismo proyecto real
+                ya existente.
+              </InlineAlert>
+              <InlineAlert tone={reuseResult.vsCodeOpened ? "success" : "warning"} title="VS Code">
+                {reuseResult.vsCodeMessage}
+              </InlineAlert>
+              <Button onClick={reset}>Crear otro</Button>
+            </Card>
+          )}
+
+          {(projectMode === "new" || !projectMode) && !reuseResult && (
           <div className="dwm-provisioning-screen__actions">
             <Button variant="secondary" onClick={reset}>
               Cancelar
@@ -702,6 +875,7 @@ export function ProvisioningScreen({
               </Button>
             )}
           </div>
+          )}
         </div>
       </Card>
     </div>

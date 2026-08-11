@@ -585,4 +585,60 @@ describe("ProvisioningScreen — Perfil integrado en la creación", () => {
     expect(clienteInput.value).toBe("MCI Finance");
     unmount();
   });
+
+  it("'Usar proyecto existente' vincula/aplica al proyecto real (nunca llama a provisioning.create-project, nunca duplica PSN-BASE)", async () => {
+    const invoke = setDwm({
+      "profiles.list": () => success("profiles.list", []),
+      "clients.list": () => success("clients.list", [{ id: "acme", name: "Acme" }]),
+      "projects.list": () => success("projects.list", ["p1"]),
+      "projects.get": () =>
+        success("projects.get", {
+          id: "p1",
+          metadata: { name: "Web Acme" },
+          state: "active",
+          configuration: { clientId: "acme" },
+        }),
+      "projects.open-in-vscode": () =>
+        success("projects.open-in-vscode", { opened: true, message: "Abierto en VS Code." }),
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+
+    const inputs = container.querySelectorAll("input");
+    setValue(inputs[0] as HTMLInputElement, "Acme");
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Usar proyecto existente"
+      ) ?? null
+    );
+    await settle();
+
+    const projectSelect = Array.from(container.querySelectorAll("select")).find((s) =>
+      Array.from(s.options).some((o) => o.textContent?.includes("Web Acme"))
+    ) as HTMLSelectElement;
+    act(() => {
+      projectSelect.value = "p1";
+      projectSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Usar este proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "provisioning.create-project"
+      )
+    ).toBe(false);
+    const vscodeCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+    );
+    expect((vscodeCall?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
+    expect(container.textContent).toContain("Trabajo vinculado a «Web Acme»");
+    unmount();
+  });
 });
