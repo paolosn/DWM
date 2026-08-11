@@ -271,4 +271,52 @@ describe("AIProvidersScreen", () => {
     expect(payload.setDefault).toBe(true);
     unmount();
   });
+
+  it("configuración simple: al actualizar un proveedor YA configurado, sincroniza baseUrl/modelo con el preset real actual (nunca deja valores viejos congelados)", async () => {
+    const invoke = setDwm({
+      "ai.list-providers": () =>
+        success("ai.list-providers", [
+          {
+            id: "gemini",
+            name: "Gemini",
+            format: "gemini",
+            baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+            model: "gemini-1.5-pro",
+            isDefault: true,
+            hasCredential: true,
+            connectionStatus: "connected",
+          },
+        ]),
+      "ai.update-provider": () => success("ai.update-provider", { id: "gemini" }),
+    });
+    const { container, unmount } = mount(
+      <ToastProvider>
+        <AIProvidersScreen />
+      </ToastProvider>
+    );
+    await settle();
+
+    // Un usuario real primero elige la categoría (el selector no se
+    // preselecciona automáticamente por el proveedor ya configurado).
+    click(
+      Array.from(container.querySelectorAll('[role="radiogroup"] button')).find((b) =>
+        b.textContent?.startsWith("Gemini")
+      ) ?? null
+    );
+    await settle();
+    click(
+      Array.from(
+        container.querySelectorAll(".dwm-ai-providers-screen__simple-actions button")
+      ).find((b) => b.textContent === "Guardar") ?? null
+    );
+    await settle();
+
+    const call = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "ai.update-provider"
+    );
+    const payload = (call?.[0] as { payload: Record<string, unknown> }).payload;
+    expect(payload.baseUrl).toBe("https://generativelanguage.googleapis.com/v1beta");
+    expect(payload.model).toBe("gemini-2.5-flash");
+    unmount();
+  });
 });

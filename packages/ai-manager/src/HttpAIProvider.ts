@@ -150,7 +150,7 @@ export class HttpAIProvider implements AIProvider {
     request: AIRequest,
     credential: string
   ): Promise<ProviderResponse> {
-    const model = request.model ?? "gemini-2.0-flash";
+    const model = request.model ?? "gemini-2.5-flash";
     const response = await this.fetchImpl(`${this.baseUrl}/models/${model}:generateContent`, {
       method: "POST",
       headers: {
@@ -206,12 +206,32 @@ export class HttpAIProvider implements AIProvider {
     // real y útil en vez de descartarlo.
     const detail = this.readPath(body, ["error", "message"]);
     const suffix = typeof detail === "string" && detail.trim() ? `: ${detail}` : "";
+    const category = this.categorizeStatus(status);
     return createAIError({
       code: AIErrorCode.AI_REQUEST_FAILED,
-      message: `Proveedor "${this.id}" devolvió un error HTTP ${status}${suffix}`,
+      message: `Proveedor "${this.id}" — ${category} (HTTP ${status})${suffix}`,
       origin: "request",
       recoverable: status >= 500 || status === 429,
     });
+  }
+
+  /**
+   * client-workflow "fix/kilo-ai-provider-real-config" — el status
+   * HTTP real ya distingue de forma fiable el tipo de fallo (nunca se
+   * inventa una categoría a partir del texto): 401/403 credencial,
+   * 402 saldo, 404 modelo/endpoint, 429 límite de peticiones, 5xx
+   * proveedor no disponible. Combinado con el mensaje real del
+   * proveedor (ver `requestFailedError`), da un mensaje útil y claro
+   * sin exponer nunca la clave.
+   */
+  private categorizeStatus(status: number): string {
+    if (status === 401 || status === 403) return "credencial inválida";
+    if (status === 402) return "saldo o créditos insuficientes";
+    if (status === 404) return "modelo o endpoint no encontrado";
+    if (status === 429) return "límite de peticiones alcanzado";
+    if (status >= 500) return "proveedor no disponible";
+    if (status === 400) return "petición inválida";
+    return "error del proveedor";
   }
 
   private malformedResponseError(): ReturnType<typeof createAIError> {

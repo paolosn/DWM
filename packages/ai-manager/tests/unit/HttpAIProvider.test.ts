@@ -316,4 +316,119 @@ describe("HttpAIProvider", () => {
       provider.sendRequest({ prompt: "x", model: "gemini-2.0-flash" }, "clave-real")
     ).rejects.toThrow(/ETIMEDOUT/);
   });
+
+  it("HTTP 401: se categoriza claramente como credencial inválida, con el motivo real del proveedor, nunca la clave", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(401, { error: { message: "Incorrect API key provided." } }));
+    const provider = new HttpAIProvider({
+      id: "openai-real",
+      name: "ChatGPT",
+      baseUrl: "https://api.openai.com/v1",
+      format: "openai",
+      fetchImpl,
+    });
+
+    await expect(
+      provider.sendRequest({ prompt: "x", model: "gpt-4o" }, "clave-invalida-real")
+    ).rejects.toThrow(/credencial inválida/);
+    try {
+      await provider.sendRequest({ prompt: "x", model: "gpt-4o" }, "clave-invalida-real");
+    } catch (err) {
+      expect((err as Error).message).not.toContain("clave-invalida-real");
+    }
+  });
+
+  it("HTTP 402: se categoriza claramente como saldo/créditos insuficientes", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(402, { error: { message: "Insufficient balance." } }));
+    const provider = new HttpAIProvider({
+      id: "deepseek-real",
+      name: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      format: "openai",
+      fetchImpl,
+    });
+
+    await expect(
+      provider.sendRequest({ prompt: "x", model: "deepseek-v4-flash" }, "clave-real")
+    ).rejects.toThrow(/saldo o créditos insuficientes/);
+  });
+
+  it("HTTP 429: se categoriza claramente como límite de peticiones alcanzado, y se marca como recuperable", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(429, { error: { message: "Rate limit reached." } }));
+    const provider = new HttpAIProvider({
+      id: "deepseek-real",
+      name: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      format: "openai",
+      fetchImpl,
+    });
+
+    let captured: AIError | undefined;
+    try {
+      await provider.sendRequest({ prompt: "x", model: "deepseek-v4-flash" }, "clave-real");
+    } catch (err) {
+      captured = err as AIError;
+    }
+    expect(captured?.message).toMatch(/límite de peticiones/);
+    expect(captured?.recoverable).toBe(true);
+  });
+
+  it("baseUrl incorrecta: el error de red real (dominio inexistente) se propaga tal cual, nunca se enmascara como éxito", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockRejectedValue(new Error("getaddrinfo ENOTFOUND dominio-que-no-existe.test"));
+    const provider = new HttpAIProvider({
+      id: "openai-real",
+      name: "ChatGPT",
+      baseUrl: "https://dominio-que-no-existe.test/v1",
+      format: "openai",
+      fetchImpl,
+    });
+
+    await expect(
+      provider.sendRequest({ prompt: "x", model: "gpt-4o" }, "clave-real")
+    ).rejects.toThrow(/ENOTFOUND/);
+  });
+
+  it("DeepSeek con el modelo real actual (deepseek-v4-flash, no el retirado deepseek-chat): construye la petición OpenAI-compatible real y cambiar de modelo cambia la petición real enviada", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(200, { choices: [{ message: { content: "Respuesta con v4-flash." } }] })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, { choices: [{ message: { content: "Respuesta con v4-pro." } }] })
+      );
+    const provider = new HttpAIProvider({
+      id: "deepseek-real",
+      name: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      format: "openai",
+      fetchImpl,
+    });
+
+    const first = await provider.sendRequest(
+      { prompt: "x", model: "deepseek-v4-flash" },
+      "clave-real"
+    );
+    expect(first.content).toBe("Respuesta con v4-flash.");
+    expect(JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string).model).toBe(
+      "deepseek-v4-flash"
+    );
+
+    // Cambio de modelo real desde la UI: la petición real refleja el nuevo modelo.
+    const second = await provider.sendRequest(
+      { prompt: "x", model: "deepseek-v4-pro" },
+      "clave-real"
+    );
+    expect(second.content).toBe("Respuesta con v4-pro.");
+    expect(JSON.parse((fetchImpl.mock.calls[1]![1] as RequestInit).body as string).model).toBe(
+      "deepseek-v4-pro"
+    );
+  });
 });
