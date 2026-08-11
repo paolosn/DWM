@@ -61,14 +61,14 @@ const SIMPLE_PROVIDERS: readonly SimpleProviderDef[] = [
     label: "Gemini",
     format: "gemini",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
   },
   {
     key: "deepseek",
     label: "DeepSeek",
     format: "openai",
     baseUrl: "https://api.deepseek.com",
-    model: "deepseek-chat",
+    model: "deepseek-v4-flash",
   },
 ];
 
@@ -155,6 +155,9 @@ function SimpleAISetup({
       if (alreadyConfiguredForSelected) {
         await callOperation("ai.update-provider", {
           id: selected,
+          name: def.label,
+          baseUrl: def.baseUrl,
+          model: def.model,
           ...(apiKey ? { apiKey } : {}),
         });
         if (!alreadyConfiguredForSelected.isDefault) {
