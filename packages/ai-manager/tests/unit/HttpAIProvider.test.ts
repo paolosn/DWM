@@ -204,4 +204,116 @@ describe("HttpAIProvider", () => {
     });
     expect(await providerFail.healthCheck("clave")).toBe(false);
   });
+
+  it("Gemini: construye la petición real nativa de Google (contents/parts, x-goog-api-key) y parsea candidates", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(200, {
+        candidates: [{ content: { parts: [{ text: "Respuesta real de Gemini." }] } }],
+        usageMetadata: { totalTokenCount: 17 },
+      })
+    );
+    const provider = new HttpAIProvider({
+      id: "gemini-real",
+      name: "Gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      format: "gemini",
+      fetchImpl,
+    });
+
+    const result = await provider.sendRequest(
+      {
+        prompt: "Analiza este proyecto.",
+        model: "gemini-2.0-flash",
+        maxTokens: 300,
+        temperature: 0.3,
+      },
+      "clave-real-de-gemini"
+    );
+
+    expect(result.content).toBe("Respuesta real de Gemini.");
+    expect(result.tokensUsed).toBe(17);
+    expect(result.model).toBe("gemini-2.0-flash");
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    );
+    expect(url).not.toContain("clave-real-de-gemini");
+    expect(url).not.toContain("/openai");
+    const headers = init.headers as Record<string, string>;
+    expect(headers["x-goog-api-key"]).toBe("clave-real-de-gemini");
+    expect(headers["Authorization"]).toBeUndefined();
+    const body = JSON.parse(init.body as string);
+    expect(body.contents).toEqual([{ parts: [{ text: "Analiza este proyecto." }] }]);
+    expect(body.generationConfig).toEqual({ maxOutputTokens: 300, temperature: 0.3 });
+    expect(body.messages).toBeUndefined();
+    expect(JSON.stringify(init.body)).not.toContain("clave-real-de-gemini");
+  });
+
+  it("Gemini: un HTTP 400 real de Google se traduce en un mensaje útil (motivo real, nunca la clave)", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(400, {
+        error: {
+          code: 400,
+          message: "API key not valid. Please pass a valid API key.",
+          status: "INVALID_ARGUMENT",
+        },
+      })
+    );
+    const provider = new HttpAIProvider({
+      id: "gemini-real",
+      name: "Gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      format: "gemini",
+      fetchImpl,
+    });
+
+    await expect(
+      provider.sendRequest({ prompt: "x", model: "gemini-2.0-flash" }, "clave-invalida-real")
+    ).rejects.toThrow(/API key not valid/);
+
+    try {
+      await provider.sendRequest({ prompt: "x", model: "gemini-2.0-flash" }, "clave-invalida-real");
+    } catch (err) {
+      expect((err as Error).message).not.toContain("clave-invalida-real");
+    }
+  });
+
+  it("Gemini: modelo inexistente devuelve un error real (404 de Google), no simulado", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      jsonResponse(404, {
+        error: {
+          code: 404,
+          message: "models/modelo-que-no-existe is not found for API version v1beta.",
+        },
+      })
+    );
+    const provider = new HttpAIProvider({
+      id: "gemini-real",
+      name: "Gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      format: "gemini",
+      fetchImpl,
+    });
+
+    await expect(
+      provider.sendRequest({ prompt: "x", model: "modelo-que-no-existe" }, "clave-real")
+    ).rejects.toThrow(/no encontrado|not found|404/i);
+  });
+
+  it("Gemini: un error de red/timeout real se propaga (nunca se enmascara ni se simula éxito)", async () => {
+    const fetchImpl = vi.fn().mockRejectedValue(new Error("fetch failed: ETIMEDOUT"));
+    const provider = new HttpAIProvider({
+      id: "gemini-real",
+      name: "Gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      format: "gemini",
+      fetchImpl,
+    });
+
+    await expect(
+      provider.sendRequest({ prompt: "x", model: "gemini-2.0-flash" }, "clave-real")
+    ).rejects.toThrow(/ETIMEDOUT/);
+  });
 });

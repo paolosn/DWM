@@ -4,6 +4,7 @@ import type { ApplicationPermissions } from "../ApplicationPermissions.js";
 import type { ApplicationContext } from "../ApplicationContext.js";
 import { requireDependency } from "../requireDependency.js";
 import { asRecord, assertSafeOptionalPath, requireString } from "../payloadHelpers.js";
+import { ensureWorkspaceSkeletonAndScan } from "../ensureWorkspaceSkeleton.js";
 import type {
   InitializeResult,
   WorkspaceRegistryEntry,
@@ -86,7 +87,19 @@ export class WorkspaceController implements ApplicationController {
         assertSafeOptionalPath(record, "root", { allowAbsolute: true });
         return { root };
       },
-      handler: async (payload) => manager().registerActiveWorkspace(payload.root),
+      handler: async (payload) => {
+        const entry = await manager().registerActiveWorkspace(payload.root);
+        // client-workflow "fix/kilo-clients-psnadapter-init" — sin
+        // esto, activar un Workspace en caliente (sin reiniciar DWM)
+        // nunca garantizaba ni reescaneaba su estructura real: la
+        // pantalla Clientes (y cualquier otro recurso PSN) fallaba con
+        // "PSNAdapter no reconoce el recurso...". Mismo PSNAdapter ya
+        // existente, nunca otro adaptador.
+        if (this.context.psnAdapter) {
+          await ensureWorkspaceSkeletonAndScan(this.context.psnAdapter, payload.root);
+        }
+        return entry;
+      },
     });
   }
 }

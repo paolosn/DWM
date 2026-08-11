@@ -4,7 +4,7 @@ import type { AIResponse } from "./AIResponse.js";
 import { AIErrorCode } from "./errors/AIErrorCode.js";
 import { createAIError } from "./errors/AIError.js";
 
-export type HttpAIProviderFormat = "openai" | "anthropic";
+export type HttpAIProviderFormat = "openai" | "anthropic" | "gemini";
 
 export interface HttpAIProviderOptions {
   readonly id: string;
@@ -52,9 +52,9 @@ export class HttpAIProvider implements AIProvider {
         recoverable: true,
       });
     }
-    return this.format === "anthropic"
-      ? this.sendAnthropicRequest(request, credential)
-      : this.sendOpenAiRequest(request, credential);
+    if (this.format === "anthropic") return this.sendAnthropicRequest(request, credential);
+    if (this.format === "gemini") return this.sendGeminiRequest(request, credential);
+    return this.sendOpenAiRequest(request, credential);
   }
 
   async healthCheck(credential: string | undefined): Promise<boolean> {
@@ -134,6 +134,53 @@ export class HttpAIProvider implements AIProvider {
     };
   }
 
+  /**
+   * client-workflow "fix/kilo-clients-psnadapter-init-and-gemini" (bug
+   * crítico 2) — Gemini NO es compatible con el formato "OpenAI Chat
+   * Completions": su API real (Google Generative Language API) usa
+   * una forma de petición/respuesta completamente distinta
+   * (`contents`/`parts` en vez de `messages`, `candidates` en vez de
+   * `choices`). Tratarlo como "openai" producía siempre un HTTP 400
+   * real de Google. La clave se envía en la cabecera real
+   * `x-goog-api-key` (método recomendado por Google, evita que la key
+   * aparezca en logs de acceso/proxy como ocurriría con el parámetro
+   * `?key=` de la URL) — nunca en la URL ni en el cuerpo.
+   */
+  private async sendGeminiRequest(
+    request: AIRequest,
+    credential: string
+  ): Promise<ProviderResponse> {
+    const model = request.model ?? "gemini-2.0-flash";
+    const response = await this.fetchImpl(`${this.baseUrl}/models/${model}:generateContent`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": credential,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: request.prompt }] }],
+        generationConfig: {
+          ...(request.maxTokens !== undefined ? { maxOutputTokens: request.maxTokens } : {}),
+          ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+        },
+      }),
+    });
+    const body = await this.parseJsonSafely(response);
+    if (!response.ok) {
+      throw this.requestFailedError(response.status, body);
+    }
+    const content = this.readPath(body, ["candidates", 0, "content", "parts", 0, "text"]);
+    if (typeof content !== "string") {
+      throw this.malformedResponseError();
+    }
+    const tokensUsed = this.readPath(body, ["usageMetadata", "totalTokenCount"]);
+    return {
+      content,
+      model,
+      ...(typeof tokensUsed === "number" ? { tokensUsed } : {}),
+    };
+  }
+
   private async parseJsonSafely(response: Response): Promise<unknown> {
     try {
       return await response.json();
@@ -153,10 +200,15 @@ export class HttpAIProvider implements AIProvider {
   }
 
   private requestFailedError(status: number, body: unknown): ReturnType<typeof createAIError> {
-    void body;
+    // El cuerpo de error real de un proveedor de IA nunca contiene la
+    // API key (esta solo viaja en la cabecera/URL de la petición, no
+    // en la respuesta del servidor) — seguro extraer aquí un mensaje
+    // real y útil en vez de descartarlo.
+    const detail = this.readPath(body, ["error", "message"]);
+    const suffix = typeof detail === "string" && detail.trim() ? `: ${detail}` : "";
     return createAIError({
       code: AIErrorCode.AI_REQUEST_FAILED,
-      message: `Proveedor "${this.id}" devolvió un error HTTP ${status}.`,
+      message: `Proveedor "${this.id}" devolvió un error HTTP ${status}${suffix}`,
       origin: "request",
       recoverable: status >= 500 || status === 429,
     });

@@ -35,7 +35,7 @@ function credentialKeyFor(id: string): string {
 }
 
 function isHttpAIProviderFormat(value: unknown): value is HttpAIProviderFormat {
-  return value === "openai" || value === "anthropic";
+  return value === "openai" || value === "anthropic" || value === "gemini";
 }
 
 function invalidPayload(message: string): never {
@@ -204,7 +204,7 @@ export class AIProviderController implements ApplicationController {
         const format = record["format"];
         if (!isHttpAIProviderFormat(format)) {
           invalidPayload(
-            `"format" debe ser "openai" o "anthropic", recibido: "${String(format)}".`
+            `"format" debe ser "openai", "anthropic" o "gemini", recibido: "${String(format)}".`
           );
         }
         const apiKey = record["apiKey"];
