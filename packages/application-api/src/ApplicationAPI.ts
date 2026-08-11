@@ -22,6 +22,7 @@ import { SkillController } from "./controllers/SkillController.js";
 import { RuleController } from "./controllers/RuleController.js";
 import { KnowledgeController } from "./controllers/KnowledgeController.js";
 import { ClientController } from "./controllers/ClientController.js";
+import { RequirementController } from "./controllers/RequirementController.js";
 import { ProjectController } from "./controllers/ProjectController.js";
 import { EnvironmentController } from "./controllers/EnvironmentController.js";
 import { PortablePackageController } from "./controllers/PortablePackageController.js";
@@ -102,6 +103,7 @@ export class ApplicationAPI implements IModule {
     this.registry.add(new RuleController(this.context));
     this.registry.add(new KnowledgeController(this.context));
     this.registry.add(new ClientController(this.context));
+    this.registry.add(new RequirementController(this.context));
     this.registry.add(new ProjectController(this.context));
     this.registry.add(new EnvironmentController(this.context));
     this.registry.add(new PortablePackageController(this.context));
