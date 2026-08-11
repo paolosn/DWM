@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { Pin, ClipboardCheck, ShieldCheck, Zap } from "lucide-react";
 import { callOperation, DwmOperationError } from "../../api-client/index.js";
+import { useNavigation } from "../../shell/NavigationContext.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
-import { ActionCard, type ActionCardAccent } from "../../design-system/composites/ActionCard/index.js";
+import {
+  ActionCard,
+  type ActionCardAccent,
+} from "../../design-system/composites/ActionCard/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { TextArea } from "../../design-system/primitives/TextArea/index.js";
@@ -166,6 +171,7 @@ export function ProvisioningScreen({
   initialClientName,
 }: ProvisioningScreenProps = {}): JSX.Element {
   const { showToast } = useToast();
+  const { setActiveSection } = useNavigation();
   const [category, setCategory] = useState<Category | null>(null);
   const [fields, setFields] = useState<FormFields>({
     ...EMPTY_FIELDS,
@@ -506,23 +512,6 @@ export function ProvisioningScreen({
             onChange={(e) => setField("nombreProyecto", e.target.value)}
           />
 
-          <Select
-            label="Perfil (opcional)"
-            placeholder="Sin perfil — crear vacío"
-            options={profileOptions.map((p) => ({ value: p.id, label: p.name }))}
-            value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
-            hint="El kit elegido (agentes, skills, reglas, IA y MCP) se aplica automáticamente al crear el proyecto."
-          />
-          {selectedProfile && (
-            <InlineAlert tone="info" title={selectedProfile.name}>
-              {selectedProfile.description || "Sin descripción."} — {selectedProfile.agentCount}{" "}
-              agentes · {selectedProfile.skillCount} skills · {selectedProfile.ruleCount} reglas ·{" "}
-              {selectedProfile.hasAi ? "IA configurada" : "sin IA configurada"} ·{" "}
-              {selectedProfile.mcpCount} MCP configurados
-            </InlineAlert>
-          )}
-
           {(category === "viabilidad" || category === "auditoria") && (
             <TextArea
               label={
@@ -659,6 +648,31 @@ export function ProvisioningScreen({
               )}
             </div>
           )}
+
+          <div className="dwm-provisioning-screen__profile-step">
+            <SectionHeader
+              title="¿Con qué Perfil quieres gestionar este trabajo?"
+              description="El kit elegido (agentes, skills, reglas, IA y MCP) se aplica automáticamente al proyecto."
+            />
+            <Select
+              label="Perfil"
+              placeholder="Sin perfil — crear vacío"
+              options={profileOptions.map((p) => ({ value: p.id, label: p.name }))}
+              value={profileId}
+              onChange={(e) => setProfileId(e.target.value)}
+            />
+            {selectedProfile && (
+              <InlineAlert tone="info" title={selectedProfile.name}>
+                {selectedProfile.description || "Sin descripción."} — {selectedProfile.agentCount}{" "}
+                agentes · {selectedProfile.skillCount} skills · {selectedProfile.ruleCount} reglas ·{" "}
+                {selectedProfile.hasAi ? "IA configurada" : "sin IA configurada"} ·{" "}
+                {selectedProfile.mcpCount} MCP configurados
+              </InlineAlert>
+            )}
+            <Button variant="secondary" onClick={() => setActiveSection("profiles")}>
+              Crear perfil nuevo
+            </Button>
+          </div>
 
           <div className="dwm-provisioning-screen__actions">
             <Button variant="secondary" onClick={reset}>

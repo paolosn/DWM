@@ -3,6 +3,7 @@ import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProvisioningScreen } from "../../../../../src/renderer/screens/provisioning/ProvisioningScreen.js";
 import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import { NavigationProvider } from "../../../../../src/renderer/shell/NavigationContext.js";
 import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
 
@@ -67,9 +68,11 @@ const VALID_REPORT = {
 
 function mountScreen(props: { readonly initialClientName?: string } = {}) {
   return mount(
-    <ToastProvider>
-      <ProvisioningScreen {...props} />
-    </ToastProvider>
+    <NavigationProvider>
+      <ToastProvider>
+        <ProvisioningScreen {...props} />
+      </ToastProvider>
+    </NavigationProvider>
   );
 }
 
