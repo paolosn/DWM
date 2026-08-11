@@ -21,13 +21,33 @@ const VALID_REPORT = {
   veredicto: "Viable con reservas",
   puntuacion: 72,
   resumen: "El proyecto es viable dentro del plazo indicado.",
+  requerimientoCliente: "El cliente pide una web con reservas online.",
+  objetivo: "Permitir reservas online reales.",
+  alcanceFuncional: "Formulario de reserva y confirmación por email.",
+  alcanceTecnico: "WordPress + plugin de reservas + integración de email.",
+  tecnologiasDetectadas: ["WordPress", "PHP"],
   riesgos: ["Plazo ajustado", "Alcance no del todo cerrado"],
+  dependencias: ["Acceso al hosting actual"],
   complejidad: "Media",
   plazoEstimado: "3-4 semanas",
   costeOrientativo: "2.500-3.500 €",
+  perfilRecomendado: "WordPress Cliente",
+  proyectoRecomendado: {
+    reutilizarExistente: false,
+    detalle: "No hay proyecto previo de este cliente.",
+  },
+  recursosRecomendados: {
+    agentes: ["wordpress"],
+    skills: ["reservas"],
+    reglas: ["php"],
+    ia: "claude",
+    mcp: ["wordpress"],
+  },
   preguntasPendientes: ["¿Tienen ya el hosting contratado?"],
   recomendacion: "Aceptar con un briefing detallado del alcance.",
   siguientePaso: "Agendar reunión de arranque.",
+  datosConfirmados: ["El cliente quiere reservas online."],
+  inferencias: ["Se asume WordPress por el resto del sitio del cliente."],
 };
 
 describe("ViabilityAnalysisService", () => {
