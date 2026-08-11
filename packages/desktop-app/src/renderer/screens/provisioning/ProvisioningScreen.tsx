@@ -129,17 +129,36 @@ interface CreateResult {
   readonly vsCodeMessage: string;
 }
 
+interface ViabilityRecommendedResources {
+  readonly agentes: readonly string[];
+  readonly skills: readonly string[];
+  readonly reglas: readonly string[];
+  readonly ia: string;
+  readonly mcp: readonly string[];
+}
+
 interface ViabilityReport {
   readonly veredicto: string;
   readonly puntuacion: number;
   readonly resumen: string;
+  readonly requerimientoCliente?: string;
+  readonly objetivo?: string;
+  readonly alcanceFuncional?: string;
+  readonly alcanceTecnico?: string;
+  readonly tecnologiasDetectadas?: readonly string[];
   readonly riesgos: readonly string[];
+  readonly dependencias?: readonly string[];
   readonly complejidad: string;
   readonly plazoEstimado: string;
   readonly costeOrientativo: string;
+  readonly perfilRecomendado?: string;
+  readonly proyectoRecomendado?: { reutilizarExistente: boolean; detalle: string };
+  readonly recursosRecomendados?: ViabilityRecommendedResources;
   readonly preguntasPendientes: readonly string[];
   readonly recomendacion: string;
   readonly siguientePaso: string;
+  readonly datosConfirmados?: readonly string[];
+  readonly inferencias?: readonly string[];
   readonly providerId: string;
   readonly model?: string;
 }
@@ -213,6 +232,91 @@ export function ProvisioningScreen({
   const [reuseResult, setReuseResult] = useState<
     { projectName: string; vsCodeOpened: boolean; vsCodeMessage: string } | undefined
   >(undefined);
+
+  // client-workflow "feature/requirement-workflow" (Commit 5) —
+  // "Preparar entorno recomendado": compara los recursos que el
+  // análisis recomienda (Commit 2) contra Biblioteca IA global real
+  // (agents.list/skills.list/rules.list, mismo alcance real que ya
+  // usa ContentLibraryPanel). Reutiliza exclusivamente
+  // content-generation.generate ya existente para crear con IA lo
+  // que no exista — ningún motor nuevo.
+  const [selectedResources, setSelectedResources] = useState<Record<string, boolean>>({});
+  const [existingResourceIds, setExistingResourceIds] = useState<Record<string, boolean>>({});
+  const [preparingResources, setPreparingResources] = useState(false);
+  const [resourcesPrepared, setResourcesPrepared] = useState(false);
+  const [resourcesError, setResourcesError] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const recommended = analysis?.recursosRecomendados;
+    if (!recommended) return;
+    void (async () => {
+      const scope = (await callOperation("content-scope.resolve-root", {}).catch(
+        () => undefined
+      )) as { root: string } | undefined;
+      if (!scope) return;
+      const [agents, skills, rules] = await Promise.all([
+        callOperation("agents.list", { root: scope.root }).catch(() => []),
+        callOperation("skills.list", { root: scope.root }).catch(() => []),
+        callOperation("rules.list", { root: scope.root }).catch(() => []),
+      ] as const);
+      const existing: Record<string, boolean> = {};
+      for (const a of agents as { id: string }[]) existing[`agent:${a.id}`] = true;
+      for (const s of skills as { id: string }[]) existing[`skill:${s.id}`] = true;
+      for (const r of rules as { id: string }[]) existing[`rule:${r.id}`] = true;
+      setExistingResourceIds(existing);
+      const defaults: Record<string, boolean> = {};
+      for (const id of recommended.agentes) defaults[`agent:${id}`] = true;
+      for (const id of recommended.skills) defaults[`skill:${id}`] = true;
+      for (const id of recommended.reglas) defaults[`rule:${id}`] = true;
+      setSelectedResources(defaults);
+    })();
+  }, [analysis]);
+
+  async function prepareRecommendedResources(): Promise<void> {
+    const recommended = analysis?.recursosRecomendados;
+    if (!recommended) return;
+    setPreparingResources(true);
+    setResourcesError(undefined);
+    try {
+      const toCreate: { kind: "agent" | "skill" | "rule"; id: string }[] = [];
+      for (const id of recommended.agentes) {
+        if (selectedResources[`agent:${id}`] && !existingResourceIds[`agent:${id}`]) {
+          toCreate.push({ kind: "agent", id });
+        }
+      }
+      for (const id of recommended.skills) {
+        if (selectedResources[`skill:${id}`] && !existingResourceIds[`skill:${id}`]) {
+          toCreate.push({ kind: "skill", id });
+        }
+      }
+      for (const id of recommended.reglas) {
+        if (selectedResources[`rule:${id}`] && !existingResourceIds[`rule:${id}`]) {
+          toCreate.push({ kind: "rule", id });
+        }
+      }
+      for (const item of toCreate) {
+        await callOperation("content-generation.generate", {
+          kind: item.kind,
+          id: item.id,
+          instructions: `Recurso recomendado por el análisis de viabilidad para: ${fields.nombreProyecto || "este trabajo"}. ${analysis?.alcanceTecnico ?? ""}`,
+        });
+      }
+      setResourcesPrepared(true);
+      showToast({
+        title:
+          toCreate.length > 0
+            ? `${toCreate.length} recurso(s) creado(s) con IA`
+            : "Recursos ya disponibles, nada que crear",
+        tone: "success",
+      });
+    } catch (err) {
+      setResourcesError(
+        err instanceof DwmOperationError ? err.message : "No se pudieron preparar los recursos."
+      );
+    } finally {
+      setPreparingResources(false);
+    }
+  }
 
   useEffect(() => {
     if (projectMode !== "existing" || !fields.cliente.trim()) return;
@@ -748,6 +852,65 @@ export function ProvisioningScreen({
               )}
             </div>
           )}
+
+          {analysis?.recursosRecomendados &&
+            (analysis.recursosRecomendados.agentes.length > 0 ||
+              analysis.recursosRecomendados.skills.length > 0 ||
+              analysis.recursosRecomendados.reglas.length > 0) && (
+              <div className="dwm-provisioning-screen__resources-step">
+                <SectionHeader
+                  title="Preparar entorno recomendado"
+                  description="El análisis recomienda estos recursos. Reutiliza los que ya existen y crea con IA los que faltan."
+                />
+                {(
+                  [
+                    ["agent", "Agentes", analysis.recursosRecomendados.agentes],
+                    ["skill", "Skills", analysis.recursosRecomendados.skills],
+                    ["rule", "Reglas", analysis.recursosRecomendados.reglas],
+                  ] as const
+                ).map(
+                  ([kind, label, ids]) =>
+                    ids.length > 0 && (
+                      <div key={kind} className="dwm-provisioning-screen__resource-group">
+                        <strong>{label}</strong>
+                        <ul>
+                          {ids.map((id: string) => (
+                            <li key={id}>
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedResources[`${kind}:${id}`] ?? false}
+                                  onChange={(e) =>
+                                    setSelectedResources({
+                                      ...selectedResources,
+                                      [`${kind}:${id}`]: e.target.checked,
+                                    })
+                                  }
+                                />
+                                {id}
+                                {existingResourceIds[`${kind}:${id}`]
+                                  ? " — ya existe (se reutilizará)"
+                                  : " — se creará con IA"}
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                )}
+                <Button onClick={() => void prepareRecommendedResources()} loading={preparingResources}>
+                  Preparar entorno
+                </Button>
+                {resourcesPrepared && (
+                  <InlineAlert tone="success" title="Entorno preparado">
+                    Los recursos seleccionados ya están disponibles.
+                  </InlineAlert>
+                )}
+                {resourcesError && (
+                  <ErrorState title="No se pudo preparar el entorno" technicalDetail={resourcesError} />
+                )}
+              </div>
+            )}
 
           <div className="dwm-provisioning-screen__profile-step">
             <SectionHeader
