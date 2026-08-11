@@ -187,4 +187,46 @@ describe("Modelo efectivo real (proyecto → cliente → global) y Probar modelo
     expect(response.data.message.length).toBeGreaterThan(0);
     expect(JSON.stringify(response)).not.toContain("sk-clave-real-secreta");
   });
+
+  it("prioridad exacta en cadena, con proyecto+cliente+global TODOS configurados a la vez: proyecto gana sobre cliente, cliente gana sobre global", async () => {
+    const projectManager = {
+      getProject: () => ({
+        configuration: { settings: { ai: { provider: "ia-proyecto", model: "modelo-proyecto" } } },
+      }),
+    };
+    const clientManager = {
+      getClient: () => ({ defaultAi: { provider: "ia-cliente", model: "modelo-cliente" } }),
+    };
+    const { api, configManager } = build({ projectManager, clientManager });
+    await saveStoredProviders(configManager, [
+      {
+        id: "ia-global",
+        name: "IA Global",
+        format: "openai",
+        baseUrl: "https://api.example.com",
+        model: "modelo-global",
+        credentialKey: "ai-provider.ia-global",
+        isDefault: true,
+      },
+    ]);
+
+    // 1. Con proyecto y cliente: gana el proyecto.
+    const withProject = await api.execute(
+      makeRequest("ai.get-effective", { projectId: "p1", clientId: "acme" }, { caller: admin })
+    );
+    expect(withProject.success && withProject.data.origin).toBe("project");
+    expect(withProject.success && withProject.data.provider).toBe("ia-proyecto");
+
+    // 2. Sin proyecto, solo cliente: gana el cliente (nunca cae a global).
+    const withClientOnly = await api.execute(
+      makeRequest("ai.get-effective", { clientId: "acme" }, { caller: admin })
+    );
+    expect(withClientOnly.success && withClientOnly.data.origin).toBe("client");
+    expect(withClientOnly.success && withClientOnly.data.provider).toBe("ia-cliente");
+
+    // 3. Sin proyecto ni cliente: cae a la IA global real.
+    const globalOnly = await api.execute(makeRequest("ai.get-effective", {}, { caller: admin }));
+    expect(globalOnly.success && globalOnly.data.origin).toBe("global");
+    expect(globalOnly.success && globalOnly.data.provider).toBe("ia-global");
+  });
 });
