@@ -96,6 +96,15 @@ function GroupHeading({
 
 const SISTEMA: readonly SectionEntry[] = [
   {
+    id: "settings",
+    icon: SlidersHorizontal,
+    title: "Configuración avanzada",
+    description: "Editor real de las secciones de configuración (config.*).",
+  },
+];
+
+const WORKSPACE: readonly SectionEntry[] = [
+  {
     id: "workspaces",
     icon: Layers,
     title: "Workspaces",
@@ -106,12 +115,6 @@ const SISTEMA: readonly SectionEntry[] = [
     icon: Database,
     title: "Backups",
     description: "Copias de seguridad del Workspace.",
-  },
-  {
-    id: "settings",
-    icon: SlidersHorizontal,
-    title: "Configuración avanzada",
-    description: "Editor real de las secciones de configuración (config.*).",
   },
 ];
 
@@ -206,11 +209,34 @@ export function ConfiguracionScreen(): JSX.Element {
         <GroupHeading
           title="Sistema"
           count={SISTEMA.length}
-          description="Dónde vive el Sistema de Trabajo activo, sus copias y su configuración avanzada."
+          description="Configuración avanzada de DWM."
         />
         <div className="dwm-configuracion-screen__row-3">
           {SISTEMA.map((entry) => (
-            <SettingsCard key={entry.id} entry={entry} accent={ACCENT.blue} onOpen={setActiveSection} />
+            <SettingsCard
+              key={entry.id}
+              entry={entry}
+              accent={ACCENT.blue}
+              onOpen={setActiveSection}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="dwm-configuracion-screen__block">
+        <GroupHeading
+          title="Workspace"
+          count={WORKSPACE.length}
+          description="Dónde vive el Sistema de Trabajo activo y sus copias de seguridad."
+        />
+        <div className="dwm-configuracion-screen__row-3">
+          {WORKSPACE.map((entry) => (
+            <SettingsCard
+              key={entry.id}
+              entry={entry}
+              accent={ACCENT.slate}
+              onOpen={setActiveSection}
+            />
           ))}
         </div>
       </section>
@@ -223,7 +249,12 @@ export function ConfiguracionScreen(): JSX.Element {
         />
         <div className="dwm-configuracion-screen__row-3">
           {HERRAMIENTAS.map((entry) => (
-            <SettingsCard key={entry.id} entry={entry} accent={ACCENT.amber} onOpen={setActiveSection} />
+            <SettingsCard
+              key={entry.id}
+              entry={entry}
+              accent={ACCENT.amber}
+              onOpen={setActiveSection}
+            />
           ))}
         </div>
       </section>
@@ -243,10 +274,20 @@ export function ConfiguracionScreen(): JSX.Element {
         </div>
         <div className="dwm-configuracion-screen__row-3">
           {IA.map((entry) => (
-            <SettingsCard key={entry.id} entry={entry} accent={ACCENT.purple} onOpen={setActiveSection} />
+            <SettingsCard
+              key={entry.id}
+              entry={entry}
+              accent={ACCENT.purple}
+              onOpen={setActiveSection}
+            />
           ))}
           {CONOCIMIENTO.map((entry) => (
-            <SettingsCard key={entry.id} entry={entry} accent={ACCENT.teal} onOpen={setActiveSection} />
+            <SettingsCard
+              key={entry.id}
+              entry={entry}
+              accent={ACCENT.teal}
+              onOpen={setActiveSection}
+            />
           ))}
         </div>
       </section>
@@ -260,15 +301,29 @@ export function ConfiguracionScreen(): JSX.Element {
           />
           <div className="dwm-configuracion-screen__row-2">
             {DIAGNOSTICO.map((entry) => (
-              <SettingsCard key={entry.id} entry={entry} accent={ACCENT.slate} onOpen={setActiveSection} />
+              <SettingsCard
+                key={entry.id}
+                entry={entry}
+                accent={ACCENT.slate}
+                onOpen={setActiveSection}
+              />
             ))}
           </div>
         </div>
         <div>
-          <GroupHeading title="Ayuda" count={AYUDA.length} description="Documentación y acerca de DWM." />
+          <GroupHeading
+            title="Ayuda"
+            count={AYUDA.length}
+            description="Documentación y acerca de DWM."
+          />
           <div className="dwm-configuracion-screen__row-2">
             {AYUDA.map((entry) => (
-              <SettingsCard key={entry.id} entry={entry} accent={ACCENT.pink} onOpen={setActiveSection} />
+              <SettingsCard
+                key={entry.id}
+                entry={entry}
+                accent={ACCENT.pink}
+                onOpen={setActiveSection}
+              />
             ))}
           </div>
         </div>
