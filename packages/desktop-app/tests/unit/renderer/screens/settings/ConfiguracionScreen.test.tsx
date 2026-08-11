@@ -60,7 +60,7 @@ describe("ConfiguracionScreen", () => {
     unmount();
   });
 
-  it("agrupa las secciones reales en 4 bloques (Sistema, Herramientas, IA+Conocimiento combinadas, Diagnóstico+Ayuda), no como lista plana de 6-7 secciones", () => {
+  it("agrupa las secciones reales en 7 categorías (Sistema, Workspace, Herramientas, IA, Conocimiento, Diagnóstico, Ayuda), no como lista plana", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <ConfiguracionScreen />
@@ -68,16 +68,25 @@ describe("ConfiguracionScreen", () => {
     );
 
     const groupTitles = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
-    expect(groupTitles).toEqual(["Sistema", "Herramientas", "IA", "Conocimiento", "Diagnóstico", "Ayuda"]);
+    expect(groupTitles).toEqual([
+      "Sistema",
+      "Workspace",
+      "Herramientas",
+      "IA",
+      "Conocimiento",
+      "Diagnóstico",
+      "Ayuda",
+    ]);
     expect(container.textContent).toContain(
       "Kits de trabajo y configuración de proveedores/modelos."
     );
 
     const cards = Array.from(container.querySelectorAll(".dwm-configuracion-screen__card"));
-    const sistemaTitles = ["Workspaces", "Backups", "Configuración avanzada"];
-    for (const title of sistemaTitles) {
+    const workspaceTitles = ["Workspaces", "Backups"];
+    for (const title of workspaceTitles) {
       expect(cards.some((c) => c.textContent?.includes(title))).toBe(true);
     }
+    expect(cards.some((c) => c.textContent?.includes("Configuración avanzada"))).toBe(true);
 
     const herramientasTitles = ["Herramientas", "Extensiones de DWM", "Paquetes"];
     for (const title of herramientasTitles) {
@@ -87,7 +96,9 @@ describe("ConfiguracionScreen", () => {
     // Bloque 3: IA + Conocimiento comparten UNA sola rejilla de 3 columnas real.
     const iaConocimientoRow = Array.from(
       container.querySelectorAll(".dwm-configuracion-screen__row-3")
-    ).find((row) => row.textContent?.includes("Conocimiento") && row.textContent?.includes("Perfiles"));
+    ).find(
+      (row) => row.textContent?.includes("Conocimiento") && row.textContent?.includes("Perfiles")
+    );
     expect(iaConocimientoRow).toBeDefined();
 
     unmount();
