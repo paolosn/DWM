@@ -36,7 +36,7 @@ type SimpleProviderKey = "claude" | "chatgpt" | "gemini" | "deepseek";
 interface SimpleProviderDef {
   readonly key: SimpleProviderKey;
   readonly label: string;
-  readonly format: "openai" | "anthropic";
+  readonly format: "openai" | "anthropic" | "gemini";
   readonly baseUrl: string;
   readonly model: string;
 }
@@ -59,9 +59,9 @@ const SIMPLE_PROVIDERS: readonly SimpleProviderDef[] = [
   {
     key: "gemini",
     label: "Gemini",
-    format: "openai",
-    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-    model: "gemini-1.5-pro",
+    format: "gemini",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    model: "gemini-2.0-flash",
   },
   {
     key: "deepseek",
@@ -75,7 +75,7 @@ const SIMPLE_PROVIDERS: readonly SimpleProviderDef[] = [
 export interface AIProviderView {
   readonly id: string;
   readonly name: string;
-  readonly format: "openai" | "anthropic";
+  readonly format: "openai" | "anthropic" | "gemini";
   readonly baseUrl: string;
   readonly model: string;
   readonly fallbackModel?: string;
@@ -87,7 +87,7 @@ export interface AIProviderView {
 interface FormState {
   readonly id: string;
   readonly name: string;
-  readonly format: "openai" | "anthropic";
+  readonly format: "openai" | "anthropic" | "gemini";
   readonly baseUrl: string;
   readonly model: string;
   readonly fallbackModel: string;
@@ -524,7 +524,7 @@ export function AIProvidersScreen(): JSX.Element {
               label="Formato/protocolo"
               value={form.format}
               onChange={(e) =>
-                setForm({ ...form, format: e.target.value as "openai" | "anthropic" })
+                setForm({ ...form, format: e.target.value as "openai" | "anthropic" | "gemini" })
               }
               options={[
                 {
@@ -532,6 +532,7 @@ export function AIProvidersScreen(): JSX.Element {
                   label: "OpenAI compatible (OpenAI, OpenRouter, Ollama, LM Studio…)",
                 },
                 { value: "anthropic", label: "Anthropic" },
+                { value: "gemini", label: "Gemini (API nativa de Google)" },
               ]}
             />
           )}
