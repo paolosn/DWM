@@ -112,7 +112,7 @@ describe("ViabilityAnalysisService", () => {
     const service = new ViabilityAnalysisService(aiManager, fetchOverride);
 
     const report = await service.analyze(
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       baseInput
     );
 
@@ -145,8 +145,14 @@ describe("ViabilityAnalysisService", () => {
       );
     const service = new ViabilityAnalysisService(aiManager, fetchImpl);
 
-    await service.analyze({ provider: "openai", secretReference: "ai.secret" }, baseInput);
-    await service.analyze({ provider: "openai", secretReference: "ai.secret" }, baseInput);
+    await service.analyze(
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
+      baseInput
+    );
+    await service.analyze(
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
+      baseInput
+    );
 
     expect(aiManager.listProviders()).toEqual(["openai"]);
   });
@@ -161,7 +167,10 @@ describe("ViabilityAnalysisService", () => {
     const service = new ViabilityAnalysisService(aiManager, fetchImpl);
 
     await expect(
-      service.analyze({ provider: "openai", secretReference: "ai.secret" }, baseInput)
+      service.analyze(
+        { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
+        baseInput
+      )
     ).rejects.toMatchObject({ code: ProjectProvisioningErrorCode.PROVISIONING_AI_FAILED });
   });
 
@@ -176,7 +185,10 @@ describe("ViabilityAnalysisService", () => {
     const service = new ViabilityAnalysisService(aiManager, fetchImpl);
 
     await expect(
-      service.analyze({ provider: "openai", secretReference: "ai.secret" }, baseInput)
+      service.analyze(
+        { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
+        baseInput
+      )
     ).rejects.toMatchObject({ code: ProjectProvisioningErrorCode.PROVISIONING_AI_FAILED });
   });
 
@@ -189,7 +201,7 @@ describe("ViabilityAnalysisService", () => {
     const service = new ViabilityAnalysisService(aiManager, fetchImpl);
 
     const report = await service.analyze(
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       baseInput
     );
     expect(report.veredicto).toBe("Viable con reservas");
@@ -231,7 +243,10 @@ describe("ViabilityAnalysisService", () => {
     const service = new ViabilityAnalysisService(aiManager, fetchImpl);
 
     try {
-      await service.analyze({ provider: "openai", secretReference: "ai.secret" }, baseInput);
+      await service.analyze(
+        { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
+        baseInput
+      );
       expect.unreachable();
     } catch (err) {
       expect(JSON.stringify(err instanceof Error ? err.message : err)).not.toContain(

@@ -52,6 +52,7 @@ export function buildHttpProvider(config: StoredAIProviderConfig): HttpAIProvide
     name: config.name,
     baseUrl: config.baseUrl,
     format: config.format,
+    model: config.model,
   });
 }
 

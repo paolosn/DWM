@@ -332,7 +332,12 @@ describe("ProvisioningController", () => {
         id: "c",
         name: "C",
         slug: "c",
-        defaultAi: { provider: "openai", format: "openai", secretReference: "ai.c.openai" },
+        defaultAi: {
+          provider: "openai",
+          format: "openai",
+          model: "gpt-4o",
+          secretReference: "ai.c.openai",
+        },
       });
 
       await api.execute(
@@ -362,6 +367,7 @@ describe("ProvisioningController", () => {
         defaultAi: {
           provider: "anthropic",
           format: "anthropic",
+          model: "claude-3-5-sonnet-20241022",
           secretReference: "ai.c.anthropic",
         },
       });

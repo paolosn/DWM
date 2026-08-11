@@ -137,12 +137,12 @@ describe("ContentGenerationService", () => {
 
     const generated = await service.generate(
       "agent",
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       { id: "experto-mysql", instructions: "x" }
     );
     const written = await service.generateAndWrite(
       "agent",
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       { id: "experto-mysql", instructions: "x" },
       root
     );
@@ -209,7 +209,7 @@ describe("ContentGenerationService", () => {
 
     await service.generateAndWrite(
       "skill",
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       { id: "checklist-produccion", instructions: "Checklist antes de producción." },
       root
     );
@@ -243,7 +243,7 @@ describe("ContentGenerationService", () => {
 
     await service.generateAndWrite(
       "rule",
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       { id: "un-cambio-a-la-vez", instructions: "Regla sobre hacer un cambio cada vez." },
       root
     );
@@ -275,7 +275,7 @@ describe("ContentGenerationService", () => {
 
     const result = await service.generateAndWrite(
       "agent",
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       { id: "experto-mysql", instructions: "x" },
       root
     );
@@ -305,7 +305,7 @@ describe("ContentGenerationService", () => {
     );
     await service.generateAndWrite(
       "agent",
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       { id: "experto-mysql", instructions: "x" },
       root
     );
@@ -372,7 +372,7 @@ describe("ContentGenerationService", () => {
     await expect(
       service.generateAndWrite(
         "agent",
-        { provider: "openai", secretReference: "ai.secret" },
+        { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
         { id: "experto-mysql", instructions: "x" },
         root
       )
@@ -404,13 +404,13 @@ describe("ContentGenerationService", () => {
 
     await service.generateAndWrite(
       "agent",
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       { id: "a1", instructions: "x" },
       root
     );
     await service.generateAndWrite(
       "agent",
-      { provider: "openai", secretReference: "ai.secret" },
+      { provider: "openai", model: "modelo-de-prueba", secretReference: "ai.secret" },
       { id: "a2", instructions: "y" },
       root
     );
@@ -439,7 +439,12 @@ describe("ContentGenerationService", () => {
 
     const result = await service.generateAndWrite(
       "agent",
-      { provider: "anthropic", format: "anthropic", secretReference: "ai.secret" },
+      {
+        provider: "anthropic",
+        format: "anthropic",
+        model: "modelo-de-prueba",
+        secretReference: "ai.secret",
+      },
       { id: "experto-mysql", instructions: "x" },
       root
     );

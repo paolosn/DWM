@@ -89,6 +89,7 @@ describe("HttpAIProvider", () => {
       name: "p",
       baseUrl: "https://no-existe.invalid",
       format: "openai",
+      model: "modelo-de-prueba",
       fetchImpl,
     });
     await provider.sendRequest({ prompt: "x" }, "clave");
@@ -102,6 +103,7 @@ describe("HttpAIProvider", () => {
       name: "p",
       baseUrl: "https://api.example.test",
       format: "openai",
+      model: "modelo-de-prueba",
       fetchImpl,
     });
 
@@ -118,6 +120,7 @@ describe("HttpAIProvider", () => {
       name: "p",
       baseUrl: "https://api.example.test",
       format: "openai",
+      model: "modelo-de-prueba",
       fetchImpl,
     });
 
@@ -150,6 +153,7 @@ describe("HttpAIProvider", () => {
       name: "p",
       baseUrl: "https://api.example.test",
       format: "openai",
+      model: "modelo-de-prueba",
       fetchImpl,
     });
 
@@ -172,6 +176,7 @@ describe("HttpAIProvider", () => {
       name: "p",
       baseUrl: "https://api.example.test",
       format: "openai",
+      model: "modelo-de-prueba",
       fetchImpl,
     });
 
@@ -189,6 +194,7 @@ describe("HttpAIProvider", () => {
       name: "p",
       baseUrl: "https://api.example.test",
       format: "openai",
+      model: "modelo-de-prueba",
       fetchImpl: fetchImplOk,
     });
     expect(await providerOk.healthCheck("clave")).toBe(true);
@@ -430,5 +436,86 @@ describe("HttpAIProvider", () => {
     expect(JSON.parse((fetchImpl.mock.calls[1]![1] as RequestInit).body as string).model).toBe(
       "deepseek-v4-pro"
     );
+  });
+
+  it("sendRequest() SIN model explícito usa el modelo REAL configurado del proveedor — nunca omite el campo model (bug real: 'missing field model')", async () => {
+    // El modelo aquí es exactamente el que esté persistido para ese
+    // proveedor, sea cual sea — este test no asume que "deepseek-chat"
+    // sea correcto ni incorrecto, solo que lo configurado se envía.
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: "OK" } }] }));
+    const provider = new HttpAIProvider({
+      id: "deepseek-real",
+      name: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      format: "openai",
+      model: "deepseek-chat",
+      fetchImpl,
+    });
+
+    // "Probar modelo" desde EffectiveAiModel.tsx solo envía { id: provider }
+    // — nunca un model explícito.
+    await provider.sendRequest({ prompt: "Responde OK." }, "clave-real");
+
+    const body = JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string);
+    expect(Object.prototype.hasOwnProperty.call(body, "model")).toBe(true);
+    expect(body.model).toBe("deepseek-chat");
+  });
+
+  it("healthCheck() ('Probar conexión') SIN model explícito usa el modelo REAL configurado del proveedor — nunca omite el campo model", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: "pong" } }] }));
+    const provider = new HttpAIProvider({
+      id: "deepseek-real",
+      name: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      format: "openai",
+      model: "deepseek-chat",
+      fetchImpl,
+    });
+
+    const healthy = await provider.healthCheck("clave-real");
+    expect(healthy).toBe(true);
+
+    const body = JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string);
+    expect(Object.prototype.hasOwnProperty.call(body, "model")).toBe(true);
+    expect(body.model).toBe("deepseek-chat");
+  });
+
+  it("un proveedor sin ningún modelo configurado (ni explícito ni por defecto) falla con un error claro, en vez de enviar una petición HTTP sin model", async () => {
+    const fetchImpl = vi.fn();
+    const provider = new HttpAIProvider({
+      id: "sin-modelo",
+      name: "Sin modelo",
+      baseUrl: "https://api.example.test",
+      format: "openai",
+      fetchImpl,
+    });
+
+    await expect(provider.sendRequest({ prompt: "x" }, "clave-real")).rejects.toThrow(
+      /no tiene ningún modelo configurado/
+    );
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("Anthropic: sin model explícito, también usa el modelo REAL configurado del proveedor", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { content: [{ text: "Respuesta real." }] }));
+    const provider = new HttpAIProvider({
+      id: "claude-real",
+      name: "Claude",
+      baseUrl: "https://api.anthropic.com/v1",
+      format: "anthropic",
+      model: "claude-3-5-sonnet-20241022",
+      fetchImpl,
+    });
+
+    const result = await provider.sendRequest({ prompt: "x" }, "clave-real");
+    expect(result.model).toBe("claude-3-5-sonnet-20241022");
+    const body = JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.model).toBe("claude-3-5-sonnet-20241022");
   });
 });

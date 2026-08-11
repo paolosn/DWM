@@ -11,6 +11,18 @@ export interface HttpAIProviderOptions {
   readonly name: string;
   readonly baseUrl: string;
   readonly format: HttpAIProviderFormat;
+  /**
+   * client-workflow "fix/kilo-ai-model-field-missing" — el modelo REAL
+   * configurado para este proveedor (el que la persona usuaria eligió,
+   * nunca uno hardcodeado). Se usa como valor por defecto cuando el
+   * llamador no especifica uno explícito en `AIRequest.model` — p. ej.
+   * `healthCheck()`, o "Probar modelo" cuando el frontend solo envía
+   * el `id` del proveedor. Sin esto, una petición sin `model` explícito
+   * se enviaba sin el campo `model` en absoluto (JSON.stringify omite
+   * las claves `undefined`), causando un HTTP 400 real de proveedores
+   * como DeepSeek ("missing field `model`").
+   */
+  readonly model?: string;
   /** Inyectable para pruebas; por defecto el `fetch` global de Node. */
   readonly fetchImpl?: typeof fetch;
 }
@@ -33,6 +45,7 @@ export class HttpAIProvider implements AIProvider {
   readonly name: string;
   private readonly baseUrl: string;
   private readonly format: HttpAIProviderFormat;
+  private readonly defaultModel: string | undefined;
   private readonly fetchImpl: typeof fetch;
 
   constructor(options: HttpAIProviderOptions) {
@@ -40,6 +53,7 @@ export class HttpAIProvider implements AIProvider {
     this.name = options.name;
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.format = options.format;
+    this.defaultModel = options.model;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
@@ -52,9 +66,28 @@ export class HttpAIProvider implements AIProvider {
         recoverable: true,
       });
     }
-    if (this.format === "anthropic") return this.sendAnthropicRequest(request, credential);
-    if (this.format === "gemini") return this.sendGeminiRequest(request, credential);
-    return this.sendOpenAiRequest(request, credential);
+    // client-workflow "fix/kilo-ai-model-field-missing" — único punto
+    // real de resolución del modelo: el explícito en la petición
+    // (`AIRequest.model`, p. ej. cuando el usuario cambia de modelo
+    // desde la UI) o, si no se especifica, el modelo REAL configurado
+    // para este proveedor (nunca inventado ni hardcodeado). Un
+    // proveedor sin ningún modelo conocido nunca deja salir una
+    // petición HTTP sin `model` — antes, `request.model` undefined
+    // hacía que `JSON.stringify` omitiera la clave por completo,
+    // causando un HTTP 400 real ("missing field `model`") en
+    // proveedores como DeepSeek.
+    const model = request.model ?? this.defaultModel;
+    if (!model) {
+      throw createAIError({
+        code: AIErrorCode.AI_INVALID_CONFIGURATION,
+        message: `El proveedor de IA "${this.id}" no tiene ningún modelo configurado.`,
+        origin: "configuration",
+        recoverable: true,
+      });
+    }
+    if (this.format === "anthropic") return this.sendAnthropicRequest(request, model, credential);
+    if (this.format === "gemini") return this.sendGeminiRequest(request, model, credential);
+    return this.sendOpenAiRequest(request, model, credential);
   }
 
   async healthCheck(credential: string | undefined): Promise<boolean> {
@@ -69,6 +102,7 @@ export class HttpAIProvider implements AIProvider {
 
   private async sendOpenAiRequest(
     request: AIRequest,
+    model: string,
     credential: string
   ): Promise<ProviderResponse> {
     const response = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
@@ -78,7 +112,7 @@ export class HttpAIProvider implements AIProvider {
         Authorization: `Bearer ${credential}`,
       },
       body: JSON.stringify({
-        model: request.model,
+        model,
         messages: [{ role: "user", content: request.prompt }],
         ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
         ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
@@ -95,13 +129,14 @@ export class HttpAIProvider implements AIProvider {
     const tokensUsed = this.readPath(body, ["usage", "total_tokens"]);
     return {
       content,
-      ...(request.model !== undefined ? { model: request.model } : {}),
+      model,
       ...(typeof tokensUsed === "number" ? { tokensUsed } : {}),
     };
   }
 
   private async sendAnthropicRequest(
     request: AIRequest,
+    model: string,
     credential: string
   ): Promise<ProviderResponse> {
     const response = await this.fetchImpl(`${this.baseUrl}/messages`, {
@@ -112,7 +147,7 @@ export class HttpAIProvider implements AIProvider {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: request.model,
+        model,
         max_tokens: request.maxTokens ?? 1024,
         messages: [{ role: "user", content: request.prompt }],
         ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
@@ -129,7 +164,7 @@ export class HttpAIProvider implements AIProvider {
     const tokensUsed = this.readPath(body, ["usage", "output_tokens"]);
     return {
       content,
-      ...(request.model !== undefined ? { model: request.model } : {}),
+      model,
       ...(typeof tokensUsed === "number" ? { tokensUsed } : {}),
     };
   }
@@ -148,9 +183,9 @@ export class HttpAIProvider implements AIProvider {
    */
   private async sendGeminiRequest(
     request: AIRequest,
+    model: string,
     credential: string
   ): Promise<ProviderResponse> {
-    const model = request.model ?? "gemini-2.5-flash";
     const response = await this.fetchImpl(`${this.baseUrl}/models/${model}:generateContent`, {
       method: "POST",
       headers: {

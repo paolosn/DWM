@@ -159,6 +159,7 @@ describe("Integración real completa: Workspace → Clientes → Gemini/IA globa
         name: "Gemini",
         baseUrl: "https://generativelanguage.googleapis.com/v1beta",
         format: "gemini",
+        model: "gemini-2.0-flash",
         fetchImpl: geminiFetch,
       }),
       { credentialKey: "cred-gemini", setActive: true }

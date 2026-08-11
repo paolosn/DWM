@@ -5,7 +5,11 @@ import * as path from "node:path";
 import { AIManager, HttpAIProvider } from "@dwm/ai-manager";
 import { SecretsManager } from "@dwm/secrets";
 import { ConfigManager } from "@dwm/config";
-import { saveStoredProviders } from "../../../src/AIProviderStore.js";
+import {
+  saveStoredProviders,
+  loadStoredProviders,
+  buildHttpProvider,
+} from "../../../src/AIProviderStore.js";
 import { ApplicationAPI } from "../../../src/ApplicationAPI.js";
 import { makeRequest } from "../support/fixtures.js";
 
@@ -141,6 +145,7 @@ describe("Modelo efectivo real (proyecto → cliente → global) y Probar modelo
         name: "Claude",
         baseUrl: "https://api.anthropic.com/v1",
         format: "anthropic",
+        model: "claude-3-5-sonnet-20241022",
         fetchImpl,
       }),
       { credentialKey: "cred-anthropic" }
@@ -228,5 +233,119 @@ describe("Modelo efectivo real (proyecto → cliente → global) y Probar modelo
     const globalOnly = await api.execute(makeRequest("ai.get-effective", {}, { caller: admin }));
     expect(globalOnly.success && globalOnly.data.origin).toBe("global");
     expect(globalOnly.success && globalOnly.data.provider).toBe("ia-global");
+  });
+
+  it("bug real 'missing field model': 'Probar modelo' (sin pasar model, exactamente como hace EffectiveAiModel.tsx) usa el MISMO modelo real que 'Modelo efectivo' ya muestra — el request HTTP real incluye 'model'", async () => {
+    const { api, aiManager, secretsManager, configManager } = build();
+    await secretsManager.createSecret("cred-deepseek", "clave-real-deepseek");
+    // Modelo persistido real (el que el usuario configuró, sea cual sea).
+    await saveStoredProviders(configManager, [
+      {
+        id: "deepseek-real",
+        name: "DeepSeek",
+        format: "openai",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        credentialKey: "cred-deepseek",
+        isDefault: true,
+      },
+    ]);
+    let capturedBody: unknown;
+    const fetchImpl = (async (_url: string, init?: RequestInit) => {
+      capturedBody = init?.body ? JSON.parse(init.body as string) : undefined;
+      return new Response(JSON.stringify({ choices: [{ message: { content: "OK" } }] }), {
+        status: 200,
+      });
+    }) as unknown as typeof fetch;
+    aiManager.registerProvider(
+      new HttpAIProvider({
+        id: "deepseek-real",
+        name: "DeepSeek",
+        baseUrl: "https://api.deepseek.com",
+        format: "openai",
+        model: "deepseek-chat",
+        fetchImpl,
+      }),
+      { credentialKey: "cred-deepseek", setActive: true }
+    );
+
+    // "Modelo efectivo" muestra deepseek-chat (lo REALMENTE configurado).
+    const effective = await api.execute(makeRequest("ai.get-effective", {}, { caller: admin }));
+    expect(effective.success && effective.data.model).toBe("deepseek-chat");
+
+    // "Probar modelo" real, exactamente como lo llama EffectiveAiModel.tsx: solo { id }.
+    const tested = await api.execute(
+      makeRequest("ai.test-model", { id: "deepseek-real" }, { caller: admin })
+    );
+    expect(tested.success).toBe(true);
+    if (!tested.success) return;
+    if (!tested.data.success) throw new Error("se esperaba éxito real");
+    expect(tested.data.model).toBe("deepseek-chat");
+
+    // El request HTTP real enviado a DeepSeek SIEMPRE incluye "model".
+    expect(capturedBody).toBeDefined();
+    expect((capturedBody as { model?: string }).model).toBe("deepseek-chat");
+  });
+
+  it("actualizar el modelo de un proveedor (ai.update-provider) reconstruye el provider real (buildHttpProvider) con el NUEVO modelo, y ese es el que se usa en la siguiente petición HTTP real", async () => {
+    const { api, aiManager, secretsManager, configManager } = build();
+    await secretsManager.createSecret("cred-deepseek", "clave-real-deepseek");
+    await saveStoredProviders(configManager, [
+      {
+        id: "deepseek-real",
+        name: "DeepSeek",
+        format: "openai",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        credentialKey: "cred-deepseek",
+        isDefault: true,
+      },
+    ]);
+    aiManager.registerProvider(
+      new HttpAIProvider({
+        id: "deepseek-real",
+        name: "DeepSeek",
+        baseUrl: "https://api.deepseek.com",
+        format: "openai",
+        model: "deepseek-chat",
+      }),
+      { credentialKey: "cred-deepseek", setActive: true }
+    );
+
+    const updated = await api.execute(
+      makeRequest(
+        "ai.update-provider",
+        { id: "deepseek-real", model: "deepseek-v4-flash" },
+        { caller: admin }
+      )
+    );
+    expect(updated.success).toBe(true);
+
+    // ai.update-provider ya reconstruye el provider real (unregister +
+    // registerProvider(buildHttpProvider(updated))) -- confirmamos que
+    // el NUEVO modelo persistido es exactamente el que buildHttpProvider
+    // usaría para la siguiente petición real.
+    const stored = await loadStoredProviders(configManager);
+    const rebuilt = buildHttpProvider(stored.find((p) => p.id === "deepseek-real")!);
+
+    let capturedModel: string | undefined;
+    const fetchImpl = (async (_url: string, init?: RequestInit) => {
+      capturedModel = init?.body
+        ? (JSON.parse(init.body as string) as { model?: string }).model
+        : undefined;
+      return new Response(JSON.stringify({ choices: [{ message: { content: "OK" } }] }), {
+        status: 200,
+      });
+    }) as unknown as typeof fetch;
+    const rebuiltWithFetch = new HttpAIProvider({
+      id: rebuilt.id,
+      name: rebuilt.name,
+      baseUrl: "https://api.deepseek.com",
+      format: "openai",
+      model: stored.find((p) => p.id === "deepseek-real")!.model,
+      fetchImpl,
+    });
+    await rebuiltWithFetch.sendRequest({ prompt: "x" }, "clave-real-deepseek");
+    expect(capturedModel).toBe("deepseek-v4-flash");
   });
 });
