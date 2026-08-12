@@ -30,6 +30,79 @@ function formatDate(iso: string | undefined): string {
   return iso ? new Date(iso).toLocaleString() : "—";
 }
 
+const REQUIREMENT_STATUS_LABEL: Record<string, string> = {
+  pending: "Pendiente",
+  accepted: "Aceptado",
+  linked: "Vinculado a proyecto",
+  in_progress: "En curso",
+  completed: "Completado",
+};
+
+/**
+ * client-workflow "feature/requirement-workflow" (Commit 6) — muestra
+ * los Requerimientos reales del cliente (RequirementManager, Commit 1),
+ * cada uno con su estado, resumen del análisis, proyecto vinculado y
+ * la acción real "Abrir proyecto" (projects.open-in-vscode ya
+ * existente). Ninguna pantalla ni sistema nuevo.
+ */
+function RequerimientosTab({ client }: { readonly client: Client }): JSX.Element {
+  const { showToast } = useToast();
+  const query = useDwmQuery("requirements.list", { clientId: client.id });
+
+  async function openProject(projectId: string): Promise<void> {
+    try {
+      const result = (await callOperation("projects.open-in-vscode", { id: projectId })) as {
+        opened: boolean;
+        message: string;
+      };
+      showToast({ title: result.message, tone: result.opened ? "success" : "warning" });
+    } catch (err) {
+      showToast({
+        title: err instanceof DwmOperationError ? err.message : "No se pudo abrir VS Code",
+        tone: "danger",
+      });
+    }
+  }
+
+  if (query.status === "loading" || query.status === "idle") return <Spinner label="Cargando…" />;
+  if (query.status === "error") {
+    return (
+      <ErrorState
+        title="No se pudieron cargar los requerimientos"
+        {...(query.error?.message ? { technicalDetail: query.error.message } : {})}
+      />
+    );
+  }
+  const requirements = query.data ?? [];
+  if (requirements.length === 0) {
+    return <EmptyState title="Este cliente todavía no tiene requerimientos/trabajos" />;
+  }
+  return (
+    <div className="dwm-client-ficha__requirements">
+      {requirements.map((r) => (
+        <div key={r.id} className="dwm-client-ficha__requirement-row">
+          <div>
+            <h4>{r.title}</h4>
+            <p>{r.description}</p>
+            {r.briefing && <p className="dwm-client-ficha__requirement-briefing">{r.briefing}</p>}
+          </div>
+          <StatusBadge
+            label={REQUIREMENT_STATUS_LABEL[r.status] ?? r.status}
+            tone={
+              r.status === "completed" ? "success" : r.status === "linked" ? "accent" : "neutral"
+            }
+          />
+          {r.projectId && (
+            <Button variant="secondary" onClick={() => void openProject(r.projectId!)}>
+              Abrir proyecto
+            </Button>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ResumenTab({
   client,
   onGoToTab,
@@ -771,6 +844,11 @@ export function ClientFicha({ clientId }: ClientFichaProps): JSX.Element {
             content: <ResumenTab client={client} onGoToTab={setActiveTab} />,
           },
           { id: "proyectos", label: "Proyectos", content: <ProyectosTab client={client} /> },
+          {
+            id: "requerimientos",
+            label: "Requerimientos",
+            content: <RequerimientosTab client={client} />,
+          },
           {
             id: "biblioteca-ia",
             label: "Biblioteca IA",

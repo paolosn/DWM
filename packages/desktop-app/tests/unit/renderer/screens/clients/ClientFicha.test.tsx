@@ -75,7 +75,7 @@ describe("ClientFicha", () => {
     Object.defineProperty(window, "dwm", { value: originalDwm, configurable: true });
   });
 
-  it("muestra las 8 pestañas reales", async () => {
+  it("muestra las 9 pestañas reales", async () => {
     setDwm({ "clients.get": () => success("clients.get", baseClient) });
     const { container, unmount } = mount(
       <NavigationProvider>
@@ -90,6 +90,7 @@ describe("ClientFicha", () => {
     expect(tabs).toEqual([
       "Resumen",
       "Proyectos",
+      "Requerimientos",
       "Biblioteca IA",
       "Perfiles",
       "Accesos y conexiones",

@@ -93,6 +93,7 @@ export { SkillController } from "./controllers/SkillController.js";
 export { RuleController } from "./controllers/RuleController.js";
 export { KnowledgeController } from "./controllers/KnowledgeController.js";
 export { ClientController } from "./controllers/ClientController.js";
+export { RequirementController } from "./controllers/RequirementController.js";
 export { ProjectController } from "./controllers/ProjectController.js";
 export { EnvironmentController } from "./controllers/EnvironmentController.js";
 export { PortablePackageController } from "./controllers/PortablePackageController.js";
@@ -125,7 +126,10 @@ export {
   restoreStoredProviders,
   type StoredAIProviderConfig,
 } from "./AIProviderStore.js";
-export { ensureWorkspaceSkeleton, ensureWorkspaceSkeletonAndScan } from "./ensureWorkspaceSkeleton.js";
+export {
+  ensureWorkspaceSkeleton,
+  ensureWorkspaceSkeletonAndScan,
+} from "./ensureWorkspaceSkeleton.js";
 
 // Adaptador in-process (único adaptador implementado en este módulo)
 export { InProcessAdapter, type InProcessCallOptions } from "./adapters/InProcessAdapter.js";

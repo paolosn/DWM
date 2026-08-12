@@ -11,6 +11,7 @@ import type { SkillManager } from "@dwm/skill-manager";
 import type { RuleManager } from "@dwm/rule-manager";
 import type { KnowledgeManager } from "@dwm/knowledge-manager";
 import type { ClientManager } from "@dwm/client-manager";
+import type { RequirementManager } from "@dwm/requirement-manager";
 import type { ProjectManager } from "@dwm/project";
 import type { EnvironmentManager } from "@dwm/environment-manager";
 import type { PortablePackageManager } from "@dwm/portable-package-manager";
@@ -55,6 +56,7 @@ export interface ApplicationContextOptions {
   readonly ruleManager?: RuleManager;
   readonly knowledgeManager?: KnowledgeManager;
   readonly clientManager?: ClientManager;
+  readonly requirementManager?: RequirementManager;
   readonly projectManager?: ProjectManager;
   readonly environmentManager?: EnvironmentManager;
   readonly portablePackageManager?: PortablePackageManager;
@@ -90,6 +92,7 @@ export class ApplicationContext {
   readonly ruleManager?: RuleManager;
   readonly knowledgeManager?: KnowledgeManager;
   readonly clientManager?: ClientManager;
+  readonly requirementManager?: RequirementManager;
   readonly projectManager?: ProjectManager;
   readonly environmentManager?: EnvironmentManager;
   readonly portablePackageManager?: PortablePackageManager;
@@ -126,6 +129,7 @@ export class ApplicationContext {
     if (options.ruleManager) this.ruleManager = options.ruleManager;
     if (options.knowledgeManager) this.knowledgeManager = options.knowledgeManager;
     if (options.clientManager) this.clientManager = options.clientManager;
+    if (options.requirementManager) this.requirementManager = options.requirementManager;
     if (options.projectManager) this.projectManager = options.projectManager;
     if (options.environmentManager) this.environmentManager = options.environmentManager;
     if (options.portablePackageManager) {
@@ -165,6 +169,7 @@ export class ApplicationContext {
     if (this.ruleManager) connected.push("rule-manager");
     if (this.knowledgeManager) connected.push("knowledge-manager");
     if (this.clientManager) connected.push("client-manager");
+    if (this.requirementManager) connected.push("requirement-manager");
     if (this.projectManager) connected.push("project");
     if (this.environmentManager) connected.push("environment-manager");
     if (this.portablePackageManager) connected.push("portable-package-manager");

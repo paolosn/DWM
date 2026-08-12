@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import { Pin, ClipboardCheck, ShieldCheck, Zap } from "lucide-react";
 import { callOperation, DwmOperationError } from "../../api-client/index.js";
+import { useNavigation } from "../../shell/NavigationContext.js";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
+import { SectionHeader } from "../../design-system/composites/SectionHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
-import { ActionCard, type ActionCardAccent } from "../../design-system/composites/ActionCard/index.js";
+import {
+  ActionCard,
+  type ActionCardAccent,
+} from "../../design-system/composites/ActionCard/index.js";
 import { Button } from "../../design-system/primitives/Button/index.js";
 import { TextField } from "../../design-system/primitives/TextField/index.js";
 import { TextArea } from "../../design-system/primitives/TextArea/index.js";
@@ -124,17 +129,36 @@ interface CreateResult {
   readonly vsCodeMessage: string;
 }
 
+interface ViabilityRecommendedResources {
+  readonly agentes: readonly string[];
+  readonly skills: readonly string[];
+  readonly reglas: readonly string[];
+  readonly ia: string;
+  readonly mcp: readonly string[];
+}
+
 interface ViabilityReport {
   readonly veredicto: string;
   readonly puntuacion: number;
   readonly resumen: string;
+  readonly requerimientoCliente?: string;
+  readonly objetivo?: string;
+  readonly alcanceFuncional?: string;
+  readonly alcanceTecnico?: string;
+  readonly tecnologiasDetectadas?: readonly string[];
   readonly riesgos: readonly string[];
+  readonly dependencias?: readonly string[];
   readonly complejidad: string;
   readonly plazoEstimado: string;
   readonly costeOrientativo: string;
+  readonly perfilRecomendado?: string;
+  readonly proyectoRecomendado?: { reutilizarExistente: boolean; detalle: string };
+  readonly recursosRecomendados?: ViabilityRecommendedResources;
   readonly preguntasPendientes: readonly string[];
   readonly recomendacion: string;
   readonly siguientePaso: string;
+  readonly datosConfirmados?: readonly string[];
+  readonly inferencias?: readonly string[];
   readonly providerId: string;
   readonly model?: string;
 }
@@ -166,6 +190,7 @@ export function ProvisioningScreen({
   initialClientName,
 }: ProvisioningScreenProps = {}): JSX.Element {
   const { showToast } = useToast();
+  const { setActiveSection } = useNavigation();
   const [category, setCategory] = useState<Category | null>(null);
   const [fields, setFields] = useState<FormFields>({
     ...EMPTY_FIELDS,
@@ -187,6 +212,191 @@ export function ProvisioningScreen({
   const [profileApplying, setProfileApplying] = useState(false);
   const [profileError, setProfileError] = useState<string | undefined>(undefined);
   const [profileApplied, setProfileApplied] = useState(false);
+
+  // client-workflow "feature/requirement-workflow" (Commit 4) — "¿Este
+  // trabajo pertenece a un proyecto existente?": solo tiene sentido
+  // cuando el nombre de cliente escrito coincide con un cliente REAL
+  // ya existente (buscado por nombre, nunca UUID). Reutiliza
+  // exclusivamente projects.list/projects.get/requirements.link-to-project/
+  // profile-sync.apply/projects.open-in-vscode ya existentes — ningún
+  // ProjectManager ni provisioning nuevo, PSN-BASE nunca se duplica
+  // en esta ruta.
+  const [projectMode, setProjectMode] = useState<"new" | "existing" | undefined>(undefined);
+  const [existingClientId, setExistingClientId] = useState<string | undefined>(undefined);
+  const [existingProjects, setExistingProjects] = useState<
+    readonly { id: string; name: string; status: string }[]
+  >([]);
+  const [existingProjectId, setExistingProjectId] = useState("");
+  const [reusingProject, setReusingProject] = useState(false);
+  const [reuseError, setReuseError] = useState<string | undefined>(undefined);
+  const [reuseResult, setReuseResult] = useState<
+    { projectName: string; vsCodeOpened: boolean; vsCodeMessage: string } | undefined
+  >(undefined);
+
+  // client-workflow "feature/requirement-workflow" (Commit 5) —
+  // "Preparar entorno recomendado": compara los recursos que el
+  // análisis recomienda (Commit 2) contra Biblioteca IA global real
+  // (agents.list/skills.list/rules.list, mismo alcance real que ya
+  // usa ContentLibraryPanel). Reutiliza exclusivamente
+  // content-generation.generate ya existente para crear con IA lo
+  // que no exista — ningún motor nuevo.
+  const [selectedResources, setSelectedResources] = useState<Record<string, boolean>>({});
+  const [existingResourceIds, setExistingResourceIds] = useState<Record<string, boolean>>({});
+  const [preparingResources, setPreparingResources] = useState(false);
+  const [resourcesPrepared, setResourcesPrepared] = useState(false);
+  const [resourcesError, setResourcesError] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    const recommended = analysis?.recursosRecomendados;
+    if (!recommended) return;
+    void (async () => {
+      const scope = (await callOperation("content-scope.resolve-root", {}).catch(
+        () => undefined
+      )) as { root: string } | undefined;
+      if (!scope) return;
+      const [agents, skills, rules] = await Promise.all([
+        callOperation("agents.list", { root: scope.root }).catch(() => []),
+        callOperation("skills.list", { root: scope.root }).catch(() => []),
+        callOperation("rules.list", { root: scope.root }).catch(() => []),
+      ] as const);
+      const existing: Record<string, boolean> = {};
+      for (const a of agents as { id: string }[]) existing[`agent:${a.id}`] = true;
+      for (const s of skills as { id: string }[]) existing[`skill:${s.id}`] = true;
+      for (const r of rules as { id: string }[]) existing[`rule:${r.id}`] = true;
+      setExistingResourceIds(existing);
+      const defaults: Record<string, boolean> = {};
+      for (const id of recommended.agentes) defaults[`agent:${id}`] = true;
+      for (const id of recommended.skills) defaults[`skill:${id}`] = true;
+      for (const id of recommended.reglas) defaults[`rule:${id}`] = true;
+      setSelectedResources(defaults);
+    })();
+  }, [analysis]);
+
+  async function prepareRecommendedResources(): Promise<void> {
+    const recommended = analysis?.recursosRecomendados;
+    if (!recommended) return;
+    setPreparingResources(true);
+    setResourcesError(undefined);
+    try {
+      const toCreate: { kind: "agent" | "skill" | "rule"; id: string }[] = [];
+      for (const id of recommended.agentes) {
+        if (selectedResources[`agent:${id}`] && !existingResourceIds[`agent:${id}`]) {
+          toCreate.push({ kind: "agent", id });
+        }
+      }
+      for (const id of recommended.skills) {
+        if (selectedResources[`skill:${id}`] && !existingResourceIds[`skill:${id}`]) {
+          toCreate.push({ kind: "skill", id });
+        }
+      }
+      for (const id of recommended.reglas) {
+        if (selectedResources[`rule:${id}`] && !existingResourceIds[`rule:${id}`]) {
+          toCreate.push({ kind: "rule", id });
+        }
+      }
+      for (const item of toCreate) {
+        await callOperation("content-generation.generate", {
+          kind: item.kind,
+          id: item.id,
+          instructions: `Recurso recomendado por el análisis de viabilidad para: ${fields.nombreProyecto || "este trabajo"}. ${analysis?.alcanceTecnico ?? ""}`,
+        });
+      }
+      setResourcesPrepared(true);
+      showToast({
+        title:
+          toCreate.length > 0
+            ? `${toCreate.length} recurso(s) creado(s) con IA`
+            : "Recursos ya disponibles, nada que crear",
+        tone: "success",
+      });
+    } catch (err) {
+      setResourcesError(
+        err instanceof DwmOperationError ? err.message : "No se pudieron preparar los recursos."
+      );
+    } finally {
+      setPreparingResources(false);
+    }
+  }
+
+  useEffect(() => {
+    if (projectMode !== "existing" || !fields.cliente.trim()) return;
+    void (async () => {
+      const clients = (await callOperation("clients.list", {}).catch(() => [])) as {
+        id: string;
+        name: string;
+      }[];
+      const match = clients.find(
+        (c) => c.name.trim().toLowerCase() === fields.cliente.trim().toLowerCase()
+      );
+      setExistingClientId(match?.id);
+      if (!match) {
+        setExistingProjects([]);
+        return;
+      }
+      const ids = (await callOperation("projects.list", {}).catch(() => [])) as string[];
+      const projects = await Promise.all(
+        ids.map((id) =>
+          callOperation("projects.get", { id }).catch(() => undefined)
+        )
+      );
+      setExistingProjects(
+        (
+          projects.filter(Boolean) as {
+            id: string;
+            metadata: { name: string };
+            state: string;
+            configuration: { clientId?: string };
+          }[]
+        )
+          .filter((p) => p.configuration.clientId === match.id)
+          .map((p) => ({ id: p.id, name: p.metadata.name, status: p.state }))
+      );
+    })();
+  }, [projectMode, fields.cliente]);
+
+  const selectedExistingProject = existingProjects.find((p) => p.id === existingProjectId);
+
+  /**
+   * "Usar proyecto existente": nunca crea nada ni duplica PSN-BASE —
+   * solo vincula el perfil elegido (si hay) al proyecto real ya
+   * existente y abre VS Code. Reutiliza exactamente los mismos
+   * operaciones ya probadas que la ruta de "crear nuevo".
+   */
+  async function useExistingProject(): Promise<void> {
+    if (!existingProjectId) return;
+    setReusingProject(true);
+    setReuseError(undefined);
+    try {
+      if (profileId) {
+        await callOperation("profile-sync.apply", {
+          profileId,
+          targetProjectId: existingProjectId,
+          confirmOverwrite: false,
+        }).catch(async (err) => {
+          if (err instanceof DwmOperationError && err.message.includes("conflict")) return;
+          throw err;
+        });
+      }
+      const opened = (await callOperation("projects.open-in-vscode", {
+        id: existingProjectId,
+      })) as { opened: boolean; message: string };
+      setReuseResult({
+        projectName: selectedExistingProject?.name ?? existingProjectId,
+        vsCodeOpened: opened.opened,
+        vsCodeMessage: opened.message,
+      });
+      showToast({
+        title: `Trabajo vinculado a «${selectedExistingProject?.name ?? existingProjectId}»`,
+        tone: "success",
+      });
+    } catch (err) {
+      setReuseError(
+        err instanceof DwmOperationError ? err.message : "No se pudo usar el proyecto existente."
+      );
+    } finally {
+      setReusingProject(false);
+    }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -506,23 +716,6 @@ export function ProvisioningScreen({
             onChange={(e) => setField("nombreProyecto", e.target.value)}
           />
 
-          <Select
-            label="Perfil (opcional)"
-            placeholder="Sin perfil — crear vacío"
-            options={profileOptions.map((p) => ({ value: p.id, label: p.name }))}
-            value={profileId}
-            onChange={(e) => setProfileId(e.target.value)}
-            hint="El kit elegido (agentes, skills, reglas, IA y MCP) se aplica automáticamente al crear el proyecto."
-          />
-          {selectedProfile && (
-            <InlineAlert tone="info" title={selectedProfile.name}>
-              {selectedProfile.description || "Sin descripción."} — {selectedProfile.agentCount}{" "}
-              agentes · {selectedProfile.skillCount} skills · {selectedProfile.ruleCount} reglas ·{" "}
-              {selectedProfile.hasAi ? "IA configurada" : "sin IA configurada"} ·{" "}
-              {selectedProfile.mcpCount} MCP configurados
-            </InlineAlert>
-          )}
-
           {(category === "viabilidad" || category === "auditoria") && (
             <TextArea
               label={
@@ -660,6 +853,163 @@ export function ProvisioningScreen({
             </div>
           )}
 
+          {analysis?.recursosRecomendados &&
+            (analysis.recursosRecomendados.agentes.length > 0 ||
+              analysis.recursosRecomendados.skills.length > 0 ||
+              analysis.recursosRecomendados.reglas.length > 0) && (
+              <div className="dwm-provisioning-screen__resources-step">
+                <SectionHeader
+                  title="Preparar entorno recomendado"
+                  description="El análisis recomienda estos recursos. Reutiliza los que ya existen y crea con IA los que faltan."
+                />
+                {(
+                  [
+                    ["agent", "Agentes", analysis.recursosRecomendados.agentes],
+                    ["skill", "Skills", analysis.recursosRecomendados.skills],
+                    ["rule", "Reglas", analysis.recursosRecomendados.reglas],
+                  ] as const
+                ).map(
+                  ([kind, label, ids]) =>
+                    ids.length > 0 && (
+                      <div key={kind} className="dwm-provisioning-screen__resource-group">
+                        <strong>{label}</strong>
+                        <ul>
+                          {ids.map((id: string) => (
+                            <li key={id}>
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedResources[`${kind}:${id}`] ?? false}
+                                  onChange={(e) =>
+                                    setSelectedResources({
+                                      ...selectedResources,
+                                      [`${kind}:${id}`]: e.target.checked,
+                                    })
+                                  }
+                                />
+                                {id}
+                                {existingResourceIds[`${kind}:${id}`]
+                                  ? " — ya existe (se reutilizará)"
+                                  : " — se creará con IA"}
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                )}
+                <Button onClick={() => void prepareRecommendedResources()} loading={preparingResources}>
+                  Preparar entorno
+                </Button>
+                {resourcesPrepared && (
+                  <InlineAlert tone="success" title="Entorno preparado">
+                    Los recursos seleccionados ya están disponibles.
+                  </InlineAlert>
+                )}
+                {resourcesError && (
+                  <ErrorState title="No se pudo preparar el entorno" technicalDetail={resourcesError} />
+                )}
+              </div>
+            )}
+
+          <div className="dwm-provisioning-screen__profile-step">
+            <SectionHeader
+              title="¿Con qué Perfil quieres gestionar este trabajo?"
+              description="El kit elegido (agentes, skills, reglas, IA y MCP) se aplica automáticamente al proyecto."
+            />
+            <Select
+              label="Perfil"
+              placeholder="Sin perfil — crear vacío"
+              options={profileOptions.map((p) => ({ value: p.id, label: p.name }))}
+              value={profileId}
+              onChange={(e) => setProfileId(e.target.value)}
+            />
+            {selectedProfile && (
+              <InlineAlert tone="info" title={selectedProfile.name}>
+                {selectedProfile.description || "Sin descripción."} — {selectedProfile.agentCount}{" "}
+                agentes · {selectedProfile.skillCount} skills · {selectedProfile.ruleCount} reglas ·{" "}
+                {selectedProfile.hasAi ? "IA configurada" : "sin IA configurada"} ·{" "}
+                {selectedProfile.mcpCount} MCP configurados
+              </InlineAlert>
+            )}
+            <Button variant="secondary" onClick={() => setActiveSection("profiles")}>
+              Crear perfil nuevo
+            </Button>
+          </div>
+
+          {!reuseResult && (
+            <div className="dwm-provisioning-screen__project-mode-step">
+              <SectionHeader title="¿Este trabajo pertenece a un proyecto que ya existe?" />
+              <div className="dwm-provisioning-screen__project-mode-buttons">
+                <Button
+                  variant={projectMode === "existing" ? "primary" : "secondary"}
+                  onClick={() => setProjectMode("existing")}
+                >
+                  Usar proyecto existente
+                </Button>
+                <Button
+                  variant={projectMode === "new" || !projectMode ? "primary" : "secondary"}
+                  onClick={() => setProjectMode("new")}
+                >
+                  Crear proyecto nuevo
+                </Button>
+              </div>
+
+              {projectMode === "existing" && (
+                <div className="dwm-provisioning-screen__existing-project">
+                  {!existingClientId && fields.cliente.trim() && (
+                    <InlineAlert tone="warning" title="No se encontró ningún cliente con ese nombre">
+                      Solo se pueden reutilizar proyectos de un cliente ya existente.
+                    </InlineAlert>
+                  )}
+                  {existingClientId && existingProjects.length === 0 && (
+                    <InlineAlert tone="info" title="Este cliente todavía no tiene proyectos">
+                      Crea un proyecto nuevo para este trabajo.
+                    </InlineAlert>
+                  )}
+                  {existingProjects.length > 0 && (
+                    <>
+                      <Select
+                        label="Proyecto"
+                        placeholder="Elige un proyecto"
+                        options={existingProjects.map((p) => ({
+                          value: p.id,
+                          label: `${p.name} (${p.status})`,
+                        }))}
+                        value={existingProjectId}
+                        onChange={(e) => setExistingProjectId(e.target.value)}
+                      />
+                      <Button
+                        onClick={() => void useExistingProject()}
+                        loading={reusingProject}
+                        disabled={!existingProjectId}
+                      >
+                        Usar este proyecto
+                      </Button>
+                    </>
+                  )}
+                  {reuseError && (
+                    <ErrorState title="No se pudo usar el proyecto existente" technicalDetail={reuseError} />
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {reuseResult && (
+            <Card>
+              <InlineAlert tone="success" title={`Trabajo vinculado a «${reuseResult.projectName}»`}>
+                {profileId ? "Perfil aplicado. " : ""}Nunca se duplicó PSN-BASE: es el mismo proyecto real
+                ya existente.
+              </InlineAlert>
+              <InlineAlert tone={reuseResult.vsCodeOpened ? "success" : "warning"} title="VS Code">
+                {reuseResult.vsCodeMessage}
+              </InlineAlert>
+              <Button onClick={reset}>Crear otro</Button>
+            </Card>
+          )}
+
+          {(projectMode === "new" || !projectMode) && !reuseResult && (
           <div className="dwm-provisioning-screen__actions">
             <Button variant="secondary" onClick={reset}>
               Cancelar
@@ -688,6 +1038,7 @@ export function ProvisioningScreen({
               </Button>
             )}
           </div>
+          )}
         </div>
       </Card>
     </div>

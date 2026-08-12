@@ -3,6 +3,7 @@ import { act } from "react-dom/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ProvisioningScreen } from "../../../../../src/renderer/screens/provisioning/ProvisioningScreen.js";
 import { ToastProvider } from "../../../../../src/renderer/design-system/composites/Toast/index.js";
+import { NavigationProvider } from "../../../../../src/renderer/shell/NavigationContext.js";
 import { __resetQueryCacheForTests } from "../../../../../src/renderer/api-client/queryCache.js";
 import { click, mount } from "../../../support/renderHelpers.js";
 
@@ -67,9 +68,11 @@ const VALID_REPORT = {
 
 function mountScreen(props: { readonly initialClientName?: string } = {}) {
   return mount(
-    <ToastProvider>
-      <ProvisioningScreen {...props} />
-    </ToastProvider>
+    <NavigationProvider>
+      <ToastProvider>
+        <ProvisioningScreen {...props} />
+      </ToastProvider>
+    </NavigationProvider>
   );
 }
 
@@ -246,6 +249,65 @@ describe("ProvisioningScreen — Viabilidad con IA", () => {
     ).payload;
     expect(payload.briefing?.veredicto).toBe("Viable");
     expect(payload.briefing?.riesgos).toEqual(["Plazo ajustado"]);
+    unmount();
+  });
+
+  it("'Preparar entorno recomendado': reutiliza lo que ya existe en Biblioteca IA y crea con IA solo lo que falta (nunca duplica, nunca inventa un motor nuevo)", async () => {
+    const reportWithResources = {
+      ...VALID_REPORT,
+      recursosRecomendados: {
+        agentes: ["wordpress"],
+        skills: ["stripe"],
+        reglas: [],
+        ia: "claude",
+        mcp: [],
+      },
+    };
+    const invoke = setDwm({
+      "profiles.list": () => success("profiles.list", []),
+      "provisioning.analyze-viability": () =>
+        success("provisioning.analyze-viability", reportWithResources),
+      "content-scope.resolve-root": () => success("content-scope.resolve-root", { root: "/ws" }),
+      "agents.list": () => success("agents.list", [{ id: "wordpress" }]),
+      "skills.list": () => success("skills.list", []),
+      "rules.list": () => success("rules.list", []),
+      "content-generation.generate": () =>
+        success("content-generation.generate", { id: "stripe", path: "/x", opened: false }),
+    });
+    const { container, unmount } = mountScreen();
+    await openViabilidadForm(container);
+    const nameInput = container.querySelectorAll("input")[1] as HTMLInputElement;
+    setValue(nameInput, "Web con reservas");
+    setValue(
+      container.querySelector("textarea") as HTMLTextAreaElement,
+      "Necesito integrar pagos con Stripe."
+    );
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Generar análisis"
+      ) ?? null
+    );
+    await settle();
+
+    expect(container.textContent).toContain("wordpress");
+    expect(container.textContent).toContain("ya existe (se reutilizará)");
+    expect(container.textContent).toContain("stripe");
+    expect(container.textContent).toContain("se creará con IA");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Preparar entorno"
+      ) ?? null
+    );
+    await settle();
+
+    const generateCalls = invoke.mock.calls.filter(
+      (c) => (c[0] as { operation: string }).operation === "content-generation.generate"
+    );
+    expect(generateCalls).toHaveLength(1);
+    expect(
+      (generateCalls[0]![0] as { payload: { id: string; kind: string } }).payload
+    ).toMatchObject({ id: "stripe", kind: "skill" });
     unmount();
   });
 });
@@ -580,6 +642,62 @@ describe("ProvisioningScreen — Perfil integrado en la creación", () => {
 
     const clienteInput = container.querySelector("input") as HTMLInputElement;
     expect(clienteInput.value).toBe("MCI Finance");
+    unmount();
+  });
+
+  it("'Usar proyecto existente' vincula/aplica al proyecto real (nunca llama a provisioning.create-project, nunca duplica PSN-BASE)", async () => {
+    const invoke = setDwm({
+      "profiles.list": () => success("profiles.list", []),
+      "clients.list": () => success("clients.list", [{ id: "acme", name: "Acme" }]),
+      "projects.list": () => success("projects.list", ["p1"]),
+      "projects.get": () =>
+        success("projects.get", {
+          id: "p1",
+          metadata: { name: "Web Acme" },
+          state: "active",
+          configuration: { clientId: "acme" },
+        }),
+      "projects.open-in-vscode": () =>
+        success("projects.open-in-vscode", { opened: true, message: "Abierto en VS Code." }),
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+
+    const inputs = container.querySelectorAll("input");
+    setValue(inputs[0] as HTMLInputElement, "Acme");
+    await settle();
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Usar proyecto existente"
+      ) ?? null
+    );
+    await settle();
+
+    const projectSelect = Array.from(container.querySelectorAll("select")).find((s) =>
+      Array.from(s.options).some((o) => o.textContent?.includes("Web Acme"))
+    ) as HTMLSelectElement;
+    act(() => {
+      projectSelect.value = "p1";
+      projectSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Usar este proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "provisioning.create-project"
+      )
+    ).toBe(false);
+    const vscodeCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "projects.open-in-vscode"
+    );
+    expect((vscodeCall?.[0] as { payload: { id: string } }).payload.id).toBe("p1");
+    expect(container.textContent).toContain("Trabajo vinculado a «Web Acme»");
     unmount();
   });
 });

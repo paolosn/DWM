@@ -29,6 +29,7 @@
     "@dwm/rule-manager": "*",
     "@dwm/knowledge-manager": "*",
     "@dwm/client-manager": "*",
+    "@dwm/requirement-manager": "*",
     "@dwm/project": "*",
     "@dwm/environment-manager": "*",
     "@dwm/portable-package-manager": "*",
