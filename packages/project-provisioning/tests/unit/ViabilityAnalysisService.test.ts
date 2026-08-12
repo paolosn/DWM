@@ -274,4 +274,49 @@ describe("ViabilityAnalysisService", () => {
       );
     }
   });
+
+  it("bug real reproducido: un JSON truncado a mitad (respuesta cortada por límite de tokens insuficiente, DeepSeek u otro proveedor) falla con un mensaje que incluye un fragmento real de diagnóstico — nunca inventa un informe", async () => {
+    const { aiManager } = await buildEnv({ "ai.mci-finance.openai": "clave-real-deepseek" });
+    // JSON real cortado a mitad de generación, exactamente el
+    // síntoma reportado ("JSON inválido") cuando max_tokens es
+    // insuficiente para el informe completo de 17 secciones.
+    const truncated =
+      '{"veredicto":"Viable con reservas","puntuacion":72,"resumen":"El proyecto es viable dentro del plazo indicado","requerimientoCliente":"El cliente pide una tienda online con reservas","riesgos":["Plazo ajus';
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: truncated } }] }));
+    const service = new ViabilityAnalysisService(aiManager, fetchImpl);
+
+    await expect(
+      service.analyze(
+        { provider: "openai", model: "deepseek-chat", secretReference: "ai.mci-finance.openai" },
+        baseInput
+      )
+    ).rejects.toMatchObject({
+      message: expect.stringContaining("El proyecto es viable dentro del plazo indicado"),
+    });
+  });
+
+  it("corrección real: con el informe COMPLETO de 17 secciones, la petición real pide margen de tokens suficiente y json_object — y el análisis funciona (no solo 'Probar modelo')", async () => {
+    const { aiManager } = await buildEnv({ "ai.mci-finance.openai": "clave-real-deepseek" });
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse(200, { choices: [{ message: { content: JSON.stringify(VALID_REPORT) } }] })
+      );
+    const service = new ViabilityAnalysisService(aiManager, fetchImpl);
+
+    const report = await service.analyze(
+      { provider: "openai", model: "deepseek-chat", secretReference: "ai.mci-finance.openai" },
+      baseInput
+    );
+
+    expect(report.veredicto).toBe(VALID_REPORT.veredicto);
+    expect(report.recursosRecomendados?.skills).toEqual(VALID_REPORT.recursosRecomendados.skills);
+
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
+    expect(body.max_tokens).toBeGreaterThanOrEqual(3000);
+    expect(body.response_format).toEqual({ type: "json_object" });
+  });
 });

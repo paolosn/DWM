@@ -130,9 +130,15 @@ function parseReport(
   try {
     parsed = JSON.parse(extractJsonBlock(content));
   } catch (err) {
+    // El contenido de la respuesta de la IA nunca contiene la clave
+    // (esta solo viaja en la petición, no en la respuesta) — seguro
+    // incluir aquí un fragmento real para diagnóstico, en vez de un
+    // mensaje genérico sin ninguna pista útil (p. ej. confirma si el
+    // JSON se cortó a mitad de generación por falta de tokens).
+    const preview = content.slice(0, 200).replace(/\s+/g, " ").trim();
     throw createProjectProvisioningError({
       code: ProjectProvisioningErrorCode.PROVISIONING_AI_FAILED,
-      message: "La IA no devolvió un informe de viabilidad interpretable (JSON inválido).",
+      message: `La IA no devolvió un informe de viabilidad interpretable (JSON inválido). Respuesta recibida (primeros 200 caracteres): "${preview}"`,
       origin: "ai",
       recoverable: true,
       cause: err,
@@ -260,8 +266,9 @@ export class ViabilityAnalysisService {
       response = await this.aiManager.sendRequest(
         {
           prompt,
-          maxTokens: 1500,
+          maxTokens: 3000,
           temperature: 0.3,
+          jsonMode: true,
           ...(config.model ? { model: config.model } : {}),
         },
         providerId
@@ -269,7 +276,13 @@ export class ViabilityAnalysisService {
     } catch (err) {
       if (config.fallbackModel && config.model && config.fallbackModel !== config.model) {
         response = await this.aiManager.sendRequest(
-          { prompt, maxTokens: 1500, temperature: 0.3, model: config.fallbackModel },
+          {
+            prompt,
+            maxTokens: 3000,
+            temperature: 0.3,
+            jsonMode: true,
+            model: config.fallbackModel,
+          },
           providerId
         );
       } else {

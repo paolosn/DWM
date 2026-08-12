@@ -116,6 +116,7 @@ export class HttpAIProvider implements AIProvider {
         messages: [{ role: "user", content: request.prompt }],
         ...(request.maxTokens !== undefined ? { max_tokens: request.maxTokens } : {}),
         ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
+        ...(request.jsonMode ? { response_format: { type: "json_object" } } : {}),
       }),
     });
     const body = await this.parseJsonSafely(response);

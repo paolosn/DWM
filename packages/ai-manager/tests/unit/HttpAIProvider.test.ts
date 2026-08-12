@@ -518,4 +518,23 @@ describe("HttpAIProvider", () => {
     const body = JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string);
     expect(body.model).toBe("claude-3-5-sonnet-20241022");
   });
+
+  it("jsonMode: true añade response_format:json_object al body real OpenAI-compatible (DeepSeek), forzando JSON puro sin depender solo del prompt", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { choices: [{ message: { content: "{}" } }] }));
+    const provider = new HttpAIProvider({
+      id: "deepseek-real",
+      name: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      format: "openai",
+      model: "deepseek-chat",
+      fetchImpl,
+    });
+
+    await provider.sendRequest({ prompt: "x", jsonMode: true }, "clave-real");
+
+    const body = JSON.parse((fetchImpl.mock.calls[0]![1] as RequestInit).body as string);
+    expect(body.response_format).toEqual({ type: "json_object" });
+  });
 });
