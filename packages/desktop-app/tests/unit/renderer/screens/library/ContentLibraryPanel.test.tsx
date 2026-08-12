@@ -206,6 +206,52 @@ describe("ContentLibraryPanel (Biblioteca IA — Agentes)", () => {
     unmount();
   });
 
+  it("editar un recurso maestro (alcance global) con uso real conocido advierte primero con los proyectos reales, antes de abrir el editor", async () => {
+    const invoke = setDwm({
+      "projects.list": () => success("projects.list", ["p1"]),
+      "projects.get": () =>
+        success("projects.get", { id: "p1", metadata: { name: "Proyecto Uno" } }),
+      "content-sync.list-catalog": () =>
+        success("content-sync.list-catalog", [
+          { id: "coordinador", preview: { action: "unchanged" } },
+        ]),
+      "agents.edit-file": () =>
+        success("agents.edit-file", { opened: true, message: "Abierto en VS Code." }),
+    });
+    const { container, unmount } = mountPanel();
+    await settle(10);
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Editar archivo"
+      ) ?? null
+    );
+    await settle();
+
+    // La advertencia real aparece con el nombre real del proyecto, y el editor NO se abre todavía.
+    expect(container.textContent).toContain("recurso maestro");
+    expect(container.textContent).toContain("Proyecto Uno");
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "agents.edit-file"
+      )
+    ).toBe(false);
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Editar de todos modos"
+      ) ?? null
+    );
+    await settle();
+
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "agents.edit-file"
+      )
+    ).toBe(true);
+    unmount();
+  });
+
   it("cambiar el alcance a cliente vuelve a pedir el catálogo real de ese cliente (sourceClientId), no el global", async () => {
     setDwm({
       "clients.list": () => success("clients.list", [{ id: "mci-finance", name: "MCI Finance" }]),

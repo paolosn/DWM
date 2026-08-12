@@ -318,6 +318,44 @@ export function ProvisioningScreen({
     }
   }
 
+  /**
+   * client-workflow "feature/requirement-workflow" (correción
+   * reuse-first) — sincroniza al proyecto real los recursos
+   * seleccionados en "Preparar entorno recomendado", tanto los que ya
+   * existían (reutilizados tal cual) como los recién creados con IA
+   * en el paso anterior. Reutiliza exclusivamente `content-sync.assign`
+   * (mismo `ContentSyncService` no destructivo: lee del origen real
+   * global/cliente, escribe SIEMPRE en el destino — nunca modifica el
+   * recurso maestro original). Se llama DESPUÉS de crear/seleccionar
+   * el proyecto, nunca antes: hasta ese momento no existe un
+   * `targetProjectId` real al que sincronizar.
+   */
+  async function syncRecommendedResourcesToProject(targetProjectId: string): Promise<void> {
+    const recommended = analysis?.recursosRecomendados;
+    if (!recommended) return;
+    const toSync: { kind: "agent" | "skill" | "rule"; id: string }[] = [];
+    for (const id of recommended.agentes) {
+      if (selectedResources[`agent:${id}`]) toSync.push({ kind: "agent", id });
+    }
+    for (const id of recommended.skills) {
+      if (selectedResources[`skill:${id}`]) toSync.push({ kind: "skill", id });
+    }
+    for (const id of recommended.reglas) {
+      if (selectedResources[`rule:${id}`]) toSync.push({ kind: "rule", id });
+    }
+    for (const item of toSync) {
+      await callOperation("content-sync.assign", {
+        kind: item.kind,
+        id: item.id,
+        targetProjectId,
+      }).catch(() => {
+        // Un recurso individual que falle al sincronizar no debe
+        // bloquear el resto del flujo (el proyecto ya está creado y
+        // activo); el usuario puede reintentarlo desde Biblioteca IA.
+      });
+    }
+  }
+
   useEffect(() => {
     if (projectMode !== "existing" || !fields.cliente.trim()) return;
     void (async () => {
@@ -335,9 +373,7 @@ export function ProvisioningScreen({
       }
       const ids = (await callOperation("projects.list", {}).catch(() => [])) as string[];
       const projects = await Promise.all(
-        ids.map((id) =>
-          callOperation("projects.get", { id }).catch(() => undefined)
-        )
+        ids.map((id) => callOperation("projects.get", { id }).catch(() => undefined))
       );
       setExistingProjects(
         (
@@ -377,6 +413,7 @@ export function ProvisioningScreen({
           throw err;
         });
       }
+      await syncRecommendedResourcesToProject(existingProjectId);
       const opened = (await callOperation("projects.open-in-vscode", {
         id: existingProjectId,
       })) as { opened: boolean; message: string };
@@ -557,6 +594,7 @@ export function ProvisioningScreen({
       if (profileId) {
         await applyProfile(created.projectId, false);
       }
+      await syncRecommendedResourcesToProject(created.projectId);
     } catch (err) {
       setError(err instanceof DwmOperationError ? err.message : "Error desconocido.");
     } finally {
@@ -898,7 +936,10 @@ export function ProvisioningScreen({
                       </div>
                     )
                 )}
-                <Button onClick={() => void prepareRecommendedResources()} loading={preparingResources}>
+                <Button
+                  onClick={() => void prepareRecommendedResources()}
+                  loading={preparingResources}
+                >
                   Preparar entorno
                 </Button>
                 {resourcesPrepared && (
@@ -907,7 +948,10 @@ export function ProvisioningScreen({
                   </InlineAlert>
                 )}
                 {resourcesError && (
-                  <ErrorState title="No se pudo preparar el entorno" technicalDetail={resourcesError} />
+                  <ErrorState
+                    title="No se pudo preparar el entorno"
+                    technicalDetail={resourcesError}
+                  />
                 )}
               </div>
             )}
@@ -958,7 +1002,10 @@ export function ProvisioningScreen({
               {projectMode === "existing" && (
                 <div className="dwm-provisioning-screen__existing-project">
                   {!existingClientId && fields.cliente.trim() && (
-                    <InlineAlert tone="warning" title="No se encontró ningún cliente con ese nombre">
+                    <InlineAlert
+                      tone="warning"
+                      title="No se encontró ningún cliente con ese nombre"
+                    >
                       Solo se pueden reutilizar proyectos de un cliente ya existente.
                     </InlineAlert>
                   )}
@@ -989,7 +1036,10 @@ export function ProvisioningScreen({
                     </>
                   )}
                   {reuseError && (
-                    <ErrorState title="No se pudo usar el proyecto existente" technicalDetail={reuseError} />
+                    <ErrorState
+                      title="No se pudo usar el proyecto existente"
+                      technicalDetail={reuseError}
+                    />
                   )}
                 </div>
               )}
@@ -998,9 +1048,12 @@ export function ProvisioningScreen({
 
           {reuseResult && (
             <Card>
-              <InlineAlert tone="success" title={`Trabajo vinculado a «${reuseResult.projectName}»`}>
-                {profileId ? "Perfil aplicado. " : ""}Nunca se duplicó PSN-BASE: es el mismo proyecto real
-                ya existente.
+              <InlineAlert
+                tone="success"
+                title={`Trabajo vinculado a «${reuseResult.projectName}»`}
+              >
+                {profileId ? "Perfil aplicado. " : ""}Nunca se duplicó PSN-BASE: es el mismo
+                proyecto real ya existente.
               </InlineAlert>
               <InlineAlert tone={reuseResult.vsCodeOpened ? "success" : "warning"} title="VS Code">
                 {reuseResult.vsCodeMessage}
@@ -1010,34 +1063,34 @@ export function ProvisioningScreen({
           )}
 
           {(projectMode === "new" || !projectMode) && !reuseResult && (
-          <div className="dwm-provisioning-screen__actions">
-            <Button variant="secondary" onClick={reset}>
-              Cancelar
-            </Button>
-            {category === "viabilidad" && !analysis ? (
-              <Button
-                onClick={() => void handleAnalyze()}
-                loading={analyzing}
-                disabled={!fields.descripcion.trim() || !fields.nombreProyecto.trim()}
-              >
-                Generar análisis
+            <div className="dwm-provisioning-screen__actions">
+              <Button variant="secondary" onClick={reset}>
+                Cancelar
               </Button>
-            ) : (
-              <Button
-                onClick={() => void handleSubmit()}
-                loading={submitting}
-                disabled={!fields.cliente.trim() || !fields.nombreProyecto.trim()}
-              >
-                {category === "viabilidad"
-                  ? "Cliente acepta — crear proyecto"
-                  : category === "auditoria"
-                    ? "Cliente acepta — preparar auditoría"
-                    : category === "seguridad"
-                      ? "Confirmar"
-                      : "Crear proyecto"}
-              </Button>
-            )}
-          </div>
+              {category === "viabilidad" && !analysis ? (
+                <Button
+                  onClick={() => void handleAnalyze()}
+                  loading={analyzing}
+                  disabled={!fields.descripcion.trim() || !fields.nombreProyecto.trim()}
+                >
+                  Generar análisis
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => void handleSubmit()}
+                  loading={submitting}
+                  disabled={!fields.cliente.trim() || !fields.nombreProyecto.trim()}
+                >
+                  {category === "viabilidad"
+                    ? "Cliente acepta — crear proyecto"
+                    : category === "auditoria"
+                      ? "Cliente acepta — preparar auditoría"
+                      : category === "seguridad"
+                        ? "Confirmar"
+                        : "Crear proyecto"}
+                </Button>
+              )}
+            </div>
           )}
         </div>
       </Card>

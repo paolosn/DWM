@@ -103,6 +103,7 @@ export function ContentLibraryPanel({
   const [duplicating, setDuplicating] = useState<Summary | undefined>(undefined);
   const [newDuplicateId, setNewDuplicateId] = useState("");
   const [pendingArchive, setPendingArchive] = useState<Summary | undefined>(undefined);
+  const [pendingMasterEdit, setPendingMasterEdit] = useState<Summary | undefined>(undefined);
   const [assigning, setAssigning] = useState<Summary | undefined>(undefined);
   const [assignTargetProjectId, setAssignTargetProjectId] = useState("");
 
@@ -306,7 +307,29 @@ export function ContentLibraryPanel({
     }
   }
 
+  /**
+   * client-workflow "feature/requirement-workflow" (correción
+   * reuse-first, punto 7) — un recurso de alcance global/cliente es
+   * un recurso MAESTRO reutilizable: editarlo afecta a su definición
+   * real, que futuras sincronizaciones/reaplicaciones propagarán a
+   * los proyectos donde se use (nunca modifica retroactivamente lo
+   * ya materializado — `ContentSyncService` siempre copia, confirmado
+   * no destructivo). Si tiene uso real conocido
+   * (`assignedProjectsByItemId`, ya calculado en este mismo panel),
+   * se advierte con los nombres reales antes de abrir el editor.
+   */
   async function handleEditFile(item: Summary): Promise<void> {
+    if (!root) return;
+    const isMasterResource = lockedScope?.kind !== "project" && scope !== "project";
+    const usedInProjects = assignedProjectsByItemId[item.id] ?? [];
+    if (isMasterResource && usedInProjects.length > 0) {
+      setPendingMasterEdit(item);
+      return;
+    }
+    await performEditFile(item);
+  }
+
+  async function performEditFile(item: Summary): Promise<void> {
     if (!root) return;
     try {
       // Abre el fichero real directamente en VS Code (backend reutiliza
@@ -822,6 +845,25 @@ export function ContentLibraryPanel({
         confirmLabel="Archivar"
         onCancel={() => setPendingArchive(undefined)}
         onConfirm={() => void handleArchive()}
+      />
+
+      <ConfirmDialog
+        open={pendingMasterEdit !== undefined}
+        title={pendingMasterEdit ? `Editar «${pendingMasterEdit.id}» — recurso reutilizable` : ""}
+        description={
+          pendingMasterEdit
+            ? `Este ${label.singular.toLowerCase()} es un recurso maestro (alcance ${
+                scope === "client" ? "cliente" : "global"
+              }), en uso real en: ${(assignedProjectsByItemId[pendingMasterEdit.id] ?? []).join(", ")}. Los cambios no alteran lo ya materializado en esos proyectos, pero sí las próximas veces que se aplique o resincronice.`
+            : ""
+        }
+        confirmLabel="Editar de todos modos"
+        onCancel={() => setPendingMasterEdit(undefined)}
+        onConfirm={() => {
+          const item = pendingMasterEdit;
+          setPendingMasterEdit(undefined);
+          if (item) void performEditFile(item);
+        }}
       />
 
       <ConfirmDialog
