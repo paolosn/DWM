@@ -115,7 +115,7 @@ describe("ProjectDetailScreen", () => {
     unmount();
   });
 
-  it("muestra exactamente las 5 pestañas reales del diseño final: Resumen, Biblioteca IA, Conexiones, Documentos, Actividad", async () => {
+  it("muestra exactamente las 6 pestañas reales: Resumen, Biblioteca IA, Requerimientos, Conexiones, Documentos, Actividad", async () => {
     setDwm({
       "projects.get": {
         success: true,
@@ -137,6 +137,7 @@ describe("ProjectDetailScreen", () => {
     expect(tabLabels).toEqual([
       "Resumen",
       "Biblioteca IA",
+      "Requerimientos",
       "Conexiones",
       "Documentos",
       "Actividad",

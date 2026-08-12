@@ -286,6 +286,78 @@ function ProjectSummaryPanel({
   );
 }
 
+const REQUIREMENT_STATUS_LABEL: Record<string, string> = {
+  pending: "Pendiente",
+  accepted: "Aceptado",
+  linked: "Vinculado a proyecto",
+  in_progress: "En curso",
+  completed: "Completado",
+};
+
+/**
+ * client-workflow "feature/requirement-workflow" (Commit 6) —
+ * Requerimientos reales vinculados a este proyecto (mismo
+ * requirements.list de RequirementManager ya usado en la ficha del
+ * cliente, filtrado por projectId). Igual que Documentos/Actividad,
+ * necesita el cliente del proyecto (los requerimientos viven bajo el
+ * cliente real, nunca duplicados por proyecto).
+ */
+function ProjectRequirementsTab({
+  projectId,
+  clientId,
+}: {
+  readonly projectId: string;
+  readonly clientId: string | undefined;
+}): JSX.Element {
+  const query = useDwmQuery(
+    "requirements.list",
+    { clientId: clientId ?? "", projectId },
+    { enabled: Boolean(clientId) }
+  );
+
+  if (!clientId) {
+    return (
+      <EmptyState
+        title="Este proyecto no tiene cliente asignado"
+        description="Los requerimientos se gestionan a nivel de cliente. Asigna un cliente a este proyecto para verlos aquí."
+      />
+    );
+  }
+  if (query.status === "idle" || query.status === "loading") {
+    return <Skeleton variant="block" height="60px" />;
+  }
+  if (query.status === "error") {
+    return (
+      <ErrorState
+        title="No se pudieron cargar los requerimientos"
+        {...(query.error?.message ? { technicalDetail: query.error.message } : {})}
+      />
+    );
+  }
+  const requirements = query.data ?? [];
+  if (requirements.length === 0) {
+    return <EmptyState title="Este proyecto todavía no tiene requerimientos vinculados" />;
+  }
+  return (
+    <div className="dwm-project-detail__requirements">
+      {requirements.map((r) => (
+        <div key={r.id} className="dwm-project-detail__requirement-row">
+          <div>
+            <h4>{r.title}</h4>
+            <p>{r.description}</p>
+          </div>
+          <StatusBadge
+            label={REQUIREMENT_STATUS_LABEL[r.status] ?? r.status}
+            tone={
+              r.status === "completed" ? "success" : r.status === "linked" ? "accent" : "neutral"
+            }
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /**
  * Documentos y Actividad no tienen un almacén propio por proyecto en
  * el backend (ClientDocumentIndex/ActivityLog son estrictamente de
@@ -496,6 +568,13 @@ export function ProjectDetailScreen({ projectId, onBack }: ProjectDetailScreenPr
       id: "kilo-content",
       label: "Biblioteca IA",
       content: <ProjectContentTab projectId={project.id} />,
+    },
+    {
+      id: "requirements",
+      label: "Requerimientos",
+      content: (
+        <ProjectRequirementsTab projectId={project.id} clientId={project.configuration.clientId} />
+      ),
     },
     {
       id: "connections",

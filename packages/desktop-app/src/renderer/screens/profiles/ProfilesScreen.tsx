@@ -75,6 +75,9 @@ export function ProfilesScreen(): JSX.Element {
 
   const [projectOptions, setProjectOptions] = useState<readonly ProjectOption[]>([]);
   const [appliedIn, setAppliedIn] = useState<readonly ProjectOption[] | undefined>(undefined);
+  const [profileRequirements, setProfileRequirements] = useState<
+    readonly { id: string; title: string; status: string; clientId: string }[] | undefined
+  >(undefined);
   const [appliedCountByProfileId, setAppliedCountByProfileId] = useState<Record<string, number>>(
     {}
   );
@@ -161,6 +164,7 @@ export function ProfilesScreen(): JSX.Element {
   useEffect(() => {
     if (!detailId) {
       setAppliedIn(undefined);
+      setProfileRequirements(undefined);
       return;
     }
     void (async () => {
@@ -184,6 +188,29 @@ export function ProfilesScreen(): JSX.Element {
         );
       } catch {
         setAppliedIn([]);
+      }
+      // client-workflow "feature/requirement-workflow" (Commit 6) —
+      // "Requerimientos que usan este perfil": Requirement no indexa
+      // por perfil de forma global (vive bajo cada cliente), así que
+      // se recorren los clientes reales (clients.list) y se filtra
+      // por profileId con requirements.list ya existente — ninguna
+      // operación ni índice nuevo.
+      try {
+        const clients = (await callOperation("clients.list", {})) as { id: string }[];
+        const perClient = await Promise.all(
+          clients.map((c) =>
+            callOperation("requirements.list", { clientId: c.id, profileId: detailId }).catch(
+              () => []
+            )
+          )
+        );
+        setProfileRequirements(
+          perClient
+            .flat()
+            .map((r) => ({ id: r.id, title: r.title, status: r.status, clientId: r.clientId }))
+        );
+      } catch {
+        setProfileRequirements([]);
       }
     })();
   }, [detailId]);
@@ -554,6 +581,24 @@ export function ProfilesScreen(): JSX.Element {
                       >
                         Abrir proyecto
                       </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="dwm-profiles-screen__requirements">
+              <SectionHeader title="Requerimientos que usan este perfil" />
+              {profileRequirements === undefined && <Skeleton variant="block" height="60px" />}
+              {profileRequirements !== undefined && profileRequirements.length === 0 && (
+                <EmptyState title="Ningún requerimiento usa todavía este perfil." />
+              )}
+              {profileRequirements !== undefined && profileRequirements.length > 0 && (
+                <ul>
+                  {profileRequirements.map((r) => (
+                    <li key={r.id} className="dwm-profiles-screen__applied-row">
+                      <span>{r.title}</span>
+                      <StatusBadge label={r.status} tone="neutral" />
                     </li>
                   ))}
                 </ul>
