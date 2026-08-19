@@ -17,6 +17,7 @@ import { listClientActivity, type ActivityEntry } from "../ActivityLog.js";
 import { indexProjectDocuments, type ClientDocumentEntry } from "../ClientDocumentIndex.js";
 import { createApplicationError } from "../errors/ApplicationError.js";
 import { ApplicationErrorCode } from "../errors/ApplicationErrorCode.js";
+import { ensureWorkspaceSkeletonAndScan } from "../ensureWorkspaceSkeleton.js";
 
 declare module "../ApplicationRequest.js" {
   interface ApplicationOperationMap {
@@ -66,6 +67,42 @@ export class ClientController implements ApplicationController {
   register(operations: ApplicationOperationRegistry, permissions: ApplicationPermissions): void {
     const manager = () => requireDependency(this.context.clientManager, "client-manager");
 
+    /**
+     * client-workflow "fix/kilo-clients-active-root-race" — causa
+     * real del bug de producción "PSNAdapter no reconoce el recurso
+     * 'clientes'": `ClientManager.resolveDirectory()` caía en el
+     * `activeRoot` interno de PSNAdapter cuando `root` no venía
+     * explícito — un único puntero GLOBAL Y MUTABLE que CUALQUIER
+     * escaneo bajo demanda de otro alcance (p. ej. Biblioteca IA
+     * global escaneando PSN-BASE) sobrescribe. Único punto central de
+     * corrección: cuando el payload no trae `root`, se resuelve aquí
+     * la raíz REAL y ESTABLE del Workspace activo
+     * (`portableWorkspaceManager.getActiveWorkspace()`, nunca el
+     * `activeRoot` volátil de PSNAdapter), garantizando además que
+     * esa raíz esté realmente escaneada antes de delegar al manager
+     * — mismo mecanismo ya usado por `resolveContentRoot.ts`. Nunca
+     * se oculta el error con catch/[]: si no hay Workspace activo,
+     * se lanza un error real y claro.
+     */
+    const resolveClientsRoot = async (explicitRoot?: string): Promise<string> => {
+      if (explicitRoot) return explicitRoot;
+      const active = this.context.portableWorkspaceManager?.getActiveWorkspace();
+      if (!active) {
+        throw createApplicationError({
+          code: ApplicationErrorCode.APP_INVALID_PAYLOAD,
+          message: "No hay ningún Sistema de Trabajo activo.",
+          origin: "validation",
+          category: "not-found",
+          retryable: false,
+          recoverable: true,
+        });
+      }
+      if (this.context.psnAdapter) {
+        await ensureWorkspaceSkeletonAndScan(this.context.psnAdapter, active.root);
+      }
+      return active.root;
+    };
+
     permissions.register("clients.list", ["read"]);
     operations.register({
       name: "clients.list",
@@ -81,7 +118,8 @@ export class ClientController implements ApplicationController {
           ...(root !== undefined ? { root } : {}),
         };
       },
-      handler: async (payload) => manager().listClients(payload),
+      handler: async (payload) =>
+        manager().listClients({ ...payload, root: await resolveClientsRoot(payload.root) }),
     });
 
     permissions.register("clients.get", ["read"]);
@@ -95,7 +133,8 @@ export class ClientController implements ApplicationController {
         assertSafeOptionalPath(record, "root", { allowAbsolute: true });
         return { id, root: optionalString(record, "root") };
       },
-      handler: async (payload) => manager().getClient(payload.id, payload.root),
+      handler: async (payload) =>
+        manager().getClient(payload.id, await resolveClientsRoot(payload.root)),
     });
 
     permissions.register("clients.create", ["write"]);
@@ -129,7 +168,7 @@ export class ClientController implements ApplicationController {
             ...(payload.tags ? { tags: payload.tags } : {}),
             ...(payload.description ? { description: payload.description } : {}),
           },
-          payload.root
+          await resolveClientsRoot(payload.root)
         ),
     });
 
@@ -164,7 +203,7 @@ export class ClientController implements ApplicationController {
             ...(payload.tags ? { tags: payload.tags } : {}),
             ...(payload.description ? { description: payload.description } : {}),
           },
-          payload.root
+          await resolveClientsRoot(payload.root)
         ),
     });
 
@@ -179,7 +218,8 @@ export class ClientController implements ApplicationController {
         assertSafeOptionalPath(record, "root", { allowAbsolute: true });
         return { id, root: optionalString(record, "root") };
       },
-      handler: async (payload) => manager().archiveClient(payload.id, payload.root),
+      handler: async (payload) =>
+        manager().archiveClient(payload.id, await resolveClientsRoot(payload.root)),
     });
 
     permissions.register("clients.restore", ["restore"]);
@@ -193,7 +233,8 @@ export class ClientController implements ApplicationController {
         assertSafeOptionalPath(record, "root", { allowAbsolute: true });
         return { id, root: optionalString(record, "root") };
       },
-      handler: async (payload) => manager().restoreClient(payload.id, payload.root),
+      handler: async (payload) =>
+        manager().restoreClient(payload.id, await resolveClientsRoot(payload.root)),
     });
 
     permissions.register("clients.delete", ["delete"], { destructive: true });
@@ -209,7 +250,11 @@ export class ClientController implements ApplicationController {
         return { id, root: optionalString(record, "root") };
       },
       handler: async (payload) => {
-        await manager().deleteClient(payload.id, { confirmPermanent: true }, payload.root);
+        await manager().deleteClient(
+          payload.id,
+          { confirmPermanent: true },
+          await resolveClientsRoot(payload.root)
+        );
         return { deleted: true as const };
       },
     });
