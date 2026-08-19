@@ -13,6 +13,7 @@ import {
   FileText,
   CircleHelp,
   Info,
+  Sparkles,
 } from "lucide-react";
 import { PageHeader } from "../../design-system/composites/PageHeader/index.js";
 import { Card } from "../../design-system/primitives/Card/index.js";
@@ -96,15 +97,6 @@ function GroupHeading({
 
 const SISTEMA: readonly SectionEntry[] = [
   {
-    id: "settings",
-    icon: SlidersHorizontal,
-    title: "Configuración avanzada",
-    description: "Editor real de las secciones de configuración (config.*).",
-  },
-];
-
-const WORKSPACE: readonly SectionEntry[] = [
-  {
     id: "workspaces",
     icon: Layers,
     title: "Workspaces",
@@ -115,6 +107,19 @@ const WORKSPACE: readonly SectionEntry[] = [
     icon: Database,
     title: "Backups",
     description: "Copias de seguridad del Workspace.",
+  },
+  {
+    id: "status",
+    icon: Activity,
+    title: "Estado y diagnóstico",
+    description: "Estado de los módulos del sistema.",
+  },
+  { id: "logs", icon: FileText, title: "Logs", description: "Registro real de eventos de DWM." },
+  {
+    id: "settings",
+    icon: SlidersHorizontal,
+    title: "Configuración avanzada",
+    description: "Editor real de las secciones de configuración (config.*).",
   },
 ];
 
@@ -161,16 +166,12 @@ const CONOCIMIENTO: readonly SectionEntry[] = [
     title: "Conocimiento",
     description: "Elementos reales del Workspace.",
   },
-];
-
-const DIAGNOSTICO: readonly SectionEntry[] = [
   {
-    id: "status",
-    icon: Activity,
-    title: "Estado y diagnóstico",
-    description: "Estado de los módulos del sistema.",
+    id: "aiLibrary",
+    icon: Sparkles,
+    title: "Biblioteca IA",
+    description: "Acceso directo a Agentes, Skills y Reglas.",
   },
-  { id: "logs", icon: FileText, title: "Logs", description: "Registro real de eventos de DWM." },
 ];
 
 const AYUDA: readonly SectionEntry[] = [
@@ -191,9 +192,9 @@ const AYUDA: readonly SectionEntry[] = [
 /**
  * Configuración — punto único de entrada a todo lo técnico/avanzado,
  * agrupado en 4 bloques visuales reales (Sistema, Herramientas,
- * IA+Conocimiento combinadas, Diagnóstico+Ayuda), reutilizando
- * exactamente las pantallas ya existentes (`useNavigation()`), sin
- * ninguna ruta nueva ni eliminada.
+ * IA+Conocimiento combinadas, Ayuda), reutilizando exactamente las
+ * pantallas ya existentes (`useNavigation()`), sin ninguna ruta nueva
+ * ni eliminada.
  */
 export function ConfiguracionScreen(): JSX.Element {
   const { setActiveSection } = useNavigation();
@@ -209,7 +210,7 @@ export function ConfiguracionScreen(): JSX.Element {
         <GroupHeading
           title="Sistema"
           count={SISTEMA.length}
-          description="Configuración avanzada de DWM."
+          description="Dónde vive el Sistema de Trabajo activo, sus copias, su estado y su configuración avanzada."
         />
         <div className="dwm-configuracion-screen__row-3">
           {SISTEMA.map((entry) => (
@@ -217,24 +218,6 @@ export function ConfiguracionScreen(): JSX.Element {
               key={entry.id}
               entry={entry}
               accent={ACCENT.blue}
-              onOpen={setActiveSection}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="dwm-configuracion-screen__block">
-        <GroupHeading
-          title="Workspace"
-          count={WORKSPACE.length}
-          description="Dónde vive el Sistema de Trabajo activo y sus copias de seguridad."
-        />
-        <div className="dwm-configuracion-screen__row-3">
-          {WORKSPACE.map((entry) => (
-            <SettingsCard
-              key={entry.id}
-              entry={entry}
-              accent={ACCENT.slate}
               onOpen={setActiveSection}
             />
           ))}
@@ -269,7 +252,7 @@ export function ConfiguracionScreen(): JSX.Element {
           <GroupHeading
             title="Conocimiento"
             count={CONOCIMIENTO.length}
-            description="Elementos de conocimiento del Workspace."
+            description="Elementos de conocimiento del Workspace y Biblioteca IA."
           />
         </div>
         <div className="dwm-configuracion-screen__row-3">
@@ -292,40 +275,21 @@ export function ConfiguracionScreen(): JSX.Element {
         </div>
       </section>
 
-      <section className="dwm-configuracion-screen__block dwm-configuracion-screen__split">
-        <div>
-          <GroupHeading
-            title="Diagnóstico"
-            count={DIAGNOSTICO.length}
-            description="Estado del sistema y registro de eventos."
-          />
-          <div className="dwm-configuracion-screen__row-2">
-            {DIAGNOSTICO.map((entry) => (
-              <SettingsCard
-                key={entry.id}
-                entry={entry}
-                accent={ACCENT.slate}
-                onOpen={setActiveSection}
-              />
-            ))}
-          </div>
-        </div>
-        <div>
-          <GroupHeading
-            title="Ayuda"
-            count={AYUDA.length}
-            description="Documentación y acerca de DWM."
-          />
-          <div className="dwm-configuracion-screen__row-2">
-            {AYUDA.map((entry) => (
-              <SettingsCard
-                key={entry.id}
-                entry={entry}
-                accent={ACCENT.pink}
-                onOpen={setActiveSection}
-              />
-            ))}
-          </div>
+      <section className="dwm-configuracion-screen__block">
+        <GroupHeading
+          title="Ayuda"
+          count={AYUDA.length}
+          description="Documentación y acerca de DWM."
+        />
+        <div className="dwm-configuracion-screen__row-3">
+          {AYUDA.map((entry) => (
+            <SettingsCard
+              key={entry.id}
+              entry={entry}
+              accent={ACCENT.pink}
+              onOpen={setActiveSection}
+            />
+          ))}
         </div>
       </section>
     </div>
