@@ -41,11 +41,6 @@
   grid-template-columns: repeat(3, 1fr);
   gap: var(--dwm-space-md);
 }
-.dwm-configuracion-screen__row-2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--dwm-space-md);
-}
 .dwm-configuracion-screen__combined-headers {
   display: flex;
   gap: var(--dwm-space-md);
@@ -55,16 +50,6 @@
 }
 .dwm-configuracion-screen__combined-headers > *:last-child {
   flex: 1;
-}
-.dwm-configuracion-screen__split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--dwm-space-lg);
-}
-.dwm-configuracion-screen__split > div {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dwm-space-sm);
 }
 
 .dwm-configuracion-screen__card {
