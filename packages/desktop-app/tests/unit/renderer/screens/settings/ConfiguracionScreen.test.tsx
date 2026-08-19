@@ -60,7 +60,7 @@ describe("ConfiguracionScreen", () => {
     unmount();
   });
 
-  it("agrupa las secciones reales en 7 categorías (Sistema, Workspace, Herramientas, IA, Conocimiento, Diagnóstico, Ayuda), no como lista plana", () => {
+  it("agrupa las secciones reales en 5 categorías (Sistema, Herramientas, IA, Conocimiento, Ayuda), no como lista plana", () => {
     const { container, unmount } = mount(
       <NavigationProvider>
         <ConfiguracionScreen />
@@ -68,25 +68,18 @@ describe("ConfiguracionScreen", () => {
     );
 
     const groupTitles = Array.from(container.querySelectorAll("h3")).map((h) => h.textContent);
-    expect(groupTitles).toEqual([
-      "Sistema",
-      "Workspace",
-      "Herramientas",
-      "IA",
-      "Conocimiento",
-      "Diagnóstico",
-      "Ayuda",
-    ]);
+    expect(groupTitles).toEqual(["Sistema", "Herramientas", "IA", "Conocimiento", "Ayuda"]);
     expect(container.textContent).toContain(
       "Kits de trabajo y configuración de proveedores/modelos."
     );
 
     const cards = Array.from(container.querySelectorAll(".dwm-configuracion-screen__card"));
-    const workspaceTitles = ["Workspaces", "Backups"];
-    for (const title of workspaceTitles) {
+    const sistemaTitles = ["Workspaces", "Backups", "Estado y diagnóstico", "Logs"];
+    for (const title of sistemaTitles) {
       expect(cards.some((c) => c.textContent?.includes(title))).toBe(true);
     }
     expect(cards.some((c) => c.textContent?.includes("Configuración avanzada"))).toBe(true);
+    expect(cards.some((c) => c.textContent?.includes("Biblioteca IA"))).toBe(true);
 
     const herramientasTitles = ["Herramientas", "Extensiones de DWM", "Paquetes"];
     for (const title of herramientasTitles) {
