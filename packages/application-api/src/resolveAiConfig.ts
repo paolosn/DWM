@@ -32,7 +32,8 @@ export async function resolveAiConfig(
   }
   if (existingClientId && context.clientManager) {
     try {
-      const client = await context.clientManager.getClient(existingClientId);
+      const workspaceRoot = context.portableWorkspaceManager?.getActiveWorkspace()?.root;
+      const client = await context.clientManager.getClient(existingClientId, workspaceRoot);
       if (client.defaultAi) return { ...client.defaultAi, origin: "client" };
     } catch {
       // Cliente no encontrado o error de lectura: se cae al fallback global, nunca se rompe la resolución.

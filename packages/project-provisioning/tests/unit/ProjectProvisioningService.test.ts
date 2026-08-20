@@ -48,6 +48,7 @@ async function buildEnvironment(): Promise<{
   clientManager: ClientManager;
   projectManager: ProjectManager;
   profileManager: ProfileManager;
+  psnAdapter: PSNAdapter;
 }> {
   const { dir: workspaceRoot, cleanup: cleanupWorkspace } = makeTempDir("dwm-provisioning-ws-");
   const { dir: projectsDir, cleanup: cleanupProjects } = makeTempDir("dwm-provisioning-projects-");
@@ -72,6 +73,7 @@ async function buildEnvironment(): Promise<{
     clientManager,
     projectManager,
     profileManager,
+    psnAdapter,
     cleanup: () => {
       cleanupWorkspace();
       cleanupProjects();
@@ -97,6 +99,17 @@ describe("ProjectProvisioningService", () => {
     client: { name: "MCI Finance" },
     project: { name: "Portal de Clientes" },
     ...overrides,
+  });
+
+  it("bug real reproducido y corregido: tras escanear OTRA raíz distinta justo antes (p. ej. PSN-BASE, como hace Biblioteca IA global), crear el proyecto sigue resolviendo el cliente en la raíz REAL del Workspace, nunca en la última raíz escaneada", async () => {
+    const { service, workspaceRoot, psnAdapter } = await env();
+    const { dir: otherRoot, cleanup: cleanupOther } = makeTempDir("dwm-provisioning-other-");
+    cleanups.push(cleanupOther);
+    await psnAdapter.scanWorkspace(otherRoot);
+
+    const result = await service.provisionProject(workspaceRoot, baseRequest());
+    expect(result.clientId).toBeDefined();
+    expect(result.clientCreated).toBe(true);
   });
 
   it("duplica PSN-BASE completo dentro de la categoría correcta del Workspace", async () => {

@@ -103,7 +103,7 @@ export class ProjectProvisioningService {
     let clientId: string;
     let clientCreated: boolean;
     try {
-      const outcome = await this.resolveClient(request);
+      const outcome = await this.resolveClient(request, workspaceRoot);
       clientId = outcome.clientId;
       clientCreated = outcome.created;
 
@@ -119,7 +119,7 @@ export class ProjectProvisioningService {
         }
       );
 
-      await this.clientManager.addReference(clientId, "projects", project.id);
+      await this.clientManager.addReference(clientId, "projects", project.id, workspaceRoot);
 
       // "Marcar el proyecto como activo" (encargo, punto 3): reutiliza
       // ProjectManager.openProject() tal cual — no es un fallo crítico si
@@ -238,11 +238,12 @@ export class ProjectProvisioningService {
   }
 
   private async resolveClient(
-    request: ProvisionProjectRequest
+    request: ProvisionProjectRequest,
+    workspaceRoot: string
   ): Promise<{ clientId: string; created: boolean }> {
     if (request.existingClientId) {
       // Reutilizar explícitamente: si no existe, es un error real, no se crea uno nuevo en su lugar.
-      await this.clientManager.getClient(request.existingClientId);
+      await this.clientManager.getClient(request.existingClientId, workspaceRoot);
       return { clientId: request.existingClientId, created: false };
     }
 
@@ -257,16 +258,19 @@ export class ProjectProvisioningService {
 
     const clientId = sanitizeClientIdentifier(request.client.name);
     try {
-      await this.clientManager.getClient(clientId);
+      await this.clientManager.getClient(clientId, workspaceRoot);
       return { clientId, created: false };
     } catch (err) {
       if (this.isClientNotFound(err)) {
-        await this.clientManager.createClient({
-          id: clientId,
-          name: request.client.name,
-          slug: clientId,
-          ...(request.client.notas ? { description: request.client.notas } : {}),
-        });
+        await this.clientManager.createClient(
+          {
+            id: clientId,
+            name: request.client.name,
+            slug: clientId,
+            ...(request.client.notas ? { description: request.client.notas } : {}),
+          },
+          workspaceRoot
+        );
         return { clientId, created: true };
       }
       throw err;
