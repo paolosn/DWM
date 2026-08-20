@@ -549,6 +549,56 @@ describe("ProvisioningScreen — Perfil integrado en la creación", () => {
     );
     expect(applyCall).toBeDefined();
     expect(container.textContent).toContain("aplicado");
+
+    const createCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "provisioning.create-project"
+    );
+    expect((createCall?.[0] as { payload: { profileId?: string } }).payload.profileId).toBe(
+      "a3f9e21c-real-uuid-perfil"
+    );
+    unmount();
+  });
+
+  it("sin perfil elegido: crea el proyecto y NUNCA llama a profile-sync.preview/apply (el proyecto queda válido sin perfil, sin bloquear ni forzar nada)", async () => {
+    const invoke = setDwm({
+      "profiles.list": () => success("profiles.list", PROFILE_LIST),
+      "provisioning.create-project": () =>
+        success("provisioning.create-project", {
+          projectId: "p1",
+          clientId: "c1",
+          clientCreated: true,
+          projectPath: "/workspace/PROYECTOS/x",
+          vsCodeOpened: true,
+          vsCodeMessage: "VS Code abierto.",
+        }),
+    });
+    const { container, unmount } = mountScreen();
+    await openDirectoForm(container);
+    fillBaseFields(container, "MCI Finance", "Portal");
+
+    click(
+      Array.from(container.querySelectorAll("button")).find(
+        (b) => b.textContent === "Crear proyecto"
+      ) ?? null
+    );
+    await settle();
+
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "profile-sync.preview"
+      )
+    ).toBe(false);
+    expect(
+      invoke.mock.calls.some(
+        (c) => (c[0] as { operation: string }).operation === "profile-sync.apply"
+      )
+    ).toBe(false);
+    const createCall = invoke.mock.calls.find(
+      (c) => (c[0] as { operation: string }).operation === "provisioning.create-project"
+    );
+    expect(
+      (createCall?.[0] as { payload: { profileId?: string } }).payload.profileId
+    ).toBeUndefined();
     unmount();
   });
 

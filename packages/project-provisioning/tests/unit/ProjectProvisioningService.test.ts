@@ -306,15 +306,13 @@ describe("ProjectProvisioningService", () => {
     expect(client.references.projects).toContain(result.projectId);
   });
 
-  it("nunca pide ruta ni perfil: selecciona automáticamente el único perfil disponible", async () => {
-    const { service, workspaceRoot, profileManager } = await env();
+  it("nunca pide ruta ni perfil: crea el proyecto real sin exigir ninguno de los dos", async () => {
+    const { service, workspaceRoot } = await env();
     const request = baseRequest();
     expect((request as unknown as Record<string, unknown>).profileId).toBeUndefined();
     expect((request as unknown as Record<string, unknown>).projectPath).toBeUndefined();
 
     const result = await service.provisionProject(workspaceRoot, request);
-    const [expectedProfileId] = profileManager.listProfiles();
-    expect(expectedProfileId).toBeDefined();
     expect(result.projectPath).toContain("portal-de-clientes");
   });
 
@@ -357,19 +355,7 @@ describe("ProjectProvisioningService", () => {
     await expect(fs.stat(projectDir)).rejects.toThrow();
   });
 
-  it("usa el perfil activo cuando hay uno explícitamente activado (no solo el primero de la lista)", async () => {
-    const { service, workspaceRoot, profileManager } = await env();
-    const second = await profileManager.createProfile("Segundo perfil", "otro");
-    await profileManager.activateProfile(second.id);
-
-    const result = await service.provisionProject(
-      workspaceRoot,
-      baseRequest({ project: { name: "Con perfil activo" } })
-    );
-    expect(result.projectPath).toContain("con-perfil-activo");
-  });
-
-  it("falla con PROVISIONING_NO_ACTIVE_PROFILE si no hay ningún perfil registrado", async () => {
+  it("crea el proyecto sin ningún perfil registrado en el Workspace, sin bloquear ni pedir nada al usuario (bug real corregido: antes fallaba con PROVISIONING_NO_ACTIVE_PROFILE)", async () => {
     const { dir: profilesDir, cleanup: cleanupProfiles } = makeTempDir("dwm-provisioning-noprof-");
     cleanups.push(cleanupProfiles);
     const { workspaceRoot, clientManager, projectManager } = await env();
@@ -380,9 +366,37 @@ describe("ProjectProvisioningService", () => {
       profileManager: emptyProfileManager,
     });
 
-    await expect(service.provisionProject(workspaceRoot, baseRequest())).rejects.toMatchObject({
-      code: ProjectProvisioningErrorCode.PROVISIONING_NO_ACTIVE_PROFILE,
-    });
+    const result = await service.provisionProject(workspaceRoot, baseRequest());
+
+    const project = projectManager.getProject(result.projectId);
+    expect(project?.configuration.profileId).toBeUndefined();
+  });
+
+  it("crea el proyecto sin perfil aunque SÍ existan perfiles registrados, si el usuario no eligió ninguno explícitamente (nunca selecciona 'el primero' ni 'el activo' de forma implícita)", async () => {
+    const { service, workspaceRoot, profileManager, projectManager } = await env();
+    const second = await profileManager.createProfile("Segundo perfil", "otro");
+    await profileManager.activateProfile(second.id);
+
+    const result = await service.provisionProject(
+      workspaceRoot,
+      baseRequest({ project: { name: "Sin perfil elegido" } })
+    );
+
+    const project = projectManager.getProject(result.projectId);
+    expect(project?.configuration.profileId).toBeUndefined();
+  });
+
+  it("crea el proyecto con el perfil elegido explícitamente por el usuario, y ese es el que queda aplicado en la configuración real", async () => {
+    const { service, workspaceRoot, profileManager, projectManager } = await env();
+    const chosen = await profileManager.createProfile("Kit elegido", "el que el usuario eligió");
+
+    const result = await service.provisionProject(
+      workspaceRoot,
+      baseRequest({ project: { name: "Con perfil elegido" }, profileId: chosen.id })
+    );
+
+    const project = projectManager.getProject(result.projectId);
+    expect(project?.configuration.profileId).toBe(chosen.id);
   });
 
   it("propaga (sin ocultarlo) cualquier error de cliente que no sea 'no encontrado'", async () => {

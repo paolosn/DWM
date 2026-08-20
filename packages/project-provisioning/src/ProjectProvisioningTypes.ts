@@ -66,6 +66,8 @@ export interface ProvisionProjectRequest {
   readonly client?: ClientIntakeData;
   readonly project: ProjectIntakeData;
   readonly briefing?: ViabilityBriefingInput;
+  /** Perfil elegido explícitamente por el usuario; opcional -- si se omite, el proyecto se crea sin perfil (estado válido, nunca bloquea la creación). */
+  readonly profileId?: string;
 }
 
 export interface ProvisionProjectResult {

@@ -28,6 +28,8 @@ declare module "../ApplicationRequest.js" {
         client?: ClientIntakeData;
         project: ProjectIntakeData;
         briefing?: ViabilityBriefingInput;
+        /** Perfil elegido explícitamente por el usuario en "Nuevo trabajo"; opcional -- el proyecto se crea sin bloquear cuando se omite. */
+        profileId?: string;
       };
       result: ProvisionProjectResult & {
         readonly vsCodeOpened: boolean;
@@ -202,6 +204,7 @@ export class ProvisioningController implements ApplicationController {
         const client = readClient(record);
         const project = readProject(record);
         const briefing = readBriefing(record);
+        const profileId = optionalString(record, "profileId");
         if (!existingClientId && !client) {
           invalidPayload(
             'Se requiere "existingClientId" o los datos de un cliente nuevo en "client".'
@@ -213,6 +216,7 @@ export class ProvisioningController implements ApplicationController {
           ...(client !== undefined ? { client } : {}),
           project,
           ...(briefing !== undefined ? { briefing } : {}),
+          ...(profileId !== undefined ? { profileId } : {}),
         };
       },
       handler: async (payload) => {

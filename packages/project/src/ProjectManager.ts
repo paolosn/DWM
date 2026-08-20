@@ -271,7 +271,11 @@ export class ProjectManager implements IModule {
 
     const { configuration } = project;
 
-    if (this.profileManager && this.profileManager.getProfile(configuration.profileId)) {
+    if (
+      configuration.profileId &&
+      this.profileManager &&
+      this.profileManager.getProfile(configuration.profileId)
+    ) {
       await this.profileManager.setActiveProfile(configuration.profileId).catch(() => {});
     }
     if (

@@ -90,9 +90,10 @@ describe("ProvisioningController", () => {
       withWorkspace?: boolean;
       withPsnBase?: boolean;
       aiFetch?: ReturnType<typeof vi.fn>;
+      withProfile?: boolean;
     } = {}
   ) {
-    const { withWorkspace = true, withPsnBase = true } = options;
+    const { withWorkspace = true, withPsnBase = true, withProfile = true } = options;
     const workspace = withWorkspace ? await makeFakeWorkspace(withPsnBase) : undefined;
 
     const psnAdapter = new PSNAdapter();
@@ -105,7 +106,7 @@ describe("ProvisioningController", () => {
     const profileManager = new ProfileManager({
       profilesDir: tempDir("dwm-provisioning-controller-profiles-"),
     });
-    await profileManager.createProfile("Perfil por defecto", "pruebas");
+    if (withProfile) await profileManager.createProfile("Perfil por defecto", "pruebas");
 
     const projectProvisioningService = new ProjectProvisioningService({
       clientManager,
@@ -169,6 +170,27 @@ describe("ProvisioningController", () => {
     expect(typeof data.vsCodeOpened).toBe("boolean");
     expect(typeof data.vsCodeMessage).toBe("string");
     expect(data.vsCodeMessage.length).toBeGreaterThan(0);
+  });
+
+  it("bug real reproducido y corregido: 'Cliente acepta — crear proyecto' funciona en un Workspace SIN ningún perfil creado todavía (antes fallaba con 'No hay ningún perfil activo ni registrado')", async () => {
+    const { api, projectManager } = await buildApi({ withProfile: false });
+    const response = await api.execute(
+      makeRequest(
+        "provisioning.create-project",
+        {
+          category: "directo",
+          client: { name: "Cliente Nuevo" },
+          project: { name: "Primer proyecto" },
+        },
+        { caller: admin }
+      )
+    );
+
+    expect(response.success).toBe(true);
+    if (!response.success) return;
+    const data = response.data as { projectId: string };
+    const project = projectManager.getProject(data.projectId);
+    expect(project?.configuration.profileId).toBeUndefined();
   });
 
   it("rechaza category desconocida", async () => {

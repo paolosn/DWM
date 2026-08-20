@@ -79,7 +79,18 @@ export class ProjectProvisioningService {
     const psnBasePath = path.join(workspaceRoot, "PSN-BASE");
     await this.assertPsnBaseExists(psnBasePath);
 
-    const profileId = this.resolveProfileId();
+    // client-workflow "fix/kilo-provisioning-optional-profile" — el
+    // perfil es OPCIONAL en el flujo unificado: si el usuario lo
+    // eligió explícitamente en "Nuevo trabajo", se usa tal cual; si
+    // no, el proyecto se crea sin perfil (estado válido, ver
+    // `ProjectConfiguration.profileId`), y puede aplicarse más tarde
+    // vía `profile-sync.apply` sin bloquear nunca la creación. Antes
+    // se exigía un perfil "activo" o "el primero registrado" mediante
+    // un estado global implícito (`resolveProfileId()`), fallando por
+    // completo si ninguno existía todavía — exactamente lo que
+    // rompía "Cliente acepta — crear proyecto" en un Workspace nuevo
+    // sin ningún perfil creado.
+    const profileId = request.profileId;
 
     const categoryDir = path.join(workspaceRoot, "PROYECTOS", categoryFolderName(request.category));
     await fs.mkdir(categoryDir, { recursive: true });
@@ -101,7 +112,7 @@ export class ProjectProvisioningService {
         request.project.description ?? "",
         {
           projectPath: destinationPath,
-          profileId,
+          ...(profileId ? { profileId } : {}),
           clientId,
           usedTools: [],
           usedAdapters: [],
@@ -269,20 +280,6 @@ export class ProjectProvisioningService {
       "code" in err &&
       (err as { code: unknown }).code === ClientErrorCode.CLIENT_NOT_FOUND
     );
-  }
-
-  private resolveProfileId(): string {
-    const active = this.profileManager.getActiveProfile();
-    if (active) return active.id;
-    const [first] = this.profileManager.listProfiles();
-    if (first) return first;
-    throw createProjectProvisioningError({
-      code: ProjectProvisioningErrorCode.PROVISIONING_NO_ACTIVE_PROFILE,
-      message:
-        "No hay ningún perfil activo ni registrado: no se puede crear el proyecto automáticamente sin pedirle uno al usuario.",
-      origin: "profile",
-      recoverable: true,
-    });
   }
 
   private resolveSafeDestination(categoryDir: string, folderName: string): string {

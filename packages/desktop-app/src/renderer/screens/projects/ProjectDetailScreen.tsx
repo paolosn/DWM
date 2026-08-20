@@ -114,6 +114,11 @@ function ProjectSummaryPanel({
   }, [project.configuration.clientId]);
 
   useEffect(() => {
+    if (!project.configuration.profileId) {
+      setProfileName(undefined);
+      setProfileCounts(undefined);
+      return;
+    }
     let cancelled = false;
     void callOperation("profiles.get", { id: project.configuration.profileId })
       .then((profile) => {

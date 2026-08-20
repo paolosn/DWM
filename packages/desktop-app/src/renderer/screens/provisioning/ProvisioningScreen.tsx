@@ -546,6 +546,7 @@ export function ProvisioningScreen({
     try {
       const created = (await callOperation("provisioning.create-project", {
         category,
+        ...(profileId ? { profileId } : {}),
         client: {
           name: fields.cliente.trim(),
           ...(fields.email.trim() ? { email: fields.email.trim() } : {}),

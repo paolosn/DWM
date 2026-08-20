@@ -28,6 +28,7 @@ export class ProjectValidator {
     validateProjectConfiguration(configuration);
 
     if (
+      configuration.profileId !== undefined &&
       this.options.profileManager &&
       !this.options.profileManager.getProfile(configuration.profileId)
     ) {

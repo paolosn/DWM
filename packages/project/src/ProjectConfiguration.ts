@@ -3,8 +3,8 @@ import { createProjectError } from "./errors/ProjectError.js";
 
 export interface ProjectConfiguration {
   readonly projectPath: string;
-  /** Cada proyecto debe estar asociado a un único perfil. */
-  readonly profileId: string;
+  /** Perfil aplicado al proyecto; ausente = "Sin perfil aplicado" — un estado válido, no un error. El perfil es opcional: un proyecto puede crearse sin ninguno y aplicarse más tarde vía profile-sync. */
+  readonly profileId?: string;
   readonly workspaceId?: string;
   /** Cliente propietario del proyecto (`@dwm/client-manager`); ausente = "Sin cliente asignado" — un estado válido, no un error, para proyectos antiguos o creados sin cliente. */
   readonly clientId?: string;
@@ -34,10 +34,13 @@ export function validateProjectConfiguration(config: ProjectConfiguration): void
       recoverable: false,
     });
   }
-  if (typeof config.profileId !== "string" || config.profileId.length === 0) {
+  if (
+    config.profileId !== undefined &&
+    (typeof config.profileId !== "string" || config.profileId.length === 0)
+  ) {
     throw createProjectError({
       code: ProjectErrorCode.PROJECT_INVALID_CONFIGURATION,
-      message: "ProjectConfiguration.profileId es obligatorio y debe ser una cadena no vacía.",
+      message: "ProjectConfiguration.profileId debe ser una cadena no vacía si se indica.",
       origin: "configuration",
       recoverable: false,
     });

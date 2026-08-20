@@ -37,11 +37,11 @@ describe("validateProjectConfiguration", () => {
     );
   });
 
-  it("rechaza profileId vacío o ausente (asociación obligatoria a un perfil)", () => {
+  it("acepta profileId ausente (perfil opcional, estado válido) y rechaza cadena vacía cuando SÍ se indica", () => {
+    expect(() =>
+      validateProjectConfiguration({ ...VALID, profileId: undefined as never })
+    ).not.toThrow();
     expect(() => validateProjectConfiguration({ ...VALID, profileId: "" })).toThrow(
-      expect.objectContaining({ code: ProjectErrorCode.PROJECT_INVALID_CONFIGURATION })
-    );
-    expect(() => validateProjectConfiguration({ ...VALID, profileId: undefined as never })).toThrow(
       expect.objectContaining({ code: ProjectErrorCode.PROJECT_INVALID_CONFIGURATION })
     );
   });
