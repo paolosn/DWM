@@ -43,12 +43,27 @@ export interface ProcessRunner {
 const WINDOWS_SCRIPT_EXTENSIONS = new Set([".cmd", ".bat"]);
 
 /**
+ * Cita un único token para `cmd.exe` (usado únicamente cuando
+ * `shell: true` en Windows, para lanzar un `.cmd`/`.bat` ya resuelto
+ * — ver el comentario en `NodeProcessRunner.run`). Siempre entre
+ * comillas dobles si contiene un espacio; las comillas dobles
+ * internas se escapan duplicándolas, la convención real de
+ * `cmd.exe`.
+ */
+export function quoteForWindowsShell(token: string): string {
+  if (!/[\s"]/.test(token)) return token;
+  return `"${token.replace(/"/g, '""')}"`;
+}
+
+/**
  * Implementación real de `ProcessRunner`, respaldada por
  * `child_process.spawn`. Nunca usa `shell: true` salvo para lanzar un
  * script `.cmd`/`.bat` ya resuelto en Windows (necesidad documentada
  * del propio `CreateProcess` de Windows, no una conveniencia): en ese
- * caso concreto los argumentos siguen pasándose como array separado,
- * nunca concatenados en una cadena.
+ * caso, el ejecutable y cada argumento se citan manualmente y se unen
+ * en una única línea de comando (ver `quoteForWindowsShell`), en vez
+ * de confiar en el citado automático de Node para `shell: true`, que
+ * no es fiable cuando la ruta del propio ejecutable contiene espacios.
  */
 export class NodeProcessRunner implements ProcessRunner {
   constructor(private readonly systemInfo: SystemInfoProvider) {}
@@ -63,6 +78,23 @@ export class NodeProcessRunner implements ProcessRunner {
       this.systemInfo.nodePlatform() === "win32" &&
       WINDOWS_SCRIPT_EXTENSIONS.has(path.extname(command).toLowerCase());
 
+    // client-workflow "fix/kilo-vscode-open-windows-spaces" — bug real
+    // y documentado de Node.js: con `shell: true` en Windows, la ruta
+    // del propio ejecutable NO se entrecomilla de forma fiable cuando
+    // contiene espacios (muy común: "C:\Program Files\Microsoft VS
+    // Code\bin\code.cmd" o "...\AppData\Local\Programs\Microsoft VS
+    // Code\bin\code.cmd") — `which("code")` localiza el CLI
+    // correctamente, pero el spawn posterior falla en silencio (exit
+    // code distinto de 0), exactamente el síntoma real reportado
+    // ("no se pudo abrir VS Code" pese a tenerlo instalado). Se
+    // construye aquí manualmente la línea de comando completa,
+    // citando el ejecutable y cada argumento, en vez de confiar en el
+    // citado automático de Node para `shell: true`.
+    const spawnCommand = useShell
+      ? [command, ...args].map(quoteForWindowsShell).join(" ")
+      : command;
+    const spawnArgs = useShell ? [] : args;
+
     return new Promise((resolve, reject) => {
       let settled = false;
       let stdout = "";
@@ -70,7 +102,7 @@ export class NodeProcessRunner implements ProcessRunner {
       let truncated = false;
       let timedOut = false;
 
-      const child = spawn(command, args, {
+      const child = spawn(spawnCommand, spawnArgs, {
         cwd: options.cwd,
         shell: useShell,
         windowsHide: true,

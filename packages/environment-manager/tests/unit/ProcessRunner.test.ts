@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as path from "node:path";
-import { NodeProcessRunner } from "../../src/ProcessRunner.js";
+import { NodeProcessRunner, quoteForWindowsShell } from "../../src/ProcessRunner.js";
 import { FakeSystemInfoProvider } from "./support/fakes.js";
 
 /**
@@ -98,6 +98,24 @@ describe("NodeProcessRunner", () => {
       expect(
         await runner.which(path.basename(process.execPath), { signal: controller.signal })
       ).toBeUndefined();
+    });
+  });
+
+  describe("quoteForWindowsShell()", () => {
+    it("cita una ruta con espacios (bug real reproducido: sin esto, `code.cmd` en 'C:\\Program Files\\Microsoft VS Code\\bin\\code.cmd' falla en silencio con shell:true)", () => {
+      expect(quoteForWindowsShell("C:\\Program Files\\Microsoft VS Code\\bin\\code.cmd")).toBe(
+        '"C:\\Program Files\\Microsoft VS Code\\bin\\code.cmd"'
+      );
+    });
+
+    it("no cita un token sin espacios ni comillas (comando/argumento simple)", () => {
+      expect(quoteForWindowsShell("code.cmd")).toBe("code.cmd");
+    });
+
+    it("escapa comillas dobles internas duplicándolas, convención real de cmd.exe", () => {
+      expect(quoteForWindowsShell('ruta con "comillas" internas')).toBe(
+        '"ruta con ""comillas"" internas"'
+      );
     });
   });
 });
